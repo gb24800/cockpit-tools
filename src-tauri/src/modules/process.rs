@@ -2292,6 +2292,7 @@ pub fn list_antigravity_user_data_dirs() -> Vec<String> {
 }
 
 /// 获取所有 Antigravity 进程的 PID（包括主进程和Helper进程）
+#[allow(dead_code)]
 fn get_antigravity_pids() -> Vec<u32> {
     let mut system = System::new();
     system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
@@ -3768,6 +3769,7 @@ pub fn start_vscode_with_args_with_new_window(
     }
 }
 
+#[allow(dead_code)]
 pub fn start_vscode_with_args(user_data_dir: &str, extra_args: &[String]) -> Result<u32, String> {
     start_vscode_with_args_with_new_window(user_data_dir, extra_args, false)
 }
