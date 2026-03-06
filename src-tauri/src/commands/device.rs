@@ -1,6 +1,13 @@
 use crate::models;
 use crate::modules;
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviewCurrentProfileResult {
+    pub profile: models::DeviceProfile,
+    pub auto_generated_fields: Vec<String>,
+}
+
 #[tauri::command]
 pub async fn get_device_profiles(
     account_id: String,
@@ -62,9 +69,13 @@ pub async fn preview_generate_profile() -> Result<models::DeviceProfile, String>
 
 /// 预览当前设备指纹（读取 storage.json）
 #[tauri::command]
-pub async fn preview_current_profile() -> Result<models::DeviceProfile, String> {
+pub async fn preview_current_profile() -> Result<PreviewCurrentProfileResult, String> {
     let storage_path = modules::device::get_storage_path()?;
-    modules::device::read_profile(&storage_path)
+    let result = modules::device::read_profile_with_autofill(&storage_path)?;
+    Ok(PreviewCurrentProfileResult {
+        profile: result.profile,
+        auto_generated_fields: result.auto_generated_fields,
+    })
 }
 
 // ==================== 指纹管理命令 ====================

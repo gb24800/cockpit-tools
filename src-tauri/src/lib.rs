@@ -91,13 +91,13 @@ pub fn run() {
                 info!("[Updater] Tauri Updater + Process 插件已初始化");
             }
 
-            // 启动时同步：读取共享配置文件，与本地配置比较时间戳后合并
-            {
+            // 启动时同步设置合并（移至后台线程，不阻塞窗口显示）
+            std::thread::spawn(|| {
                 let current_config = modules::config::get_user_config();
                 if let Some(merged_language) = modules::sync_settings::merge_setting_on_startup(
                     "language",
                     &current_config.language,
-                    None, // 本地暂无更新时间记录，始终以共享文件为准
+                    None,
                 ) {
                     info!(
                         "[SyncSettings] 启动时合并语言设置: {} -> {}",
@@ -108,10 +108,13 @@ pub fn run() {
                         ..current_config
                     };
                     if let Err(e) = modules::config::save_user_config(&new_config) {
-                        logger::log_error(&format!("[SyncSettings] 保存合并后的配置失败: {}", e));
+                        logger::log_error(&format!(
+                            "[SyncSettings] 保存合并后的配置失败: {}",
+                            e
+                        ));
                     }
                 }
-            }
+            });
 
             // 启动 WebSocket 服务（使用 Tauri 的 async runtime）
             tauri::async_runtime::spawn(async {
@@ -121,10 +124,18 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             apply_macos_activation_policy(&app.handle());
 
-            // 初始化系统托盘
-            if let Err(e) = modules::tray::create_tray(app.handle()) {
-                logger::log_error(&format!("[Tray] 创建系统托盘失败: {}", e));
+            // 创建骨架托盘（无账号文件 I/O，秒出）
+            if let Err(e) = modules::tray::create_tray_skeleton(app.handle()) {
+                logger::log_error(&format!("[Tray] 创建骨架托盘失败: {}", e));
             }
+
+            // 后台线程加载完整托盘菜单（含账号数据）
+            let tray_app_handle = app.handle().clone();
+            std::thread::spawn(move || {
+                if let Err(e) = modules::tray::update_tray_menu(&tray_app_handle) {
+                    logger::log_error(&format!("[Tray] 后台更新托盘菜单失败: {}", e));
+                }
+            });
 
             Ok(())
         })

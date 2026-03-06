@@ -142,9 +142,12 @@ pub fn init_logger() {
 
     std::mem::forget(_guard);
 
-    cleanup_expired_logs(&log_dir);
-
     info!("日志系统已完成初始化");
+
+    // 日志清理移至后台线程，不阻塞启动
+    std::thread::spawn(move || {
+        cleanup_expired_logs(&log_dir);
+    });
 }
 
 pub fn log_info(message: &str) {

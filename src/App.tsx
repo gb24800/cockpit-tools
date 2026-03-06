@@ -935,7 +935,10 @@ function App() {
       }
     };
 
-    void checkUpdates();
+    const timer = setTimeout(() => {
+      void checkUpdates();
+    }, 8000);
+    return () => clearTimeout(timer);
   }, [openUpdateNotification, writeUpdateLog]);
 
   // Version jump detection (post-update changelog)

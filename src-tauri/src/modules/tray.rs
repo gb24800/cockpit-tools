@@ -118,7 +118,7 @@ struct CopilotUsage {
     reset_ts: Option<i64>,
 }
 
-/// 创建系统托盘
+/// 创建系统托盘（完整菜单，包含账号数据加载）
 pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<TrayIcon<R>, tauri::Error> {
     info!("[Tray] 正在创建系统托盘...");
 
@@ -134,6 +134,74 @@ pub fn create_tray<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<TrayIcon<R>,
         .build(app)?;
 
     info!("[Tray] 系统托盘创建成功");
+    Ok(tray)
+}
+
+/// 创建骨架托盘（无账号文件 I/O，仅基础菜单项，用于快速启动）
+pub fn create_tray_skeleton<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+) -> Result<TrayIcon<R>, tauri::Error> {
+    info!("[Tray] 创建骨架托盘...");
+
+    let config = crate::modules::config::get_user_config();
+    let lang = &config.language;
+
+    let show_window = MenuItem::with_id(
+        app,
+        menu_ids::SHOW_WINDOW,
+        get_text("show_window", lang),
+        true,
+        None::<&str>,
+    )?;
+    let refresh_quota = MenuItem::with_id(
+        app,
+        menu_ids::REFRESH_QUOTA,
+        get_text("refresh_quota", lang),
+        true,
+        None::<&str>,
+    )?;
+    let settings = MenuItem::with_id(
+        app,
+        menu_ids::SETTINGS,
+        get_text("settings", lang),
+        true,
+        None::<&str>,
+    )?;
+    let quit = MenuItem::with_id(
+        app,
+        menu_ids::QUIT,
+        get_text("quit", lang),
+        true,
+        None::<&str>,
+    )?;
+    let loading = MenuItem::with_id(
+        app,
+        "tray_loading",
+        get_text("loading", lang),
+        false,
+        None::<&str>,
+    )?;
+
+    let menu = Menu::new(app)?;
+    menu.append(&show_window)?;
+    menu.append(&PredefinedMenuItem::separator(app)?)?;
+    menu.append(&loading)?;
+    menu.append(&PredefinedMenuItem::separator(app)?)?;
+    menu.append(&refresh_quota)?;
+    menu.append(&settings)?;
+    menu.append(&PredefinedMenuItem::separator(app)?)?;
+    menu.append(&quit)?;
+
+    let tray = TrayIconBuilder::with_id(TRAY_ID)
+        .icon(app.default_window_icon().unwrap().clone())
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .tooltip("Cockpit Tools")
+        .on_menu_event(handle_menu_event)
+        .on_tray_icon_event(handle_tray_event)
+        .build(app)?;
+
+    info!("[Tray] 骨架托盘创建完成，等待后台加载完整菜单");
     Ok(tray)
 }
 

@@ -1,5 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import enResources from '../locales/en.json';
 
 type LocaleModule = { default: Record<string, unknown> };
 
@@ -102,7 +103,9 @@ export async function initI18n(): Promise<void> {
     await i18n
       .use(initReactI18next)
       .init({
-        resources: {},
+        resources: {
+          en: { translation: enResources },
+        },
         lng: 'en',
         fallbackLng: 'en',
         supportedLngs: supportedLanguages,
@@ -113,7 +116,7 @@ export async function initI18n(): Promise<void> {
         },
       });
 
-    await ensureLanguageResources('en');
+    loadedLanguages.add('en');
     if (savedLanguage !== 'en') {
       await ensureLanguageResources(savedLanguage);
     }

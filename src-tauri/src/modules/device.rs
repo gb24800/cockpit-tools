@@ -239,6 +239,87 @@ pub fn read_profile(storage_path: &Path) -> Result<DeviceProfile, String> {
     })
 }
 
+pub struct ReadProfileWithAutofillResult {
+    pub profile: DeviceProfile,
+    pub auto_generated_fields: Vec<String>,
+}
+
+/// 从 storage.json 读取当前设备指纹；缺失字段时自动补齐并回写
+pub fn read_profile_with_autofill(storage_path: &Path) -> Result<ReadProfileWithAutofillResult, String> {
+    let content =
+        fs::read_to_string(storage_path).map_err(|e| format!("读取 storage.json 失败: {}", e))?;
+    let json: Value =
+        serde_json::from_str(&content).map_err(|e| format!("解析 storage.json 失败: {}", e))?;
+
+    let get_field = |key: &str| -> Option<String> {
+        if let Some(obj) = json.get("telemetry").and_then(|v| v.as_object()) {
+            if let Some(v) = obj.get(key).and_then(|v| v.as_str()) {
+                return Some(v.to_string());
+            }
+        }
+        if let Some(v) = json
+            .get(format!("telemetry.{key}"))
+            .and_then(|v| v.as_str())
+        {
+            return Some(v.to_string());
+        }
+        None
+    };
+
+    let mut auto_generated_fields = Vec::new();
+    let machine_id = match get_field("machineId") {
+        Some(value) => value,
+        None => {
+            auto_generated_fields.push("machineId".to_string());
+            format!("auth0|user_{}", random_hex(32))
+        }
+    };
+    let mac_machine_id = match get_field("macMachineId") {
+        Some(value) => value,
+        None => {
+            auto_generated_fields.push("macMachineId".to_string());
+            new_standard_machine_id()
+        }
+    };
+    let dev_device_id = match get_field("devDeviceId") {
+        Some(value) => value,
+        None => {
+            auto_generated_fields.push("devDeviceId".to_string());
+            Uuid::new_v4().to_string()
+        }
+    };
+    let sqm_id = match get_field("sqmId") {
+        Some(value) => value,
+        None => {
+            auto_generated_fields.push("sqmId".to_string());
+            format!("{{{}}}", Uuid::new_v4().to_string().to_uppercase())
+        }
+    };
+    let service_machine_id = get_service_machine_id();
+
+    let profile = DeviceProfile {
+        machine_id,
+        mac_machine_id,
+        dev_device_id,
+        sqm_id,
+        service_machine_id,
+    };
+
+    if !auto_generated_fields.is_empty() {
+        if let Err(err) = write_profile(storage_path, &profile) {
+            logger::log_warn(&format!(
+                "storage.json 缺失字段自动补齐后回写失败（仅影响持久化，不影响预览）: {}",
+                err
+            ));
+        }
+    }
+
+    Ok(ReadProfileWithAutofillResult {
+        profile,
+        auto_generated_fields,
+    })
+}
+
 /// 将设备指纹写入 storage.json
 pub fn write_profile(storage_path: &Path, profile: &DeviceProfile) -> Result<(), String> {
     if !storage_path.exists() {
