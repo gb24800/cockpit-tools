@@ -427,11 +427,11 @@ fn append_codex_rows(rows: &mut Vec<ReportRow>) {
         if let Some(quota) = account.quota {
             let main_label = quota
                 .hourly_window_minutes
-                .map(|mins| format!("Main window ({}m)", mins))
+                .map(|mins| format!("Main window ({})", format_minutes_natural(mins)))
                 .unwrap_or_else(|| "Main window".to_string());
             let weekly_label = quota
                 .weekly_window_minutes
-                .map(|mins| format!("Weekly window ({}m)", mins))
+                .map(|mins| format!("Weekly window ({})", format_minutes_natural(mins)))
                 .unwrap_or_else(|| "Weekly window".to_string());
 
             let main_remaining = clamp_percent(quota.hourly_percentage as f64);
@@ -1424,7 +1424,7 @@ fn render_html(generated_at: &str, rows: &[ReportRow]) -> String {
     );
     output.push_str("<title>Cockpit Tools Usage Report</title>");
     output.push_str(
-        "<style>body{margin:0;background:#f6f8fb;color:#0f172a;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}main{max-width:1120px;margin:24px auto;padding:0 16px 24px}h1{font-size:22px;margin:0 0 12px}p{margin:4px 0 0;color:#334155}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-top:16px}th,td{font-size:13px;padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}th{background:#f8fafc;color:#334155;font-weight:600}tr:last-child td{border-bottom:none}.status-disabled{color:#b45309}.status-normal{color:#166534}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}</style>",
+        "<style>body{margin:0;background:#f6f8fb;color:#0f172a;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}main{max-width:1120px;margin:24px auto;padding:0 16px 24px}h1{font-size:22px;margin:0 0 12px}p{margin:4px 0 0;color:#334155}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-top:16px}th,td{font-size:13px;padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}th{background:#f8fafc;color:#334155;font-weight:600}tr:last-child td{border-bottom:none}.group-even td{background:#ffffff}.group-odd td{background:#f8fafc}.status-disabled{color:#b45309}.status-normal{color:#166534}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}</style>",
     );
     output.push_str("</head><body><main>");
     output.push_str("<h1>Cockpit Tools Usage Report</h1>");
@@ -1435,13 +1435,25 @@ fn render_html(generated_at: &str, rows: &[ReportRow]) -> String {
     output.push_str(&format!("<p>Rows: {}</p>", rows.len()));
     output.push_str("<table><thead><tr><th>Service</th><th>Account</th><th>Metric</th><th>Used</th><th>Remaining</th><th>Reset Cycle</th><th>Status</th><th>Note</th></tr></thead><tbody>");
 
+    let mut previous_group_key = String::new();
+    let mut group_index: usize = 0;
     for row in rows {
+        let current_group_key = format!("{}|{}", row.service, row.account);
+        if !previous_group_key.is_empty() && current_group_key != previous_group_key {
+            group_index += 1;
+        }
+        previous_group_key = current_group_key;
         let status_class = if row.status.eq_ignore_ascii_case("disabled") {
             "status-disabled"
         } else {
             "status-normal"
         };
-        output.push_str("<tr>");
+        let group_class = if group_index % 2 == 0 {
+            "group-even"
+        } else {
+            "group-odd"
+        };
+        output.push_str(&format!("<tr class=\"{}\">", group_class));
         output.push_str(&format!("<td>{}</td>", html_escape(&row.service)));
         output.push_str(&format!("<td>{}</td>", html_escape(&row.account)));
         output.push_str(&format!("<td>{}</td>", html_escape(&row.metric)));
@@ -1474,6 +1486,35 @@ fn html_escape(input: &str) -> String {
         .replace('>', "&gt;")
         .replace('"', "&quot;")
         .replace('\'', "&#39;")
+}
+
+fn format_minutes_natural(total_minutes: i64) -> String {
+    if total_minutes <= 0 {
+        return "0m".to_string();
+    }
+
+    let mut remaining = total_minutes;
+    let days = remaining / (24 * 60);
+    remaining %= 24 * 60;
+    let hours = remaining / 60;
+    let minutes = remaining % 60;
+
+    let mut parts: Vec<String> = Vec::new();
+    if days > 0 {
+        parts.push(format!("{}d", days));
+    }
+    if hours > 0 {
+        parts.push(format!("{}h", hours));
+    }
+    if minutes > 0 {
+        parts.push(format!("{}m", minutes));
+    }
+
+    if parts.is_empty() {
+        "0m".to_string()
+    } else {
+        parts.join("")
+    }
 }
 
 fn yaml_quote(value: &str) -> String {
