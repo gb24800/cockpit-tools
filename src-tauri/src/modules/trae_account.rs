@@ -1869,18 +1869,20 @@ fn ensure_auth_raw_for_inject(account: &TraeAccount, existing_auth_raw: Option<&
 
     let user_id = resolve_account_user_id_for_auth_object(account, &roots);
 
-    let username = pick_string_multi(
-        &roots,
-        &[
-            &["ScreenName"],
-            &["nickname"],
-            &["name"],
-            &["displayName"],
-            &["account", "username"],
-        ],
-    )
-    .or_else(|| normalize_non_empty(account.nickname.as_deref()))
-    .unwrap_or_else(|| account.email.clone());
+    let username = normalize_non_empty(account.nickname.as_deref())
+        .or_else(|| {
+            pick_string_multi(
+                &roots,
+                &[
+                    &["ScreenName"],
+                    &["nickname"],
+                    &["name"],
+                    &["displayName"],
+                    &["account", "username"],
+                ],
+            )
+        })
+        .unwrap_or_else(|| account.email.clone());
 
     let email = normalize_email(
         pick_string_multi(
@@ -1963,8 +1965,9 @@ fn ensure_auth_raw_for_inject(account: &TraeAccount, existing_auth_raw: Option<&
     .map(|value| to_store_region(value.as_str()))
     .unwrap_or_else(|| "UNKNOWN".to_string());
 
+    let ai_region_roots = [profile_root, server_raw, auth_raw];
     let ai_region = pick_string_multi(
-        &roots,
+        &ai_region_roots,
         &[
             &["AIRegion"],
             &["userRegion", "_aiRegion"],
