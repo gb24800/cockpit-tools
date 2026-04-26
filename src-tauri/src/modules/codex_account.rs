@@ -6,6 +6,7 @@ use crate::modules::{account, codex_oauth, logger};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION};
 #[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(test)))]
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -37,6 +38,7 @@ const CODEX_PROVIDER_WIRE_API: &str = "responses";
 const CODEX_CONTEXT_WINDOW_1M_VALUE: i64 = 1_000_000;
 const CODEX_AUTO_COMPACT_DEFAULT_LIMIT: i64 = 900_000;
 #[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(test)))]
 const CODEX_KEYCHAIN_SERVICE: &str = "Codex Auth";
 const CODEX_AUTO_SWITCH_ACCOUNT_SCOPE_ALL: &str = "all_accounts";
 const CODEX_AUTO_SWITCH_ACCOUNT_SCOPE_SELECTED: &str = "selected_accounts";
@@ -1776,7 +1778,7 @@ fn load_local_oauth_snapshot_from_auth_file(
     build_local_oauth_snapshot(auth_file.tokens?)
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(test)))]
 fn is_codex_keychain_item_not_found(status: std::process::ExitStatus, stderr: &str) -> bool {
     let lower = stderr.to_ascii_lowercase();
     status.code() == Some(44)
@@ -1785,7 +1787,7 @@ fn is_codex_keychain_item_not_found(status: std::process::ExitStatus, stderr: &s
         || lower.contains("specified item could not be found")
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(test)))]
 fn read_codex_keychain_auth_file_from_dir(
     base_dir: &Path,
 ) -> Result<Option<CodexAuthFile>, String> {
@@ -1830,6 +1832,13 @@ fn read_codex_keychain_auth_file_from_dir(
     let auth_file: CodexAuthFile = serde_json::from_str(&secret)
         .map_err(|e| format!("解析 Codex keychain JSON 失败: {}", e))?;
     Ok(Some(auth_file))
+}
+
+#[cfg(all(target_os = "macos", test))]
+fn read_codex_keychain_auth_file_from_dir(
+    _base_dir: &Path,
+) -> Result<Option<CodexAuthFile>, String> {
+    Ok(None)
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -2163,7 +2172,7 @@ fn build_auth_file_value(account: &CodexAccount) -> Result<serde_json::Value, St
     .map_err(|e| format!("auth.json 序列化失败: {}", e))
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(test)))]
 fn build_codex_keychain_account(base_dir: &Path) -> String {
     let resolved_home = fs::canonicalize(base_dir).unwrap_or_else(|_| base_dir.to_path_buf());
     let mut hasher = Sha256::new();
@@ -2173,7 +2182,7 @@ fn build_codex_keychain_account(base_dir: &Path) -> String {
     format!("cli|{}", &digest_hex[..16])
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(test)))]
 fn write_codex_keychain_to_dir(base_dir: &Path, account: &CodexAccount) -> Result<(), String> {
     if account.is_api_key_auth() {
         return Ok(());
@@ -2219,6 +2228,11 @@ fn write_codex_keychain_to_dir(base_dir: &Path, account: &CodexAccount) -> Resul
         "[Codex切号] 已更新 keychain 登录信息: service={}, account={}",
         CODEX_KEYCHAIN_SERVICE, keychain_account
     ));
+    Ok(())
+}
+
+#[cfg(all(target_os = "macos", test))]
+fn write_codex_keychain_to_dir(_base_dir: &Path, _account: &CodexAccount) -> Result<(), String> {
     Ok(())
 }
 
@@ -2998,7 +3012,7 @@ mod tests {
         read_api_provider_from_config_toml, read_quick_config_from_config_toml,
         resolve_api_provider_config, save_account, save_account_index, sync_account_from_auth_dir,
         sync_managed_projection_from_auth_dir, validate_api_key_credentials,
-        write_account_bundle_to_dir, write_api_provider_to_config_toml,
+        write_api_provider_to_config_toml, write_managed_projection_to_dir,
         write_quick_config_to_config_toml, ApiProviderConfig, CodexAccountIndex,
         CodexAccountSummary, CodexAuthFile, CodexAuthTokens, CODEX_AUTO_COMPACT_DEFAULT_LIMIT,
         CODEX_CONTEXT_WINDOW_1M_VALUE,
@@ -3305,7 +3319,8 @@ mod tests {
             "rt-seed",
         ));
         let managed_home = env.home_dir.join("managed-homes").join(&stored.id);
-        write_account_bundle_to_dir(&managed_home, &stored).expect("write managed projection");
+        write_oauth_auth_file(&managed_home, &stored.tokens, "acc-current");
+        write_managed_projection_to_dir(&managed_home, &stored).expect("write managed projection");
 
         let latest_tokens = make_codex_tokens(
             "demo@example.com",

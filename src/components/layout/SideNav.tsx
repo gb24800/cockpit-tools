@@ -15,7 +15,7 @@ import {
   resolveEntryIdForPlatform,
   usePlatformLayoutStore,
 } from '../../stores/usePlatformLayoutStore';
-import { useSideNavLayoutStore } from '../../stores/useSideNavLayoutStore';
+import { ORIGINAL_SIDEBAR_ENTRY_LIMIT, useSideNavLayoutStore } from '../../stores/useSideNavLayoutStore';
 import { useGlobalModal } from '../../hooks/useGlobalModal';
 import { getPlatformLabel, renderPlatformIcon } from '../../utils/platformMeta';
 
@@ -207,7 +207,11 @@ export function SideNav({
   );
 
   const sidebarMenuEntries = useMemo(
-    () => (isClassicLayout ? sidebarVisibleEntries : sidebarVisibleEntries.slice(0, 2)),
+    () => (
+      isClassicLayout
+        ? sidebarVisibleEntries
+        : sidebarVisibleEntries.slice(0, ORIGINAL_SIDEBAR_ENTRY_LIMIT)
+    ),
     [isClassicLayout, sidebarVisibleEntries],
   );
 

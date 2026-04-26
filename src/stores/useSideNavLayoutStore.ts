@@ -3,6 +3,8 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 
 export type SideNavLayoutMode = 'original' | 'classic';
 
+export const ORIGINAL_SIDEBAR_ENTRY_LIMIT = 3;
+
 interface SideNavLayoutState {
   mode: SideNavLayoutMode;
   classicCollapsed: boolean;

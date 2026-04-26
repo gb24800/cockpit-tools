@@ -35,7 +35,7 @@ import {
   resolveGroupChildName,
   usePlatformLayoutStore,
 } from '../stores/usePlatformLayoutStore';
-import { useSideNavLayoutStore } from '../stores/useSideNavLayoutStore';
+import { ORIGINAL_SIDEBAR_ENTRY_LIMIT, useSideNavLayoutStore } from '../stores/useSideNavLayoutStore';
 import { getPlatformLabel, renderPlatformIcon } from '../utils/platformMeta';
 
 const PLATFORM_LAYOUT_ICON_STORAGE_KEY = 'agtools.platform_layout.custom_icons.v1';
@@ -345,7 +345,9 @@ export function PlatformLayoutModal({
   const { t } = useTranslation();
   const sideNavLayoutMode = useSideNavLayoutStore((state) => state.mode);
   const isSidebarSelectionLimited = sideNavLayoutMode === 'original';
-  const sidebarSelectionLimit = isSidebarSelectionLimited ? 2 : Number.MAX_SAFE_INTEGER;
+  const sidebarSelectionLimit = isSidebarSelectionLimited
+    ? ORIGINAL_SIDEBAR_ENTRY_LIMIT
+    : Number.MAX_SAFE_INTEGER;
   const {
     orderedEntryIds,
     hiddenEntryIds,
@@ -1047,7 +1049,7 @@ export function PlatformLayoutModal({
             {isSidebarSelectionLimited
               ? t(
                 'platformLayout.tipWithGroups',
-                '拖拽可排序；最多选择两个入口显示在侧边栏。分组子级不参与侧边栏/仪表盘开关，仅用于菜单栏与默认平台切换。',
+                '拖拽可排序；最多选择三个入口显示在侧边栏。分组子级不参与侧边栏/仪表盘开关，仅用于菜单栏与默认平台切换。',
               )
               : t(
                 'platformLayout.tipWithGroupsUnlimited',

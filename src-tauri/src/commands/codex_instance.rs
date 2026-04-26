@@ -661,6 +661,14 @@ pub async fn codex_execute_instance_launch_command(
     terminal: Option<String>,
 ) -> Result<String, String> {
     let context = resolve_instance_launch_context(&instance_id)?;
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = terminal;
+        let _ = context;
+    }
+
+    #[cfg(target_os = "macos")]
     let command = build_launch_command(&context)?;
 
     #[cfg(target_os = "macos")]
