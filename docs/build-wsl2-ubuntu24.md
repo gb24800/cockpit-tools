@@ -114,7 +114,7 @@ cd ~/codes/cockpit-tools
 test -f package.json && test -f src-tauri/tauri.conf.json && pwd
 ```
 
-安装 Rust stable：
+安装 Rust stable。如果已经安装过 Rust stable，并且 `rustc --version`、`cargo --version` 都能正常输出，可以跳过安装命令，只保留版本检查：
 
 ```bash
 if ! command -v cargo >/dev/null 2>&1; then
@@ -128,7 +128,16 @@ rustc --version
 cargo --version
 ```
 
-安装或更新 nvm 到 `0.40.4`，并安装 Node.js 24：
+如果 Rust 已安装但版本较旧，更新 stable 工具链：
+
+```bash
+rustup update stable
+rustup default stable
+rustc --version
+cargo --version
+```
+
+安装或更新 nvm 到 `0.40.4`，并安装 Node.js 24。如果已经安装过 nvm `0.40.4` 和 Node.js 24，可以跳过安装命令，只保留版本检查：
 
 ```bash
 export NVM_DIR="$HOME/.nvm"
@@ -143,6 +152,8 @@ nvm alias default 24
 node -v
 npm -v
 ```
+
+如果 nvm 已安装但版本不是 `0.40.4`，重新执行上面的 nvm 安装命令即可更新。
 
 确认 nvm 是 `0.40.4`：
 
@@ -186,49 +197,27 @@ cargo --version
 cd ~/codes/cockpit-tools
 ```
 
-安装前端依赖。如果已经执行过 `npm ci`，且 `package.json`、`package-lock.json` 没有变化，可以跳过这一步：
+安装前端依赖：
 
 ```bash
 npm ci --cache .npm-cache
 ```
 
-如果后续编译提示前端依赖缺失、版本不匹配，或 `package-lock.json` 与 `package.json` 不一致，重新安装依赖：
-
-```bash
-npm install --cache .npm-cache
-```
-
 不要用 `sudo npm ...` 编译项目。`sudo` 可能会切到系统自带的旧 Node.js，导致 Vite 报错。
 
-同步并检查应用版本，确保 `package.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml` 版本一致：
+编译前检查 Rust / Node.js 版本是否匹配本文档要求：
 
 ```bash
-npm run sync-version
-
 node - <<'NODE'
-const fs = require("fs");
-
-const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
-const tauriVersion = JSON.parse(fs.readFileSync("src-tauri/tauri.conf.json", "utf8")).version;
-const cargoToml = fs.readFileSync("src-tauri/Cargo.toml", "utf8");
-const cargoVersion = cargoToml.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
-
-console.log(`package.json: ${packageVersion}`);
-console.log(`tauri.conf.json: ${tauriVersion}`);
-console.log(`src-tauri/Cargo.toml: ${cargoVersion}`);
-
-if (packageVersion !== tauriVersion || packageVersion !== cargoVersion) {
-  console.error("Version mismatch. Run npm run sync-version, then try building again.");
+const major = Number(process.versions.node.split(".")[0]);
+if (major !== 24) {
+  console.error(`Node.js ${process.versions.node} is not 24.x.`);
   process.exit(1);
 }
+console.log(`Node.js ${process.versions.node} OK`);
 NODE
-```
 
-如果版本已经一致，可以继续编译；如果不一致，先重新执行 `npm run sync-version`，再试一次编译。仍然失败时，先拉取最新代码并重新安装依赖：
-
-```bash
-git pull
-npm install --cache .npm-cache
+cargo --version
 ```
 
 本地 Ubuntu 24.04 编译时，先临时关闭 Tauri updater artifacts。
@@ -289,6 +278,20 @@ npm run tauri build
 ```
 
 首次编译会下载 Rust crates，release 构建可能需要十几分钟。后续增量编译会快很多。
+
+如果编译失败，先更新 Rust stable 和 Node.js 24，再重新安装 npm 包并重试：
+
+```bash
+rustup update stable
+rustup default stable
+
+nvm install 24
+nvm use 24
+nvm alias default 24
+
+npm ci --cache .npm-cache
+npm run tauri build
+```
 
 编译成功后检查二进制：
 
