@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use std::process::Command;
+use std::time::Instant;
 
 use serde::Serialize;
 use tauri::AppHandle;
@@ -190,6 +191,7 @@ fn resolve_instance_launch_context(instance_id: &str) -> Result<CodexLaunchConte
 }
 
 fn sync_codex_threads_across_idle_instances(context: &str) {
+    let started = Instant::now();
     let default_settings = match modules::codex_instance::load_default_settings() {
         Ok(settings) => settings,
         Err(error) => {
@@ -208,12 +210,27 @@ fn sync_codex_threads_across_idle_instances(context: &str) {
         Ok(Some(summary)) => {
             if summary.total_synced_thread_count > 0 {
                 modules::logger::log_info(&format!(
-                    "[Codex Thread Sync] {}: synced {} sessions across {} instances",
-                    context, summary.total_synced_thread_count, summary.mutated_instance_count
+                    "[Codex Thread Sync] {}: synced {} sessions across {} instances, elapsed_ms={}",
+                    context,
+                    summary.total_synced_thread_count,
+                    summary.mutated_instance_count,
+                    started.elapsed().as_millis()
+                ));
+            } else {
+                modules::logger::log_info(&format!(
+                    "[Codex Thread Sync] {}: completed with no changes, elapsed_ms={}",
+                    context,
+                    started.elapsed().as_millis()
                 ));
             }
         }
-        Ok(None) => {}
+        Ok(None) => {
+            modules::logger::log_info(&format!(
+                "[Codex Thread Sync] {}: skipped because instances are not idle or not enough instances, elapsed_ms={}",
+                context,
+                started.elapsed().as_millis()
+            ));
+        }
         Err(error) => {
             modules::logger::log_warn(&format!(
                 "[Codex Thread Sync] {}: skipped automatic idle sync: {}",
@@ -631,6 +648,7 @@ async fn codex_start_instance_internal(
     instance_id: String,
     skip_default_bind_account_injection: bool,
 ) -> Result<CodexInstanceProfileView, String> {
+    let flow_started = Instant::now();
     if instance_id == DEFAULT_INSTANCE_ID {
         let default_dir = modules::codex_instance::get_default_codex_home()?;
         let previous_credential_kind = read_launch_credential_kind_for_dir(&default_dir);
@@ -639,7 +657,24 @@ async fn codex_start_instance_internal(
         if default_settings.launch_mode != InstanceLaunchMode::Cli {
             modules::process::ensure_codex_launch_path_configured()?;
         }
-        modules::process::close_codex_default(20)?;
+        let close_started = Instant::now();
+        let fast_closed = if skip_default_bind_account_injection {
+            modules::process::close_codex_default_fast_by_pid(default_settings.last_pid, 20)?
+        } else {
+            false
+        };
+        if !fast_closed {
+            modules::process::close_codex_default(20)?;
+        }
+        modules::logger::log_info(&format!(
+            "[Codex Start] default close phase finished, mode={}, elapsed_ms={}",
+            if fast_closed {
+                "fast-pid"
+            } else {
+                "full-probe"
+            },
+            close_started.elapsed().as_millis()
+        ));
         let _ = modules::codex_instance::update_default_pid(None)?;
         modules::codex_speed::write_app_speed_for_dir(
             &default_dir,
@@ -659,7 +694,13 @@ async fn codex_start_instance_internal(
             previous_credential_kind,
             read_launch_credential_kind_for_dir(&default_dir),
         );
-        sync_codex_threads_across_idle_instances("before-start-default");
+        if skip_default_bind_account_injection {
+            modules::logger::log_info(
+                "[Codex Thread Sync] before-start-default: skipped on prepared-profile fast path",
+            );
+        } else {
+            sync_codex_threads_across_idle_instances("before-start-default");
+        }
 
         if default_settings.launch_mode == InstanceLaunchMode::Cli {
             let context = resolve_instance_launch_context(DEFAULT_INSTANCE_ID)?;
@@ -676,7 +717,18 @@ async fn codex_start_instance_internal(
         }
 
         let extra_args = modules::process::parse_extra_args(&default_settings.extra_args);
-        let pid = modules::process::start_codex_default(&extra_args)?;
+        let launch_started = Instant::now();
+        let pid = if skip_default_bind_account_injection {
+            modules::process::start_codex_default_fast_after_close(&extra_args)?
+        } else {
+            modules::process::start_codex_default(&extra_args)?
+        };
+        modules::logger::log_info(&format!(
+            "[Codex Start] default launch phase finished, pid={}, elapsed_ms={}, total_ms={}",
+            pid,
+            launch_started.elapsed().as_millis(),
+            flow_started.elapsed().as_millis()
+        ));
         let updated = modules::codex_instance::update_default_pid(Some(pid))?;
         let running = modules::process::is_pid_running(pid);
         return Ok(default_instance_view(

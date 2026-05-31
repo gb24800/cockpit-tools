@@ -6759,7 +6759,7 @@ fn wait_pids_exit(pids: &[u32], timeout_secs: u64) -> bool {
         if start.elapsed() >= Duration::from_secs(timeout_secs) {
             return false;
         }
-        thread::sleep(Duration::from_millis(350));
+        thread::sleep(Duration::from_millis(120));
     }
 }
 
@@ -7360,6 +7360,119 @@ fn collect_codex_process_entries_from_sysinfo_fallback(
 }
 
 #[cfg(target_os = "windows")]
+fn collect_codex_main_process_pids_from_sysinfo_fast(expected_exe_path: &str) -> Vec<u32> {
+    let expected = normalize_path_for_compare(expected_exe_path);
+    if expected.is_empty() {
+        return Vec::new();
+    }
+
+    let mut pids = Vec::new();
+    let mut system = System::new();
+    system.refresh_processes_specifics(
+        sysinfo::ProcessesToUpdate::All,
+        true,
+        ProcessRefreshKind::nothing()
+            .with_exe(UpdateKind::OnlyIfNotSet)
+            .with_cmd(UpdateKind::OnlyIfNotSet),
+    );
+    let current_pid = std::process::id();
+    for (pid, process) in system.processes() {
+        let pid_u32 = pid.as_u32();
+        if pid_u32 == current_pid {
+            continue;
+        }
+
+        let name = process.name().to_string_lossy().to_ascii_lowercase();
+        if name != "codex.exe" {
+            continue;
+        }
+        let (resolved_exe, _) = resolve_windows_process_exe_for_match(process);
+        if resolved_exe.as_deref() != Some(expected.as_str()) {
+            continue;
+        }
+
+        let args_line = process
+            .cmd()
+            .iter()
+            .map(|arg| arg.to_string_lossy().to_ascii_lowercase())
+            .collect::<Vec<String>>()
+            .join(" ");
+        if !args_line.is_empty()
+            && (is_helper_command_line(&args_line)
+                || args_line.contains("crashpad_handler")
+                || is_codex_windows_resource_process_command_line(&args_line))
+        {
+            continue;
+        }
+
+        pids.push(pid_u32);
+    }
+    pids.sort();
+    pids.dedup();
+    pids
+}
+
+#[cfg(target_os = "windows")]
+fn pick_started_codex_pid(pids: Vec<u32>, before_pids: &HashSet<u32>) -> Option<u32> {
+    let new_pids: Vec<u32> = pids
+        .iter()
+        .copied()
+        .filter(|pid| !before_pids.contains(pid))
+        .collect();
+    if let Some(pid) = pick_preferred_pid(new_pids) {
+        return Some(pid);
+    }
+    if before_pids.is_empty() {
+        return pick_preferred_pid(pids);
+    }
+    None
+}
+
+#[cfg(target_os = "windows")]
+fn wait_for_codex_default_start_pid_fast(
+    expected_exe_path: &str,
+    before_pids: &HashSet<u32>,
+    timeout: Duration,
+) -> Option<u32> {
+    let started = Instant::now();
+    let mut last_full_probe_at: Option<Instant> = None;
+    while started.elapsed() < timeout {
+        let fast_pids = collect_codex_main_process_pids_from_sysinfo_fast(expected_exe_path);
+        if let Some(pid) = pick_started_codex_pid(fast_pids, before_pids) {
+            crate::modules::logger::log_info(&format!(
+                "[Codex Start] fast pid probe matched pid={}, elapsed_ms={}",
+                pid,
+                started.elapsed().as_millis()
+            ));
+            return Some(pid);
+        }
+
+        if started.elapsed() >= Duration::from_secs(2)
+            && last_full_probe_at
+                .map(|last| last.elapsed() >= Duration::from_secs(2))
+                .unwrap_or(true)
+        {
+            last_full_probe_at = Some(Instant::now());
+            let full_pids = collect_codex_process_entries()
+                .into_iter()
+                .map(|(pid, _)| pid)
+                .collect::<Vec<u32>>();
+            if let Some(pid) = pick_started_codex_pid(full_pids, before_pids) {
+                crate::modules::logger::log_info(&format!(
+                    "[Codex Start] fallback full pid probe matched pid={}, elapsed_ms={}",
+                    pid,
+                    started.elapsed().as_millis()
+                ));
+                return Some(pid);
+            }
+        }
+
+        thread::sleep(Duration::from_millis(120));
+    }
+    None
+}
+
+#[cfg(target_os = "windows")]
 pub fn collect_codex_process_entries() -> Vec<(u32, Option<String>)> {
     let launch_path = match resolve_codex_launch_path() {
         Ok(path) => path,
@@ -7563,6 +7676,20 @@ pub fn start_codex_with_args(codex_home: &str, extra_args: &[String]) -> Result<
 
 /// 启动 Codex 默认实例（不注入 CODEX_HOME，支持附加参数，支持 macOS / Windows）
 pub fn start_codex_default(extra_args: &[String]) -> Result<u32, String> {
+    start_codex_default_internal(extra_args, false)
+}
+
+pub fn start_codex_default_fast_after_close(extra_args: &[String]) -> Result<u32, String> {
+    start_codex_default_internal(extra_args, true)
+}
+
+fn start_codex_default_internal(
+    extra_args: &[String],
+    fast_after_close: bool,
+) -> Result<u32, String> {
+    #[cfg(not(target_os = "windows"))]
+    let _ = fast_after_close;
+
     #[cfg(target_os = "macos")]
     {
         let app_root = resolve_macos_app_root_from_config("codex").or_else(|| {
@@ -7604,10 +7731,31 @@ pub fn start_codex_default(extra_args: &[String]) -> Result<u32, String> {
     {
         use std::os::windows::process::CommandExt;
 
-        let before_pids: HashSet<u32> = collect_codex_process_entries()
-            .into_iter()
-            .map(|(pid, _)| pid)
-            .collect();
+        let launch_path_for_probe = resolve_codex_launch_path().ok();
+        let before_probe_started = Instant::now();
+        let before_pids: HashSet<u32> = if fast_after_close {
+            launch_path_for_probe
+                .as_ref()
+                .map(|path| {
+                    collect_codex_main_process_pids_from_sysinfo_fast(
+                        path.to_string_lossy().as_ref(),
+                    )
+                    .into_iter()
+                    .collect()
+                })
+                .unwrap_or_default()
+        } else {
+            collect_codex_process_entries()
+                .into_iter()
+                .map(|(pid, _)| pid)
+                .collect()
+        };
+        crate::modules::logger::log_info(&format!(
+            "[Codex Start] before pid probe mode={}, count={}, elapsed_ms={}",
+            if fast_after_close { "fast" } else { "full" },
+            before_pids.len(),
+            before_probe_started.elapsed().as_millis()
+        ));
         let app_user_model_id = detect_codex_store_app_user_model_id();
         if let Some(app_user_model_id) = app_user_model_id {
             crate::modules::logger::log_info(&format!(
@@ -7620,47 +7768,67 @@ pub fn start_codex_default(extra_args: &[String]) -> Result<u32, String> {
                         "[Codex Start] 已通过系统入口启动 Codex: {}",
                         app_user_model_id
                     ));
-                    let probe_started = Instant::now();
                     let timeout = Duration::from_secs(15);
-                    while probe_started.elapsed() < timeout {
-                        let entries = collect_codex_process_entries();
-                        let mut new_pids: Vec<u32> = entries
-                            .iter()
-                            .map(|(pid, _)| *pid)
-                            .filter(|pid| !before_pids.contains(pid))
-                            .collect();
-                        if let Some(pid) = pick_preferred_pid(new_pids.clone()) {
-                            crate::modules::logger::log_info(&format!(
-                                "[Codex Start] 启动策略=system-store-entry app_id={} pid={}",
-                                app_user_model_id, pid
-                            ));
-                            return Ok(pid);
+                    if fast_after_close {
+                        if let Some(launch_path) = launch_path_for_probe.as_ref() {
+                            if let Some(pid) = wait_for_codex_default_start_pid_fast(
+                                launch_path.to_string_lossy().as_ref(),
+                                &before_pids,
+                                timeout,
+                            ) {
+                                crate::modules::logger::log_info(&format!(
+                                    "[Codex Start] fast store-entry pid matched app_id={} pid={}",
+                                    app_user_model_id, pid
+                                ));
+                                return Ok(pid);
+                            }
+                        } else {
+                            crate::modules::logger::log_warn(
+                                "[Codex Start] fast pid probe skipped because launch path is unavailable",
+                            );
                         }
-                        if before_pids.is_empty() {
-                            new_pids = entries.iter().map(|(pid, _)| *pid).collect();
-                            if let Some(pid) = pick_preferred_pid(new_pids) {
+                    } else {
+                        let probe_started = Instant::now();
+                        while probe_started.elapsed() < timeout {
+                            let entries = collect_codex_process_entries();
+                            let mut new_pids: Vec<u32> = entries
+                                .iter()
+                                .map(|(pid, _)| *pid)
+                                .filter(|pid| !before_pids.contains(pid))
+                                .collect();
+                            if let Some(pid) = pick_preferred_pid(new_pids.clone()) {
                                 crate::modules::logger::log_info(&format!(
                                     "[Codex Start] 启动策略=system-store-entry app_id={} pid={}",
                                     app_user_model_id, pid
                                 ));
                                 return Ok(pid);
                             }
+                            if before_pids.is_empty() {
+                                new_pids = entries.iter().map(|(pid, _)| *pid).collect();
+                                if let Some(pid) = pick_preferred_pid(new_pids) {
+                                    crate::modules::logger::log_info(&format!(
+                                    "[Codex Start] 启动策略=system-store-entry app_id={} pid={}",
+                                    app_user_model_id, pid
+                                ));
+                                    return Ok(pid);
+                                }
+                            }
+                            thread::sleep(Duration::from_millis(250));
                         }
-                        thread::sleep(Duration::from_millis(250));
-                    }
-                    if before_pids.is_empty() {
-                        if let Some(pid) = resolve_codex_pid(None, None) {
-                            crate::modules::logger::log_info(&format!(
-                                "[Codex Start] 启动策略=system-store-entry app_id={} pid={}",
-                                app_user_model_id, pid
-                            ));
-                            return Ok(pid);
-                        }
-                    } else {
-                        crate::modules::logger::log_warn(&format!(
+                        if before_pids.is_empty() {
+                            if let Some(pid) = resolve_codex_pid(None, None) {
+                                crate::modules::logger::log_info(&format!(
+                                    "[Codex Start] 启动策略=system-store-entry app_id={} pid={}",
+                                    app_user_model_id, pid
+                                ));
+                                return Ok(pid);
+                            }
+                        } else {
+                            crate::modules::logger::log_warn(&format!(
                             "[Codex Start] system-store-entry only reused existing instance, before_pids={}",
                             summarize_pid_list_for_log(&before_pids.iter().copied().collect::<Vec<u32>>())
                         ));
+                        }
                     }
                     crate::modules::logger::log_warn(
                         "[Codex Start] 系统入口已调用，但 15s 内未探测到 Codex 主进程，准备回退可执行路径",
@@ -7718,6 +7886,76 @@ pub fn start_codex_default(extra_args: &[String]) -> Result<u32, String> {
 }
 
 /// 关闭 Codex 默认实例。默认实例没有 CODEX_HOME 环境变量时按默认 ~/.codex 处理。
+pub fn close_codex_default_fast_by_pid(
+    last_pid: Option<u32>,
+    timeout_secs: u64,
+) -> Result<bool, String> {
+    #[cfg(target_os = "windows")]
+    {
+        let Some(pid) = last_pid.filter(|pid| *pid != 0 && is_pid_running(*pid)) else {
+            return Ok(false);
+        };
+        let launch_path = match resolve_codex_launch_path() {
+            Ok(path) => path,
+            Err(err) => {
+                crate::modules::logger::log_warn(&format!(
+                    "[Codex Close] fast default close skipped, launch path unavailable: {}",
+                    err
+                ));
+                return Ok(false);
+            }
+        };
+        let fast_pids = collect_codex_main_process_pids_from_sysinfo_fast(
+            launch_path.to_string_lossy().as_ref(),
+        );
+        if !fast_pids.contains(&pid) {
+            crate::modules::logger::log_warn(&format!(
+                "[Codex Close] fast default close skipped, last_pid={} not in fast matches={}",
+                pid,
+                summarize_pid_list_for_log(&fast_pids)
+            ));
+            return Ok(false);
+        }
+
+        crate::modules::logger::log_info(&format!(
+            "[Codex Close] fast default close by last_pid={}",
+            pid
+        ));
+        if request_codex_graceful_close(pid) {
+            let graceful_wait_secs = timeout_secs.min(2).max(1);
+            if wait_pids_exit(&[pid], graceful_wait_secs) {
+                crate::modules::logger::log_info(&format!(
+                    "[Codex Close] fast graceful close finished, pid={}",
+                    pid
+                ));
+                return Ok(true);
+            }
+        } else {
+            crate::modules::logger::log_warn(
+                "[Codex Close] fast graceful taskkill failed, force close last_pid directly",
+            );
+        }
+
+        let remaining = collect_running_pids(&[pid]);
+        if !remaining.is_empty() {
+            close_pids(&remaining, timeout_secs)?;
+        }
+        if is_pid_running(pid) {
+            return Err(
+                "failed to close managed Codex instance process; please close it manually and retry"
+                    .to_string(),
+            );
+        }
+        Ok(true)
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = (last_pid, timeout_secs);
+        Ok(false)
+    }
+}
+
 pub fn close_codex_default(timeout_secs: u64) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
@@ -7921,19 +8159,22 @@ pub fn close_codex_instances(codex_homes: &[String], timeout_secs: u64) -> Resul
                 "[Codex Close] graceful close incomplete, fallback close_pids for remaining={}",
                 summarize_pid_list_for_log(&remaining)
             ));
-            let _ = close_pids(&remaining, timeout_secs);
+            if let Err(err) = close_pids(&remaining, timeout_secs) {
+                crate::modules::logger::log_warn(&format!(
+                    "[Codex Close] fallback close_pids failed: {}",
+                    err
+                ));
+            }
+            let after_force_remaining = collect_running_pids(&remaining);
+            if !after_force_remaining.is_empty() {
+                return Err(
+                    "failed to close managed Codex instance process; please close it manually and retry"
+                        .to_string(),
+                );
+            }
         }
 
-        let still_running = collect_codex_process_entries()
-            .into_iter()
-            .any(|(_, home)| {
-                let resolved_home = home
-                    .as_ref()
-                    .map(|value| normalize_path_for_compare(value))
-                    .filter(|value| !value.is_empty())
-                    .unwrap_or_else(|| default_home.clone());
-                !resolved_home.is_empty() && target_homes.contains(&resolved_home)
-            });
+        let still_running = !collect_running_pids(&pids).is_empty();
         if still_running {
             return Err("无法关闭受管 Codex 实例进程，请手动关闭后重试".to_string());
         }
@@ -8049,9 +8290,26 @@ pub fn close_codex_instances(codex_homes: &[String], timeout_secs: u64) -> Resul
                 "[Codex Close] graceful close incomplete, retry force close for remaining pids={}",
                 summarize_pid_list_for_log(&remaining)
             ));
-            let _ = close_pids(&remaining, timeout_secs);
+            if let Err(err) = close_pids(&remaining, timeout_secs) {
+                crate::modules::logger::log_warn(&format!(
+                    "[Codex Close] force close_pids failed: {}",
+                    err
+                ));
+            }
+            let after_force_remaining = collect_running_pids(&remaining);
+            if !after_force_remaining.is_empty() {
+                return Err(
+                    "failed to close managed Codex instance process; please close it manually and retry"
+                        .to_string(),
+                );
+            }
         }
-        if includes_default {
+        if includes_default
+            && std::env::var("COCKPIT_CODEX_CLOSE_RESOURCE_CLEANUP")
+                .ok()
+                .as_deref()
+                == Some("1")
+        {
             let resource_pids = collect_codex_windows_resource_process_pids();
             if !resource_pids.is_empty() {
                 crate::modules::logger::log_info(&format!(
@@ -8062,9 +8320,7 @@ pub fn close_codex_instances(codex_homes: &[String], timeout_secs: u64) -> Resul
             }
         }
 
-        let still_running = collect_codex_process_entries()
-            .into_iter()
-            .any(|(_, dir)| matches_target(dir.as_ref(), &target_app_dirs, includes_default));
+        let still_running = !collect_running_pids(&pids).is_empty();
         if still_running {
             return Err("无法关闭受管 Codex 实例进程，请手动关闭后重试".to_string());
         }
