@@ -810,6 +810,14 @@ fn read_api_provider_from_config_toml(base_dir: &Path) -> ApiProviderConfig {
     );
 
     if let Some(provider_id) = model_provider {
+        if provider_id == CODEX_OPENAI_PROVIDER_ID {
+            return infer_api_provider_config(
+                openai_base_url.as_deref(),
+                Some(CodexApiProviderMode::OpenaiBuiltin),
+                None,
+                None,
+            );
+        }
         let provider_base_url = doc
             .get(CODEX_CONFIG_MODEL_PROVIDERS_KEY)
             .and_then(|item| item.get(provider_id.as_str()))
@@ -961,24 +969,26 @@ fn write_windows_builtin_openai_provider_to_doc(
     doc: &mut Document,
     base_url: Option<&str>,
 ) -> Result<(), String> {
-    let base_url = base_url.unwrap_or(CODEX_DEFAULT_OPENAI_BASE_URL);
-    let _ = doc.remove(CODEX_CONFIG_OPENAI_BASE_URL_KEY);
     doc[CODEX_CONFIG_MODEL_PROVIDER_KEY] = value(CODEX_OPENAI_PROVIDER_ID);
-    if doc.get(CODEX_CONFIG_MODEL_PROVIDERS_KEY).is_none() {
-        doc[CODEX_CONFIG_MODEL_PROVIDERS_KEY] = toml_edit::table();
+    match base_url {
+        Some(base_url) if base_url != CODEX_DEFAULT_OPENAI_BASE_URL => {
+            doc[CODEX_CONFIG_OPENAI_BASE_URL_KEY] = value(base_url);
+        }
+        _ => {
+            let _ = doc.remove(CODEX_CONFIG_OPENAI_BASE_URL_KEY);
+        }
     }
-    let model_providers = doc[CODEX_CONFIG_MODEL_PROVIDERS_KEY]
-        .as_table_mut()
-        .ok_or("config.toml 中 model_providers 不是合法表结构")?;
-    model_providers[CODEX_OPENAI_PROVIDER_ID] = toml_edit::table();
-    let provider_table = model_providers[CODEX_OPENAI_PROVIDER_ID]
-        .as_table_mut()
-        .ok_or("config.toml 中 OpenAI provider 不是合法表结构")?;
-    provider_table["name"] = value(CODEX_DEFAULT_RUNTIME_PROVIDER_NAME);
-    provider_table["base_url"] = value(base_url);
-    provider_table["wire_api"] = value(CODEX_PROVIDER_WIRE_API);
-    provider_table["requires_openai_auth"] = value(true);
-    provider_table["supports_websockets"] = value(true);
+    let should_remove_model_providers = doc
+        .get_mut(CODEX_CONFIG_MODEL_PROVIDERS_KEY)
+        .and_then(|item| item.as_table_mut())
+        .map(|model_providers| {
+            let _ = model_providers.remove(CODEX_OPENAI_PROVIDER_ID);
+            model_providers.is_empty()
+        })
+        .unwrap_or(false);
+    if should_remove_model_providers {
+        let _ = doc.remove(CODEX_CONFIG_MODEL_PROVIDERS_KEY);
+    }
     Ok(())
 }
 
