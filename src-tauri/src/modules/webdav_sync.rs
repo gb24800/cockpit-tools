@@ -35,8 +35,6 @@ pub struct WebdavUploadResult {
     pub remote_dir: String,
 }
 
-
-
 pub fn normalize_base_url(raw: &str) -> Result<String, String> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
@@ -89,8 +87,8 @@ pub fn is_backup_file_name(file_name: &str) -> bool {
     if trimmed != file_name || trimmed.contains('/') || trimmed.contains('\\') {
         return false;
     }
-    let matches_prefix =
-        trimmed.starts_with("cockpit_auto_backup_") || trimmed.starts_with("cockpit_manual_backup_");
+    let matches_prefix = trimmed.starts_with("cockpit_auto_backup_")
+        || trimmed.starts_with("cockpit_manual_backup_");
     let matches_suffix = trimmed.ends_with(".json") || trimmed.ends_with(".zip");
     matches_prefix && matches_suffix
 }
@@ -161,7 +159,9 @@ async fn ensure_remote_dir(client: &reqwest_dav::Client, remote_dir: &str) -> Re
         }
         if let Err(err) = client.mkcol(&current_dir).await {
             match &err {
-                reqwest_dav::Error::Decode(reqwest_dav::DecodeError::StatusMismatched(status_err)) => {
+                reqwest_dav::Error::Decode(reqwest_dav::DecodeError::StatusMismatched(
+                    status_err,
+                )) => {
                     if status_err.response_code == 405 {
                         continue;
                     }
@@ -174,7 +174,9 @@ async fn ensure_remote_dir(client: &reqwest_dav::Client, remote_dir: &str) -> Re
     Ok(())
 }
 
-pub async fn test_connection(settings: &WebdavConnectionSettings) -> Result<WebdavTestResult, String> {
+pub async fn test_connection(
+    settings: &WebdavConnectionSettings,
+) -> Result<WebdavTestResult, String> {
     let client = build_dav_client(settings)?;
     ensure_remote_dir(&client, &settings.remote_dir).await?;
     let _ = client
@@ -192,7 +194,7 @@ pub async fn list_remote_backups(
 ) -> Result<Vec<WebdavBackupFileEntry>, String> {
     let client = build_dav_client(settings)?;
     let mut files = Vec::new();
-    
+
     if !check_dir_exists(&client, &settings.remote_dir).await {
         return Ok(files);
     }
@@ -211,7 +213,7 @@ pub async fn list_remote_backups(
                 let file_name = urlencoding::decode(raw_name)
                     .map_err(|err| format!("WebDAV 文件名编码无效: {}", err))?
                     .to_string();
-                
+
                 if !is_backup_file_name(&file_name) {
                     continue;
                 }
@@ -290,7 +292,7 @@ pub async fn delete_remote_backup(
     }
     let client = build_dav_client(settings)?;
     let path = format!("{}/{}", settings.remote_dir, file_name);
-    
+
     if let Err(err) = client.delete(&path).await {
         match &err {
             reqwest_dav::Error::Decode(reqwest_dav::DecodeError::StatusMismatched(status_err)) => {
@@ -311,7 +313,7 @@ pub async fn cleanup_remote_backups(
 ) -> Result<Vec<String>, String> {
     let client = build_dav_client(settings)?;
     let mut deleted = Vec::new();
-    
+
     if !check_dir_exists(&client, &settings.remote_dir).await {
         return Ok(deleted);
     }
@@ -344,7 +346,9 @@ pub async fn cleanup_remote_backups(
                 let path = format!("{}/{}", settings.remote_dir, file_name);
                 if let Err(err) = client.delete(&path).await {
                     match &err {
-                        reqwest_dav::Error::Decode(reqwest_dav::DecodeError::StatusMismatched(status_err)) => {
+                        reqwest_dav::Error::Decode(reqwest_dav::DecodeError::StatusMismatched(
+                            status_err,
+                        )) => {
                             if status_err.response_code == 404 {
                                 continue;
                             }

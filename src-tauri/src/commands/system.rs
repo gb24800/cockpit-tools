@@ -1755,15 +1755,14 @@ pub async fn upload_auto_backup_to_webdav(
 
     let mut uploaded_files = Vec::new();
     let bytes = fs::read(&path).map_err(|err| format!("读取本地备份失败: {}", err))?;
-    uploaded_files.push(
-        modules::webdav_sync::upload_backup_bytes(&connection, &safe_name, bytes).await?,
-    );
+    uploaded_files
+        .push(modules::webdav_sync::upload_backup_bytes(&connection, &safe_name, bytes).await?);
 
     if let Some(archive_name) = auto_backup_archive_file_name(&safe_name) {
         let archive_path = resolve_auto_backup_file_path(&archive_name)?;
         if archive_path.exists() {
-            let archive_bytes =
-                fs::read(&archive_path).map_err(|err| format!("读取本地备份压缩包失败: {}", err))?;
+            let archive_bytes = fs::read(&archive_path)
+                .map_err(|err| format!("读取本地备份压缩包失败: {}", err))?;
             uploaded_files.push(
                 modules::webdav_sync::upload_backup_bytes(
                     &connection,

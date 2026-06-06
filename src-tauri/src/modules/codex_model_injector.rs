@@ -9,6 +9,9 @@ use tokio_tungstenite::tungstenite::Message;
 const MODEL_CATALOG_FILE: &str = "cockpit-provider-model-catalog.json";
 const CDP_POLL_ATTEMPTS: usize = 20;
 const CDP_POLL_INTERVAL: Duration = Duration::from_millis(500);
+const MODEL_CATALOG_POLL_ATTEMPTS: usize = 20;
+const MODEL_CATALOG_POLL_INTERVAL: Duration = Duration::from_millis(500);
+const CDP_INSTALL_OBSERVE_DURATION: Duration = Duration::from_secs(2);
 
 #[derive(Debug, Deserialize)]
 struct ModelCatalog {
@@ -83,7 +86,7 @@ pub fn inject_for_codex_home_later(codex_home: PathBuf) {
 }
 
 async fn inject_for_codex_home(codex_home: &Path) -> Result<(), String> {
-    let models = load_model_descriptors(codex_home)?;
+    let models = wait_for_model_descriptors(codex_home).await?;
     if models.is_empty() {
         crate::modules::logger::log_info(&format!(
             "[Codex Model Injector] skip injection: codex_home={}, reason=no_visible_models",
@@ -183,6 +186,30 @@ fn load_model_descriptors(codex_home: &Path) -> Result<Vec<ModelDescriptor>, Str
             .collect::<Vec<_>>()
             .join(",")
     ));
+    Ok(models)
+}
+
+async fn wait_for_model_descriptors(codex_home: &Path) -> Result<Vec<ModelDescriptor>, String> {
+    let mut models = Vec::new();
+    for attempt in 1..=MODEL_CATALOG_POLL_ATTEMPTS {
+        models = load_model_descriptors(codex_home)?;
+        if !models.is_empty() {
+            if attempt > 1 {
+                crate::modules::logger::log_info(&format!(
+                    "[Codex Model Injector] model catalog became ready: codex_home={}, attempt={}, models={}",
+                    codex_home.display(),
+                    attempt,
+                    models
+                        .iter()
+                        .map(|item| item.slug.as_str())
+                        .collect::<Vec<_>>()
+                        .join(",")
+                ));
+            }
+            return Ok(models);
+        }
+        sleep(MODEL_CATALOG_POLL_INTERVAL).await;
+    }
     Ok(models)
 }
 
@@ -306,7 +333,7 @@ async fn install_script(ws_url: &str, script: &str) -> Result<(), String> {
         json!({ "expression": script, "awaitPromise": true }),
     )
     .await?;
-    observe_cdp_events(&mut ws, ws_url, Duration::from_secs(180)).await;
+    observe_cdp_events(&mut ws, ws_url, CDP_INSTALL_OBSERVE_DURATION).await;
     let _ = ws.close(None).await;
     Ok(())
 }
