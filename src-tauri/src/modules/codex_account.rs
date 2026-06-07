@@ -1036,17 +1036,16 @@ fn write_api_key_provider_to_config_toml(
             .map_err(|e| format!("解析 config.toml 失败: {}", e))?
     };
 
-    let _ = doc.remove(CODEX_CONFIG_OPENAI_BASE_URL_KEY);
-    let _ = doc.remove(CODEX_CONFIG_MODEL_CATALOG_JSON_KEY);
     doc[CODEX_CONFIG_MODEL_PROVIDER_KEY] = value(CODEX_RUNTIME_MODEL_PROVIDER_ID);
-    remove_managed_api_key_model_providers_from_doc(&mut doc);
     if doc.get(CODEX_CONFIG_MODEL_PROVIDERS_KEY).is_none() {
         doc[CODEX_CONFIG_MODEL_PROVIDERS_KEY] = toml_edit::table();
     }
     let model_providers = doc[CODEX_CONFIG_MODEL_PROVIDERS_KEY]
         .as_table_mut()
         .ok_or("config.toml 中 model_providers 不是合法表结构")?;
-    model_providers[CODEX_RUNTIME_MODEL_PROVIDER_ID] = toml_edit::table();
+    if !model_providers.contains_key(CODEX_RUNTIME_MODEL_PROVIDER_ID) {
+        model_providers[CODEX_RUNTIME_MODEL_PROVIDER_ID] = toml_edit::table();
+    }
     let provider_table = model_providers[CODEX_RUNTIME_MODEL_PROVIDER_ID]
         .as_table_mut()
         .ok_or("config.toml 中目标 provider 不是合法表结构")?;
@@ -7231,7 +7230,7 @@ requires_openai_auth = false
     }
 
     #[test]
-    fn api_key_config_toml_preserves_unmanaged_model_provider_sections() {
+    fn api_key_config_toml_only_updates_codex_local_access() {
         let base_dir = make_temp_dir("codex-config-clean-provider-test");
         let config_path = base_dir.join("config.toml");
         fs::write(
@@ -7247,11 +7246,34 @@ base_url = "https://mimo.example.com/v1"
 wire_api = "responses"
 requires_openai_auth = true
 
+[model_providers.cockpit_api]
+name = "Cockpit Api"
+base_url = "https://chongcodex.cn/v1"
+wire_api = "responses"
+requires_openai_auth = false
+
+[model_providers.openai_api_key]
+name = "OpenAI Official"
+base_url = "https://api.openai.com/v1"
+wire_api = "responses"
+requires_openai_auth = false
+
+[model_providers.codex_local_access]
+name = "Old Local Access"
+base_url = "https://old-local.example.com/v1"
+wire_api = "responses"
+requires_openai_auth = true
+experimental_bearer_token = "sk-old"
+custom_flag = "keep-me"
+
 [model_providers.relay]
 name = "Relay"
 base_url = "https://relay.example.com/v1"
 wire_api = "responses"
 requires_openai_auth = true
+
+[features]
+multi_agent = true
 "#,
         )
         .expect("write legacy config");
@@ -7269,11 +7291,17 @@ requires_openai_auth = true
         let content = fs::read_to_string(&config_path).expect("read config");
         assert!(content.contains("model_provider = \"codex_local_access\""));
         assert!(content.contains("[model_providers.codex_local_access]"));
+        assert!(content.contains("base_url = \"https://api.openai.com/v1\""));
+        assert!(content.contains("experimental_bearer_token = \"sk-test\""));
+        assert!(content.contains("custom_flag = \"keep-me\""));
         assert!(content.contains("[model_providers.mimo]"));
+        assert!(content.contains("[model_providers.cockpit_api]"));
+        assert!(content.contains("[model_providers.openai_api_key]"));
         assert!(content.contains("[model_providers.relay]"));
-        assert!(!content.contains("model_catalog_json"));
-        assert!(!content.contains("openai_base_url"));
+        assert!(content.contains("model_catalog_json = \"cockpit-provider-model-catalog.json\""));
+        assert!(content.contains("openai_base_url = \"https://legacy.example.com/v1\""));
         assert!(content.contains("model_context_window = 1000000"));
+        assert!(content.contains("[features]"));
 
         fs::remove_dir_all(&base_dir).expect("cleanup temp dir");
     }

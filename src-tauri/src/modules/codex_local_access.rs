@@ -10229,7 +10229,11 @@ pub fn cleanup_provider_gateway_profile_model_overrides(profile_dir: &Path) -> R
             .parse::<Document>()
             .map_err(|e| format!("解析 Codex config.toml 失败: {}", e))?;
         let mut changed = false;
-        if doc.get("model_catalog_json").is_some() {
+        let uses_managed_catalog = doc
+            .get("model_catalog_json")
+            .and_then(|item| item.as_str())
+            == Some(CODEX_PROVIDER_MODEL_CATALOG_FILE);
+        if uses_managed_catalog {
             doc.remove("model_catalog_json");
             changed = true;
         }
@@ -16990,6 +16994,40 @@ mod tests {
         assert!(!config.contains("model_catalog_json"));
         assert!(!config.contains("model = \"deepseek-v4-pro\""));
         assert!(config.contains("model = \"gpt-5.5\""));
+
+        let _ = fs::remove_dir_all(&profile_dir);
+    }
+
+    #[test]
+    fn provider_gateway_cleanup_keeps_non_cockpit_model_catalog() {
+        let profile_dir = std::env::temp_dir().join(format!(
+            "cockpit-provider-model-keep-external-catalog-test-{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default()
+        ));
+        fs::create_dir_all(&profile_dir).expect("create temp profile");
+
+        let config_path = profile_dir.join(CODEX_PROFILE_CONFIG_FILE);
+        fs::write(
+            &config_path,
+            r#"model_provider = "ccswitch_deepseek"
+model_catalog_json = "cc-switch-model-catalog.json"
+model = "deepseek-v4-pro"
+
+[model_providers.ccswitch_deepseek]
+name = "CCSwitch DeepSeek"
+base_url = "https://deepseek.example.com/v1"
+wire_api = "responses"
+"#,
+        )
+        .expect("write config");
+
+        cleanup_provider_gateway_profile_model_overrides(&profile_dir).expect("cleanup overrides");
+
+        let config = fs::read_to_string(config_path).expect("read config");
+        assert!(config.contains("model_catalog_json = \"cc-switch-model-catalog.json\""));
+        assert!(config.contains("model_provider = \"ccswitch_deepseek\""));
+        assert!(config.contains("model = \"deepseek-v4-pro\""));
+        assert!(config.contains("[model_providers.ccswitch_deepseek]"));
 
         let _ = fs::remove_dir_all(&profile_dir);
     }
