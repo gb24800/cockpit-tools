@@ -276,6 +276,8 @@ const CODEX_LOCAL_ACCESS_GATEWAY_GUIDE_DISMISSED_KEY =
   "agtools.codex.api_service.gateway_guide.dismissed.v1";
 const CODEX_CUSTOM_SORT_ORDER_KEY =
   "agtools.codex.accounts.custom_sort_order.v1";
+const CODEX_CUSTOM_SORT_ACTIVE_KEY =
+  "agtools.codex.accounts.custom_sort_active.v1";
 const DEFAULT_CODEX_API_PROVIDER_ID = OPENAI_OFFICIAL_PRESET_ID;
 const DEFAULT_CODEX_API_BASE_URL = OPENAI_OFFICIAL_BASE_URL;
 const CODEX_LOCAL_ACCESS_FALLBACK_PORT = 54140;
@@ -357,7 +359,9 @@ function isSponsorModelProvider(
 ): boolean {
   if (!provider) return false;
   if (provider.sourceTag) {
-    return sponsorTemplates.some((template) => template.id === provider.sourceTag);
+    return sponsorTemplates.some(
+      (template) => template.id === provider.sourceTag,
+    );
   }
   const normalizedBaseUrl = normalizeHttpBaseUrl(provider.baseUrl);
   if (!normalizedBaseUrl) return false;
@@ -586,6 +590,22 @@ function writeCodexCustomSortOrder(accountIds: string[]): void {
   }
 }
 
+function readCodexCustomSortActive(): boolean {
+  try {
+    return localStorage.getItem(CODEX_CUSTOM_SORT_ACTIVE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeCodexCustomSortActive(active: boolean): void {
+  try {
+    localStorage.setItem(CODEX_CUSTOM_SORT_ACTIVE_KEY, active ? "1" : "0");
+  } catch {
+    // ignore persistence failures
+  }
+}
+
 interface CodexOverviewGeneralConfig {
   codex_local_access_entry_visible?: boolean;
 }
@@ -699,8 +719,12 @@ function normalizeSponsorApiProviderTemplates(
       baseUrl: integration.baseUrl.trim(),
       modelCatalog: integration.models ?? [],
       supportsVision: integration.supportsVision === true,
-      website: normalizeApiKeyFunOfficialUrl(integration.website || sponsor.url),
-      apiKeyUrl: normalizeApiKeyFunOfficialUrl(integration.apiKeyUrl || sponsor.url),
+      website: normalizeApiKeyFunOfficialUrl(
+        integration.website || sponsor.url,
+      ),
+      apiKeyUrl: normalizeApiKeyFunOfficialUrl(
+        integration.apiKeyUrl || sponsor.url,
+      ),
       wireApi: resolveApiKeyFunWireApi(
         integration.baseUrl,
         integration.wireApi ?? null,
@@ -1002,6 +1026,7 @@ export function CodexAccountsPage() {
       exportAccounts: codexService.exportCodexAccounts,
     },
     getDisplayEmail: (account) => account.email ?? account.id,
+    defaultSortBy: readCodexCustomSortActive() ? "custom" : undefined,
   });
 
   const {
@@ -1084,13 +1109,19 @@ export function CodexAccountsPage() {
 
   const reauthTargetEmail = reauthTargetAccount?.email?.trim() ?? "";
   const [batchImportOpen, setBatchImportOpen] = useState(false);
-  const [batchImportSessionId, setBatchImportSessionId] = useState<string | null>(null);
+  const [batchImportSessionId, setBatchImportSessionId] = useState<
+    string | null
+  >(null);
   const [batchImportProgress, setBatchImportProgress] =
     useState<codexService.CodexBatchImportProgress | null>(null);
   const [batchImportPreview, setBatchImportPreview] =
     useState<codexService.CodexBatchImportPreview | null>(null);
-  const [batchImportSelectedIds, setBatchImportSelectedIds] = useState<string[]>([]);
-  const [batchImportFilter, setBatchImportFilter] = useState<"all" | "ready">("all");
+  const [batchImportSelectedIds, setBatchImportSelectedIds] = useState<
+    string[]
+  >([]);
+  const [batchImportFilter, setBatchImportFilter] = useState<"all" | "ready">(
+    "all",
+  );
   const [batchImportBusy, setBatchImportBusy] = useState(false);
   const [batchImportError, setBatchImportError] = useState<string | null>(null);
   const [batchImportResult, setBatchImportResult] =
@@ -1129,7 +1160,8 @@ export function CodexAccountsPage() {
     const items = batchImportPreview?.items ?? [];
     return {
       ready: items.filter((item) => item.status === "ready").length,
-      quotaFailed: items.filter((item) => item.status === "quota_failed").length,
+      quotaFailed: items.filter((item) => item.status === "quota_failed")
+        .length,
       existing: items.filter((item) => item.status === "existing").length,
       invalid: items.filter((item) => item.status === "invalid").length,
     };
@@ -1138,17 +1170,15 @@ export function CodexAccountsPage() {
   const batchImportVisibleItems = useMemo(() => {
     const items = batchImportPreview?.items ?? [];
     return batchImportFilter === "ready"
-      ? items.filter((item) => item.status === "ready" || item.status === "existing")
+      ? items.filter(
+          (item) => item.status === "ready" || item.status === "existing",
+        )
       : items;
   }, [batchImportFilter, batchImportPreview]);
   const batchImportSelectableIds = useMemo(
     () =>
       (batchImportPreview?.items ?? [])
-        .filter(
-          (item) =>
-            item.selectable &&
-            item.status !== "invalid",
-        )
+        .filter((item) => item.selectable && item.status !== "invalid")
         .map((item) => item.itemId),
     [batchImportPreview],
   );
@@ -1156,8 +1186,8 @@ export function CodexAccountsPage() {
     () => new Set(batchImportSelectableIds),
     [batchImportSelectableIds],
   );
-  const batchImportSelectedSelectableCount = batchImportSelectedIds.filter((id) =>
-    batchImportSelectableIdSet.has(id),
+  const batchImportSelectedSelectableCount = batchImportSelectedIds.filter(
+    (id) => batchImportSelectableIdSet.has(id),
   ).length;
   const batchImportSelectedCountLabel = t(
     "codex.batchImport.selectedCount",
@@ -2498,7 +2528,10 @@ export function CodexAccountsPage() {
           apiSupportsVision: managedProvider.supportsVision,
           apiModelVisionSupport: Object.fromEntries(
             Object.entries(managedProvider.modelCapabilities ?? {}).map(
-              ([model, capability]) => [model, capability.supportsVision === true],
+              ([model, capability]) => [
+                model,
+                capability.supportsVision === true,
+              ],
             ),
           ),
           apiVisionRoutingModel: managedProvider.visionRoutingModel,
@@ -2560,6 +2593,9 @@ export function CodexAccountsPage() {
   }, [accounts]);
 
   useEffect(() => {
+    if (accounts.length === 0) {
+      return;
+    }
     const accountIds = accounts.map((account) => account.id);
     const accountIdSet = new Set(accountIds);
     setCustomSortOrder((prev) => {
@@ -2581,6 +2617,10 @@ export function CodexAccountsPage() {
   useEffect(() => {
     writeCodexCustomSortOrder(customSortOrder);
   }, [customSortOrder]);
+
+  useEffect(() => {
+    writeCodexCustomSortActive(sortBy === "custom");
+  }, [sortBy]);
 
   useEffect(() => {
     if (!showCustomSortModal || !draggedCustomSortAccountId) return;
@@ -2633,10 +2673,7 @@ export function CodexAccountsPage() {
       if (sponsorApiProviderTemplates.length === 0) {
         return current;
       }
-      if (
-        current === DEFAULT_CODEX_API_PROVIDER_ID ||
-        !current.trim()
-      ) {
+      if (current === DEFAULT_CODEX_API_PROVIDER_ID || !current.trim()) {
         return defaultApiProviderPresetId;
       }
       return current;
@@ -3785,9 +3822,7 @@ export function CodexAccountsPage() {
         await listen<codexService.CodexBatchImportProgress>(
           "codex:batch-import-progress",
           (event) => {
-            if (
-              event.payload.sessionId !== batchImportSessionIdRef.current
-            ) {
+            if (event.payload.sessionId !== batchImportSessionIdRef.current) {
               return;
             }
             setBatchImportProgress(event.payload);
@@ -3797,9 +3832,7 @@ export function CodexAccountsPage() {
         await listen<codexService.CodexBatchImportPreview>(
           "codex:batch-import-completed",
           (event) => {
-            if (
-              event.payload.sessionId !== batchImportSessionIdRef.current
-            ) {
+            if (event.payload.sessionId !== batchImportSessionIdRef.current) {
               return;
             }
             setBatchImportPreview(event.payload);
@@ -3833,9 +3866,7 @@ export function CodexAccountsPage() {
         await listen<codexService.CodexBatchImportPreview>(
           "codex:batch-import-preview",
           (event) => {
-            if (
-              event.payload.sessionId !== batchImportSessionIdRef.current
-            ) {
+            if (event.payload.sessionId !== batchImportSessionIdRef.current) {
               return;
             }
             setBatchImportPreview(event.payload);
@@ -3912,11 +3943,7 @@ export function CodexAccountsPage() {
   const selectAllBatchImportAccounts = () => {
     const items = batchImportPreview?.items ?? [];
     const ids = items
-      .filter(
-        (item) =>
-          item.selectable &&
-          item.status !== "invalid",
-      )
+      .filter((item) => item.selectable && item.status !== "invalid")
       .map((item) => item.itemId);
     setBatchImportFilter("all");
     setBatchImportSelectedIds(ids);
@@ -4163,9 +4190,12 @@ export function CodexAccountsPage() {
         selectedQuickSwitchProvider.modelCatalog,
         selectedQuickSwitchProvider.supportsVision,
         Object.fromEntries(
-          Object.entries(selectedQuickSwitchProvider.modelCapabilities ?? {}).map(
-            ([model, capability]) => [model, capability.supportsVision === true],
-          ),
+          Object.entries(
+            selectedQuickSwitchProvider.modelCapabilities ?? {},
+          ).map(([model, capability]) => [
+            model,
+            capability.supportsVision === true,
+          ]),
         ),
         selectedQuickSwitchProvider.visionRoutingModel,
         selectedQuickSwitchProvider.wireApi ?? undefined,
@@ -4240,7 +4270,9 @@ export function CodexAccountsPage() {
       ) {
         try {
           const savedProvider = await upsertCodexModelProviderFromCredential({
-            providerId: isRelayApiProviderTemplateId(providerPayload.apiProviderId)
+            providerId: isRelayApiProviderTemplateId(
+              providerPayload.apiProviderId,
+            )
               ? null
               : (providerPayload.apiProviderId ?? null),
             providerName: providerPayload.apiProviderName ?? null,
@@ -4572,7 +4604,8 @@ export function CodexAccountsPage() {
 
   const refreshApiKeyUsage = useCallback(
     async (account: CodexAccount, provider?: CodexModelProvider | null) => {
-      const targetProvider = provider ?? resolveUsageProviderForApiKeyAccount(account);
+      const targetProvider =
+        provider ?? resolveUsageProviderForApiKeyAccount(account);
       const apiKey = (account.openai_api_key || "").trim();
       const baseUrl =
         targetProvider?.baseUrl.trim() || (account.api_base_url || "").trim();
@@ -4742,14 +4775,19 @@ export function CodexAccountsPage() {
       if (typeof value !== "number" || !Number.isFinite(value)) return "-";
       const normalizedUnit = unit?.trim() || "USD";
       const formatted = value.toFixed(value >= 100 ? 0 : 2);
-      return normalizedUnit === "USD" ? `$${formatted}` : `${formatted} ${normalizedUnit}`;
+      return normalizedUnit === "USD"
+        ? `$${formatted}`
+        : `${formatted} ${normalizedUnit}`;
     },
     [],
   );
 
   const formatApiKeyUsageBalance = useCallback(
     (summary?: CodexModelProviderUsageSummary): string | null => {
-      if (typeof summary?.balance !== "number" || !Number.isFinite(summary.balance)) {
+      if (
+        typeof summary?.balance !== "number" ||
+        !Number.isFinite(summary.balance)
+      ) {
         return null;
       }
       return formatApiKeyUsageMoney(summary.balance, summary.unit);
@@ -4811,8 +4849,7 @@ export function CodexAccountsPage() {
           summary.details?.find((item) => item.key === "totalGranted")?.value,
         );
         const available = Number(
-          summary.details?.find((item) => item.key === "totalAvailable")
-            ?.value,
+          summary.details?.find((item) => item.key === "totalAvailable")?.value,
         );
         if (
           Number.isFinite(granted) &&
@@ -4848,22 +4885,61 @@ export function CodexAccountsPage() {
         planName: t("codex.modelProviders.usage.fields.planName", "订阅"),
         remaining: t("codex.modelProviders.usage.fields.remaining", "剩余额度"),
         balance: t("codex.modelProviders.usage.fields.balance", "余额"),
-        quotaUnlimited: t("codex.modelProviders.usage.fields.quotaUnlimited", "无限额度"),
-        todayRequests: t("codex.modelProviders.usage.fields.todayRequests", "今日请求"),
-        todayTokens: t("codex.modelProviders.usage.fields.todayTokens", "今日 Token"),
+        quotaUnlimited: t(
+          "codex.modelProviders.usage.fields.quotaUnlimited",
+          "无限额度",
+        ),
+        todayRequests: t(
+          "codex.modelProviders.usage.fields.todayRequests",
+          "今日请求",
+        ),
+        todayTokens: t(
+          "codex.modelProviders.usage.fields.todayTokens",
+          "今日 Token",
+        ),
         todayCost: t("codex.modelProviders.usage.fields.todayCost", "今日消耗"),
-        totalRequests: t("codex.modelProviders.usage.fields.totalRequests", "累计请求"),
-        totalTokens: t("codex.modelProviders.usage.fields.totalTokens", "累计 Token"),
+        totalRequests: t(
+          "codex.modelProviders.usage.fields.totalRequests",
+          "累计请求",
+        ),
+        totalTokens: t(
+          "codex.modelProviders.usage.fields.totalTokens",
+          "累计 Token",
+        ),
         totalCost: t("codex.modelProviders.usage.fields.totalCost", "累计消耗"),
-        hardLimitUsd: t("codex.modelProviders.usage.fields.hardLimitUsd", "硬额度"),
-        softLimitUsd: t("codex.modelProviders.usage.fields.softLimitUsd", "软额度"),
-        systemHardLimitUsd: t("codex.modelProviders.usage.fields.systemHardLimitUsd", "系统额度"),
-        accessUntil: t("codex.modelProviders.usage.fields.accessUntil", "可用至"),
+        hardLimitUsd: t(
+          "codex.modelProviders.usage.fields.hardLimitUsd",
+          "硬额度",
+        ),
+        softLimitUsd: t(
+          "codex.modelProviders.usage.fields.softLimitUsd",
+          "软额度",
+        ),
+        systemHardLimitUsd: t(
+          "codex.modelProviders.usage.fields.systemHardLimitUsd",
+          "系统额度",
+        ),
+        accessUntil: t(
+          "codex.modelProviders.usage.fields.accessUntil",
+          "可用至",
+        ),
         expiresAt: t("codex.modelProviders.usage.fields.expiresAt", "过期时间"),
-        totalGranted: t("codex.modelProviders.usage.fields.totalGranted", "授予额度"),
-        totalAvailable: t("codex.modelProviders.usage.fields.totalAvailable", "可用额度"),
-        modelLimitsEnabled: t("codex.modelProviders.usage.fields.modelLimitsEnabled", "模型限制"),
-        totalUsage: t("codex.modelProviders.usage.fields.totalUsage", "累计消耗"),
+        totalGranted: t(
+          "codex.modelProviders.usage.fields.totalGranted",
+          "授予额度",
+        ),
+        totalAvailable: t(
+          "codex.modelProviders.usage.fields.totalAvailable",
+          "可用额度",
+        ),
+        modelLimitsEnabled: t(
+          "codex.modelProviders.usage.fields.modelLimitsEnabled",
+          "模型限制",
+        ),
+        totalUsage: t(
+          "codex.modelProviders.usage.fields.totalUsage",
+          "累计消耗",
+        ),
       };
       return labels[key] ?? fallback;
     },
@@ -4876,7 +4952,9 @@ export function CodexAccountsPage() {
       const numeric = Number(raw);
       if (
         Number.isFinite(numeric) &&
-        (item.key.includes("Tokens") || item.key === "todayTokens" || item.key === "totalTokens")
+        (item.key.includes("Tokens") ||
+          item.key === "todayTokens" ||
+          item.key === "totalTokens")
       ) {
         return formatCockpitApiTokenCount(numeric);
       }
@@ -4887,8 +4965,10 @@ export function CodexAccountsPage() {
         return numeric > 0 ? formatDate(numeric * 1000) : "-";
       }
       if (item.key === "quotaUnlimited" || item.key === "modelLimitsEnabled") {
-        if (raw === "true") return t("codex.modelProviders.usage.booleanTrue", "是");
-        if (raw === "false") return t("codex.modelProviders.usage.booleanFalse", "否");
+        if (raw === "true")
+          return t("codex.modelProviders.usage.booleanTrue", "是");
+        if (raw === "false")
+          return t("codex.modelProviders.usage.booleanFalse", "否");
       }
       if (
         Number.isFinite(numeric) &&
@@ -4904,7 +4984,10 @@ export function CodexAccountsPage() {
       ) {
         return formatApiKeyUsageMoney(numeric, unit);
       }
-      if (Number.isFinite(numeric) && ["totalGranted", "totalAvailable"].includes(item.key)) {
+      if (
+        Number.isFinite(numeric) &&
+        ["totalGranted", "totalAvailable"].includes(item.key)
+      ) {
         return formatCockpitApiInteger(numeric);
       }
       if (Number.isFinite(numeric) && item.key === "totalUsage") {
@@ -4912,7 +4995,9 @@ export function CodexAccountsPage() {
       }
       if (
         Number.isFinite(numeric) &&
-        (item.key.includes("Requests") || item.key === "todayRequests" || item.key === "totalRequests")
+        (item.key.includes("Requests") ||
+          item.key === "todayRequests" ||
+          item.key === "totalRequests")
       ) {
         return formatCockpitApiInteger(numeric);
       }
@@ -4949,7 +5034,8 @@ export function CodexAccountsPage() {
       const summary = usageState?.summary;
       const loading = usageState?.loading === true;
       const apiKey = (account.openai_api_key || "").trim();
-      const baseUrl = provider?.baseUrl.trim() || (account.api_base_url || "").trim();
+      const baseUrl =
+        provider?.baseUrl.trim() || (account.api_base_url || "").trim();
       const canRefresh = Boolean(apiKey && baseUrl);
       const usageMode = resolveApiKeyUsageMode(summary);
       const isNewApiUsage = usageMode === "new_api";
@@ -4974,7 +5060,8 @@ export function CodexAccountsPage() {
           summary.quotaUnlimited === true
             ? unlimitedText
             : `${availableText} / ${grantedText}`;
-        const quotaBarWidth = summary.quotaUnlimited === true ? 100 : usedPercent;
+        const quotaBarWidth =
+          summary.quotaUnlimited === true ? 100 : usedPercent;
         return (
           <div
             className="quota-item codex-api-key-quota-item new-api"
@@ -4985,9 +5072,7 @@ export function CodexAccountsPage() {
               <span className="quota-label">
                 {t("codex.cockpitApi.balance", "额度")}
               </span>
-              <span className="quota-pct high">
-                {quotaValueText}
-              </span>
+              <span className="quota-pct high">{quotaValueText}</span>
             </div>
             <div className="quota-bar-track">
               <div
@@ -5009,20 +5094,36 @@ export function CodexAccountsPage() {
           <div className="codex-api-key-usage-panel sub2api">
             <div className="codex-api-key-usage-grid">
               <div>
-                <span>{t("codex.modelProviders.usage.accountBalance", "账户余额")}</span>
+                <span>
+                  {t("codex.modelProviders.usage.accountBalance", "账户余额")}
+                </span>
                 <strong>
                   {formatApiKeyUsageQuotaValue(
                     summary,
-                    summary.remaining ?? summary.balance ?? summary.quotaRemaining,
+                    summary.remaining ??
+                      summary.balance ??
+                      summary.quotaRemaining,
                   )}
                 </strong>
               </div>
               <div>
-                <span>{t("codex.modelProviders.usage.fields.todayRequests", "今日请求")}</span>
-                <strong>{formatCockpitApiInteger(summary.todayRequests ?? 0)}</strong>
+                <span>
+                  {t(
+                    "codex.modelProviders.usage.fields.todayRequests",
+                    "今日请求",
+                  )}
+                </span>
+                <strong>
+                  {formatCockpitApiInteger(summary.todayRequests ?? 0)}
+                </strong>
               </div>
               <div>
-                <span>{t("codex.modelProviders.usage.fields.todayTokens", "今日 Token")}</span>
+                <span>
+                  {t(
+                    "codex.modelProviders.usage.fields.todayTokens",
+                    "今日 Token",
+                  )}
+                </span>
                 <strong>
                   {formatCockpitApiTokenCount(summary.todayTotalTokens ?? 0)}
                 </strong>
@@ -5035,14 +5136,21 @@ export function CodexAccountsPage() {
         return <></>;
       }
       return (
-        <div className={`codex-api-key-usage-panel ${variant} ${summary ? "" : "empty"}`}>
+        <div
+          className={`codex-api-key-usage-panel ${variant} ${summary ? "" : "empty"}`}
+        >
           {summary ? (
             <>
               <div className="codex-api-key-usage-grid">
                 {isNewApiUsage ? (
                   <>
                     <div>
-                      <span>{t("codex.modelProviders.usage.fields.totalGranted", "授予额度")}</span>
+                      <span>
+                        {t(
+                          "codex.modelProviders.usage.fields.totalGranted",
+                          "授予额度",
+                        )}
+                      </span>
                       <strong>
                         {(() => {
                           const raw = Number(
@@ -5059,7 +5167,12 @@ export function CodexAccountsPage() {
                       </strong>
                     </div>
                     <div>
-                      <span>{t("codex.modelProviders.usage.fields.totalAvailable", "可用额度")}</span>
+                      <span>
+                        {t(
+                          "codex.modelProviders.usage.fields.totalAvailable",
+                          "可用额度",
+                        )}
+                      </span>
                       <strong>
                         {(() => {
                           const raw = Number(
@@ -5076,7 +5189,12 @@ export function CodexAccountsPage() {
                       </strong>
                     </div>
                     <div>
-                      <span>{t("codex.modelProviders.usage.fields.expiresAt", "过期时间")}</span>
+                      <span>
+                        {t(
+                          "codex.modelProviders.usage.fields.expiresAt",
+                          "过期时间",
+                        )}
+                      </span>
                       <strong>
                         {formatApiKeyUsageDetailByKey(summary, "expiresAt")}
                       </strong>
@@ -5085,24 +5203,43 @@ export function CodexAccountsPage() {
                 ) : isSub2ApiUsage ? (
                   <>
                     <div>
-                      <span>{t("codex.modelProviders.usage.accountBalance", "账户余额")}</span>
+                      <span>
+                        {t(
+                          "codex.modelProviders.usage.accountBalance",
+                          "账户余额",
+                        )}
+                      </span>
                       <strong>
                         {formatApiKeyUsageQuotaValue(
                           summary,
-                          summary.remaining ?? summary.balance ?? summary.quotaRemaining,
+                          summary.remaining ??
+                            summary.balance ??
+                            summary.quotaRemaining,
                         )}
                       </strong>
                     </div>
                     <div>
-                      <span>{t("codex.modelProviders.usage.fields.todayRequests", "今日请求")}</span>
+                      <span>
+                        {t(
+                          "codex.modelProviders.usage.fields.todayRequests",
+                          "今日请求",
+                        )}
+                      </span>
                       <strong>
                         {formatCockpitApiInteger(summary.todayRequests ?? 0)}
                       </strong>
                     </div>
                     <div>
-                      <span>{t("codex.modelProviders.usage.fields.todayTokens", "今日 Token")}</span>
+                      <span>
+                        {t(
+                          "codex.modelProviders.usage.fields.todayTokens",
+                          "今日 Token",
+                        )}
+                      </span>
                       <strong>
-                        {formatCockpitApiTokenCount(summary.todayTotalTokens ?? 0)}
+                        {formatCockpitApiTokenCount(
+                          summary.todayTotalTokens ?? 0,
+                        )}
                       </strong>
                     </div>
                   </>
@@ -5235,7 +5372,9 @@ export function CodexAccountsPage() {
       ) {
         try {
           const savedProvider = await upsertCodexModelProviderFromCredential({
-            providerId: isRelayApiProviderTemplateId(providerPayload.apiProviderId)
+            providerId: isRelayApiProviderTemplateId(
+              providerPayload.apiProviderId,
+            )
               ? null
               : (providerPayload.apiProviderId ?? null),
             providerName: providerPayload.apiProviderName ?? null,
@@ -5792,7 +5931,7 @@ export function CodexAccountsPage() {
             ? []
             : filterCodexLocalAccessAccountIds(
                 accountIds,
-                await codexService.listCodexAccounts(),
+                accounts,
                 restrictFreeAccounts,
               );
         if (accountIds.length > 0 && filteredAccountIds.length === 0) {
@@ -5820,7 +5959,7 @@ export function CodexAccountsPage() {
         setLocalAccessSaving(false);
       }
     },
-    [setMessage, t],
+    [accounts, setMessage, t],
   );
 
   const handleRemoveLocalAccessAccount = useCallback(
@@ -5969,8 +6108,9 @@ export function CodexAccountsPage() {
     }
 
     if (oauthBindingFilterTypes.length > 0) {
-      const { selectedTypes } =
-        splitValidityFilterValues(oauthBindingFilterTypes);
+      const { selectedTypes } = splitValidityFilterValues(
+        oauthBindingFilterTypes,
+      );
       if (selectedTypes.size > 0) {
         result = result.filter((account) => {
           if (selectedTypes.has("ERROR") && account.quota_error) {
@@ -7037,7 +7177,7 @@ export function CodexAccountsPage() {
   );
 
   useEffect(() => {
-    const teamAccountIds = filteredAccounts
+    const teamAccountIds = paginatedAccounts
       .filter(
         (account) =>
           !hasCodexAccountStructure(account) ||
@@ -7047,7 +7187,7 @@ export function CodexAccountsPage() {
       .map((account) => account.id);
     if (teamAccountIds.length === 0) return;
     void hydrateAccountProfilesIfNeeded(teamAccountIds);
-  }, [filteredAccounts, hydrateAccountProfilesIfNeeded]);
+  }, [hydrateAccountProfilesIfNeeded, paginatedAccounts]);
 
   const resolveGroupLabel = (groupKey: string) =>
     groupKey === untaggedKey
@@ -7255,7 +7395,10 @@ export function CodexAccountsPage() {
       const apiKeyUsageProvider = resolveUsageProviderForApiKeyAccount(account);
       const isSponsorApiKeyAccount =
         isApiKeyAccount &&
-        isSponsorModelProvider(apiKeyUsageProvider, sponsorApiProviderTemplates);
+        isSponsorModelProvider(
+          apiKeyUsageProvider,
+          sponsorApiProviderTemplates,
+        );
       const apiKeyUsageMode = resolveApiKeyUsageMode(
         apiKeyUsageMap[account.id]?.summary,
       );
@@ -7270,7 +7413,7 @@ export function CodexAccountsPage() {
         ? "sponsor-api"
         : isQuotaAwareApiKeyAccount
           ? "new-api-exclusive"
-        : planClass;
+          : planClass;
       const displayPlanLabel = isSponsorApiKeyAccount
         ? apiProviderName
         : presentation.planLabel;
@@ -7456,7 +7599,11 @@ export function CodexAccountsPage() {
                 {cockpitApiAccountBalanceText && (
                   <div className="codex-account-balance-line">
                     <span>
-                      {t("codex.modelProviders.usage.accountBalance", "账户余额")}：
+                      {t(
+                        "codex.modelProviders.usage.accountBalance",
+                        "账户余额",
+                      )}
+                      ：
                     </span>
                     <strong>{cockpitApiAccountBalanceText}</strong>
                   </div>
@@ -7632,7 +7779,8 @@ export function CodexAccountsPage() {
                     <Play size={14} />
                   )}
                 </button>
-                {((!isApiKeyAccount || isNewApiAccount) ||
+                {(!isApiKeyAccount ||
+                  isNewApiAccount ||
                   canRefreshApiKeyUsage(account, apiKeyUsageProvider)) && (
                   <button
                     className="card-action-btn"
@@ -8551,7 +8699,10 @@ export function CodexAccountsPage() {
       const apiKeyUsageProvider = resolveUsageProviderForApiKeyAccount(account);
       const isSponsorApiKeyAccount =
         isApiKeyAccount &&
-        isSponsorModelProvider(apiKeyUsageProvider, sponsorApiProviderTemplates);
+        isSponsorModelProvider(
+          apiKeyUsageProvider,
+          sponsorApiProviderTemplates,
+        );
       const apiKeyUsageMode = resolveApiKeyUsageMode(
         apiKeyUsageMap[account.id]?.summary,
       );
@@ -8566,7 +8717,7 @@ export function CodexAccountsPage() {
         ? "sponsor-api"
         : isQuotaAwareApiKeyAccount
           ? "new-api-exclusive"
-        : planClass;
+          : planClass;
       const displayPlanLabel = isSponsorApiKeyAccount
         ? apiProviderName
         : presentation.planLabel;
@@ -8775,7 +8926,11 @@ export function CodexAccountsPage() {
                   {cockpitApiAccountBalanceText && (
                     <div className="codex-account-balance-line table">
                       <span>
-                        {t("codex.modelProviders.usage.accountBalance", "账户余额")}：
+                        {t(
+                          "codex.modelProviders.usage.accountBalance",
+                          "账户余额",
+                        )}
+                        ：
                       </span>
                       <strong>{cockpitApiAccountBalanceText}</strong>
                     </div>
@@ -8920,7 +9075,8 @@ export function CodexAccountsPage() {
                   <Play size={14} />
                 )}
               </button>
-              {((!isApiKeyAccount || isNewApiAccount) ||
+              {(!isApiKeyAccount ||
+                isNewApiAccount ||
                 canRefreshApiKeyUsage(account, apiKeyUsageProvider)) && (
                 <button
                   className="action-btn"
@@ -9149,14 +9305,18 @@ export function CodexAccountsPage() {
     );
     const visible = visibleApiKeyAccountIds.has(account.id);
     const apiKeyDisplay = resolveApiKeyDisplayText(account, visible);
-    const baseUrl = provider?.baseUrl.trim() || (account.api_base_url || "").trim() || "-";
+    const baseUrl =
+      provider?.baseUrl.trim() || (account.api_base_url || "").trim() || "-";
     const usedPercent = formatApiKeyUsagePercent(summary);
     const summaryDetails =
       usageMode === "new_api"
         ? [
             {
               key: "totalGranted",
-              label: t("codex.modelProviders.usage.fields.totalGranted", "授予额度"),
+              label: t(
+                "codex.modelProviders.usage.fields.totalGranted",
+                "授予额度",
+              ),
               value: (() => {
                 const raw = Number(
                   findApiKeyUsageDetail(summary, "totalGranted")?.value ?? NaN,
@@ -9168,10 +9328,14 @@ export function CodexAccountsPage() {
             },
             {
               key: "totalAvailable",
-              label: t("codex.modelProviders.usage.fields.totalAvailable", "可用额度"),
+              label: t(
+                "codex.modelProviders.usage.fields.totalAvailable",
+                "可用额度",
+              ),
               value: (() => {
                 const raw = Number(
-                  findApiKeyUsageDetail(summary, "totalAvailable")?.value ?? NaN,
+                  findApiKeyUsageDetail(summary, "totalAvailable")?.value ??
+                    NaN,
                 );
                 return Number.isFinite(raw)
                   ? formatApiKeyUsageMoney(raw, summary.unit)
@@ -9180,7 +9344,10 @@ export function CodexAccountsPage() {
             },
             {
               key: "expiresAt",
-              label: t("codex.modelProviders.usage.fields.expiresAt", "过期时间"),
+              label: t(
+                "codex.modelProviders.usage.fields.expiresAt",
+                "过期时间",
+              ),
               value: formatApiKeyUsageDetailByKey(summary, "expiresAt"),
             },
           ]
@@ -9188,22 +9355,35 @@ export function CodexAccountsPage() {
           ? [
               {
                 key: "accountBalance",
-                label: t("codex.modelProviders.usage.accountBalance", "账户余额"),
+                label: t(
+                  "codex.modelProviders.usage.accountBalance",
+                  "账户余额",
+                ),
                 value: formatApiKeyUsageQuotaValue(
                   summary,
-                  summary.remaining ?? summary.balance ?? summary.quotaRemaining,
+                  summary.remaining ??
+                    summary.balance ??
+                    summary.quotaRemaining,
                 ),
               },
               {
                 key: "todayRequests",
-                label: t("codex.modelProviders.usage.fields.todayRequests", "今日请求"),
+                label: t(
+                  "codex.modelProviders.usage.fields.todayRequests",
+                  "今日请求",
+                ),
                 value: formatCockpitApiInteger(summary.todayRequests ?? 0),
               },
-            {
-              key: "todayTokens",
-              label: t("codex.modelProviders.usage.fields.todayTokens", "今日 Token"),
-              value: formatCockpitApiTokenCount(summary.todayTotalTokens ?? 0),
-            },
+              {
+                key: "todayTokens",
+                label: t(
+                  "codex.modelProviders.usage.fields.todayTokens",
+                  "今日 Token",
+                ),
+                value: formatCockpitApiTokenCount(
+                  summary.todayTotalTokens ?? 0,
+                ),
+              },
             ]
           : [];
     const summaryGridClassName =
@@ -9222,9 +9402,7 @@ export function CodexAccountsPage() {
         >
           <div className="modal-header cockpit-api-panel-header">
             <div>
-              <h2>
-                {t("codex.modelProviders.usage.detailTitle", "服务面板")}
-              </h2>
+              <h2>{t("codex.modelProviders.usage.detailTitle", "服务面板")}</h2>
               <span className="cockpit-api-panel-subtitle">
                 {maskAccountText(resolvePresentation(account).displayName)}
                 {provider ? ` · ${provider.name}` : ""}
@@ -9296,21 +9474,22 @@ export function CodexAccountsPage() {
                 >
                   <span className="cockpit-api-card-label">{item.label}</span>
                   <strong>{item.value}</strong>
-                  {(item.key === "remaining" || item.key === "totalAvailable") &&
+                  {(item.key === "remaining" ||
+                    item.key === "totalAvailable") &&
                     usageMode !== "new_api" &&
                     usageMode !== "sub2api" && (
-                    <div>
-                      <div className="cockpit-api-progress-row">
-                        <div className="cockpit-api-progress-track">
-                          <div
-                            className="cockpit-api-progress-bar"
-                            style={{ width: `${usedPercent}%` }}
-                          />
+                      <div>
+                        <div className="cockpit-api-progress-row">
+                          <div className="cockpit-api-progress-track">
+                            <div
+                              className="cockpit-api-progress-bar"
+                              style={{ width: `${usedPercent}%` }}
+                            />
+                          </div>
+                          <span>{usedPercent}%</span>
                         </div>
-                        <span>{usedPercent}%</span>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
               ))}
             </section>
@@ -9327,7 +9506,9 @@ export function CodexAccountsPage() {
                       <span className="cockpit-api-card-label">
                         {formatApiKeyUsageDetailLabel(item.key, item.label)}
                       </span>
-                      <strong>{formatApiKeyUsageDetailValue(item, summary.unit)}</strong>
+                      <strong>
+                        {formatApiKeyUsageDetailValue(item, summary.unit)}
+                      </strong>
                       <small>{item.key}</small>
                     </div>
                   ))
@@ -9515,8 +9696,8 @@ export function CodexAccountsPage() {
                 <strong>{quotaText}</strong>
                 {cockpitApiAccountBalanceText && (
                   <small className="cockpit-api-balance-meta">
-                    {t("codex.modelProviders.usage.accountBalance", "账户余额")}：
-                    {cockpitApiAccountBalanceText}
+                    {t("codex.modelProviders.usage.accountBalance", "账户余额")}
+                    ：{cockpitApiAccountBalanceText}
                   </small>
                 )}
                 <div className="cockpit-api-progress-row">
@@ -9709,10 +9890,19 @@ export function CodexAccountsPage() {
                   {batchImportResult
                     ? t("codex.batchImport.resultSubtitle", "导入结果")
                     : batchImportBusy
-                      ? t("codex.batchImport.scanSubtitle", "正在逐条解析并检查账号")
+                      ? t(
+                          "codex.batchImport.scanSubtitle",
+                          "正在逐条解析并检查账号",
+                        )
                       : batchImportPreview
-                        ? t("codex.batchImport.previewSubtitle", "选择要写入的账号")
-                        : t("codex.batchImport.scanSubtitle", "正在逐条解析并检查账号")}
+                        ? t(
+                            "codex.batchImport.previewSubtitle",
+                            "选择要写入的账号",
+                          )
+                        : t(
+                            "codex.batchImport.scanSubtitle",
+                            "正在逐条解析并检查账号",
+                          )}
                 </p>
               </div>
               <button
@@ -9747,7 +9937,9 @@ export function CodexAccountsPage() {
                     </span>
                     <strong>
                       {batchImportProgress?.current ?? 0}/
-                      {batchImportProgress?.total ?? batchImportPreview?.total ?? 0}
+                      {batchImportProgress?.total ??
+                        batchImportPreview?.total ??
+                        0}
                     </strong>
                   </div>
                   <div className="codex-batch-import-progress-track">
@@ -9793,7 +9985,10 @@ export function CodexAccountsPage() {
                   {batchImportResult.failed.length > 0 && (
                     <div className="codex-batch-import-list compact">
                       {batchImportResult.failed.map((item) => (
-                        <div className="codex-batch-import-row" key={item.email}>
+                        <div
+                          className="codex-batch-import-row"
+                          key={item.email}
+                        >
                           <div>
                             <strong>{maskAccountText(item.email)}</strong>
                             <small>{item.error}</small>
@@ -9807,7 +10002,9 @@ export function CodexAccountsPage() {
                 <>
                   <div className="codex-batch-import-stat-grid">
                     <div>
-                      <span>{t("codex.batchImport.groups.ready", "可导入")}</span>
+                      <span>
+                        {t("codex.batchImport.groups.ready", "可导入")}
+                      </span>
                       <strong>{batchImportCounts.ready}</strong>
                     </div>
                     <div>
@@ -9817,11 +10014,15 @@ export function CodexAccountsPage() {
                       <strong>{batchImportCounts.quotaFailed}</strong>
                     </div>
                     <div>
-                      <span>{t("codex.batchImport.groups.existing", "已存在")}</span>
+                      <span>
+                        {t("codex.batchImport.groups.existing", "已存在")}
+                      </span>
                       <strong>{batchImportCounts.existing}</strong>
                     </div>
                     <div>
-                      <span>{t("codex.batchImport.groups.invalid", "无效账号")}</span>
+                      <span>
+                        {t("codex.batchImport.groups.invalid", "无效账号")}
+                      </span>
                       <strong>{batchImportCounts.invalid}</strong>
                     </div>
                   </div>
@@ -9832,17 +10033,25 @@ export function CodexAccountsPage() {
                       <button
                         type="button"
                         className="btn btn-secondary compact"
-                        disabled={batchImportBusy || batchImportSelectableIds.length === 0}
+                        disabled={
+                          batchImportBusy ||
+                          batchImportSelectableIds.length === 0
+                        }
                         onClick={selectAllBatchImportAccounts}
                       >
-                        {t("codex.batchImport.selectAllAccounts", "选择全部账号")}
+                        {t(
+                          "codex.batchImport.selectAllAccounts",
+                          "选择全部账号",
+                        )}
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary compact"
                         disabled={
                           batchImportBusy ||
-                          batchImportCounts.ready + batchImportCounts.existing === 0
+                          batchImportCounts.ready +
+                            batchImportCounts.existing ===
+                            0
                         }
                         onClick={selectReadyBatchImportAccounts}
                       >
@@ -9851,7 +10060,10 @@ export function CodexAccountsPage() {
                       <button
                         type="button"
                         className="btn btn-secondary compact"
-                        disabled={batchImportBusy || batchImportSelectedSelectableCount === 0}
+                        disabled={
+                          batchImportBusy ||
+                          batchImportSelectedSelectableCount === 0
+                        }
                         onClick={clearBatchImportSelection}
                       >
                         {t("codex.batchImport.clearSelection", "取消选择")}
@@ -9861,9 +10073,12 @@ export function CodexAccountsPage() {
 
                   <div className="codex-batch-import-list">
                     {[...batchImportVisibleItems].reverse().map((item) => {
-                      const selectable = batchImportSelectableIdSet.has(item.itemId);
+                      const selectable = batchImportSelectableIdSet.has(
+                        item.itemId,
+                      );
                       const checked =
-                        selectable && batchImportSelectedIds.includes(item.itemId);
+                        selectable &&
+                        batchImportSelectedIds.includes(item.itemId);
                       return (
                         <label
                           className={`codex-batch-import-row status-${item.status}`}
@@ -9895,12 +10110,18 @@ export function CodexAccountsPage() {
                               )}
                               {item.status === "existing" && (
                                 <span>
-                                  {t("codex.batchImport.groups.existing", "已存在")}
+                                  {t(
+                                    "codex.batchImport.groups.existing",
+                                    "已存在",
+                                  )}
                                 </span>
                               )}
                               {item.status === "invalid" && (
                                 <span>
-                                  {t("codex.batchImport.groups.invalid", "无效账号")}
+                                  {t(
+                                    "codex.batchImport.groups.invalid",
+                                    "无效账号",
+                                  )}
                                 </span>
                               )}
                             </div>
@@ -9925,7 +10146,10 @@ export function CodexAccountsPage() {
 
             <div className="modal-footer codex-batch-import-footer">
               {batchImportResult ? (
-                <button className="btn btn-primary" onClick={() => void handleCloseBatchImport()}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => void handleCloseBatchImport()}
+                >
                   {t("common.shared.close", "关闭")}
                 </button>
               ) : (
@@ -9937,7 +10161,10 @@ export function CodexAccountsPage() {
                         ? void handleCancelBatchImport()
                         : void handleCloseBatchImport()
                     }
-                    disabled={batchImportBusy && batchImportProgress?.phase === "cancelling"}
+                    disabled={
+                      batchImportBusy &&
+                      batchImportProgress?.phase === "cancelling"
+                    }
                   >
                     {batchImportBusy
                       ? t("codex.batchImport.cancelScan", "取消扫描")
@@ -11143,7 +11370,10 @@ export function CodexAccountsPage() {
                                 }
                               >
                                 <KeyRound size={14} />
-                                {t("codex.api.provider.apiKeyPage", "API Key 页面")}
+                                {t(
+                                  "codex.api.provider.apiKeyPage",
+                                  "API Key 页面",
+                                )}
                               </button>
                             )}
                           </div>

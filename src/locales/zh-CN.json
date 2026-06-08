@@ -351,7 +351,7 @@
   "apiKeyFun": {
     "eyebrow": "中转站",
     "title": "APIKEY.FUN 中转站",
-    "description": "Cockpit 官方中转站，为用户提供稳定、开放、高性价比的大模型 API 接入服务。支持 Claude、OpenAI、Gemini 等主流模型，适合在 Codex、Gemini CLI、Claude Code 及其他开发工具中统一配置使用。通过 Cockpit 专属链接注册，可享受最高充值永久 95 折优惠。",
+    "description": "Cockpit 官方合作中转站，为用户提供稳定、开放、高性价比的大模型 API 接入服务。支持 Claude、OpenAI、Gemini 等主流模型，适合在 Codex、Gemini CLI、Claude Code 及其他开发工具中统一配置使用。通过 Cockpit 专属链接注册，可享受最高充值永久 95 折优惠。",
     "register": "专属注册链接",
     "docs": "官方文档",
     "viewNow": "立即查看",
@@ -2124,6 +2124,7 @@
         "title": "添加至 API 服务",
         "desc": "选择要加入 API 服务集合的 Codex OAuth 账号或 API Key 账号。加入后，这些账号将从普通面板中隐藏，只在 API 服务卡片中管理。",
         "restrictFreeToggle": "限制 Free 账号使用",
+        "chatApiKeyUnsupported": "Chat Completions 不支持加入",
         "freeNoticeRestricted": "已限制 Free 账号，关闭后才可勾选。",
         "freeNoticeUnstable": "Free账号反代不稳定，请谨慎使用。",
         "restrictFreeDisableConfirmTitle": "确认允许 Free 账号",

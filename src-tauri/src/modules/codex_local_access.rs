@@ -80,7 +80,7 @@ const CODEX_PROFILE_AUTH_FILE: &str = "auth.json";
 const CODEX_PROFILE_CONFIG_FILE: &str = "config.toml";
 const CODEX_PROVIDER_MODEL_CATALOG_FILE: &str = "cockpit-provider-model-catalog.json";
 const CODEX_PROVIDER_MODEL_BACKUP_FILE: &str = ".cockpit-provider-model-backup.json";
-const MAX_HTTP_REQUEST_BYTES: usize = 64 * 1024 * 1024;
+const MAX_HTTP_REQUEST_BYTES: usize = 256 * 1024 * 1024;
 const DEFAULT_REQUEST_READ_TIMEOUT: Duration = Duration::from_secs(15);
 const MAX_REQUEST_RETRY_ATTEMPTS: usize = 1;
 const DEFAULT_UPSTREAM_CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
@@ -511,6 +511,246 @@ fn upstream_env_proxy_url() -> Option<String> {
     None
 }
 
+#[cfg_attr(
+    not(any(test, target_os = "macos", target_os = "windows")),
+    allow(dead_code)
+)]
+fn system_proxy_target_scheme(target_url: &str) -> String {
+    Url::parse(target_url)
+        .ok()
+        .map(|url| url.scheme().to_ascii_lowercase())
+        .filter(|scheme| !scheme.is_empty())
+        .unwrap_or_else(|| "https".to_string())
+}
+
+#[cfg_attr(
+    not(any(test, target_os = "macos", target_os = "windows")),
+    allow(dead_code)
+)]
+fn system_proxy_url_with_scheme(scheme: &str, host: &str, port: u16) -> Option<String> {
+    let host = host.trim();
+    if host.is_empty() || port == 0 {
+        return None;
+    }
+
+    let scheme = match scheme.to_ascii_lowercase().as_str() {
+        "http" => "http",
+        "https" => "https",
+        "socks" | "socks5" | "socks5h" => "socks5",
+        _ => return None,
+    };
+    let host = if host.contains(':') && !host.starts_with('[') && !host.ends_with(']') {
+        format!("[{}]", host)
+    } else {
+        host.to_string()
+    };
+    Some(format!("{}://{}:{}", scheme, host, port))
+}
+
+#[cfg_attr(
+    not(any(test, target_os = "macos", target_os = "windows")),
+    allow(dead_code)
+)]
+fn system_proxy_host_port_url(entry_kind: &str, host: &str, port: u16) -> Option<String> {
+    let scheme = match entry_kind.to_ascii_lowercase().as_str() {
+        "socks" | "socks5" | "socks5h" => "socks5",
+        _ => "http",
+    };
+    system_proxy_url_with_scheme(scheme, host, port)
+}
+
+#[cfg_attr(not(any(test, target_os = "windows")), allow(dead_code))]
+fn system_proxy_value_url(entry_kind: &str, value: &str) -> Option<String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return None;
+    }
+
+    if let Ok(url) = Url::parse(value) {
+        let scheme = match url.scheme().to_ascii_lowercase().as_str() {
+            "http" => Some("http"),
+            "https" => Some("https"),
+            "socks" | "socks5" | "socks5h" => Some("socks5"),
+            _ => None,
+        };
+        if let Some(scheme) = scheme {
+            let host = url.host_str()?;
+            let port = url.port_or_known_default()?;
+            return system_proxy_url_with_scheme(scheme, host, port);
+        }
+        if value.contains("://") {
+            return None;
+        }
+    }
+
+    let (host, port) = value.rsplit_once(':')?;
+    let port = port.trim().parse::<u16>().ok()?;
+    system_proxy_host_port_url(entry_kind, host, port)
+}
+
+#[cfg_attr(not(any(test, target_os = "macos")), allow(dead_code))]
+fn scutil_proxy_map(output: &str) -> HashMap<String, String> {
+    output
+        .lines()
+        .filter_map(|line| {
+            let (key, value) = line.split_once(':')?;
+            let key = key.trim().trim_matches('"');
+            let value = value.trim().trim_matches('"');
+            if key.is_empty() || value.is_empty() {
+                return None;
+            }
+            Some((key.to_string(), value.to_string()))
+        })
+        .collect()
+}
+
+#[cfg_attr(not(any(test, target_os = "macos")), allow(dead_code))]
+fn system_proxy_flag_enabled(value: Option<&String>) -> bool {
+    matches!(
+        value.map(|value| value.trim().to_ascii_lowercase()),
+        Some(value) if value == "1" || value == "true"
+    )
+}
+
+#[cfg_attr(not(any(test, target_os = "macos")), allow(dead_code))]
+fn macos_proxy_url_from_scutil_map(
+    values: &HashMap<String, String>,
+    target_scheme: &str,
+) -> Option<String> {
+    let https_entries = [
+        ("HTTPSEnable", "HTTPSProxy", "HTTPSPort", "http"),
+        ("HTTPEnable", "HTTPProxy", "HTTPPort", "http"),
+        ("SOCKSEnable", "SOCKSProxy", "SOCKSPort", "socks"),
+    ];
+    let http_entries = [
+        ("HTTPEnable", "HTTPProxy", "HTTPPort", "http"),
+        ("SOCKSEnable", "SOCKSProxy", "SOCKSPort", "socks"),
+    ];
+    let entries: &[(&str, &str, &str, &str)] = if target_scheme.eq_ignore_ascii_case("https") {
+        &https_entries
+    } else {
+        &http_entries
+    };
+
+    for (enable_key, host_key, port_key, entry_kind) in entries {
+        if !system_proxy_flag_enabled(values.get(*enable_key)) {
+            continue;
+        }
+        let host = values.get(*host_key)?;
+        let port = values.get(*port_key)?.trim().parse::<u16>().ok()?;
+        if let Some(proxy_url) = system_proxy_host_port_url(entry_kind, host, port) {
+            return Some(proxy_url);
+        }
+    }
+
+    None
+}
+
+#[cfg(target_os = "macos")]
+fn system_proxy_url_for_target(target_url: &str) -> Option<String> {
+    let output = StdCommand::new("scutil").arg("--proxy").output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+
+    let target_scheme = system_proxy_target_scheme(target_url);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let values = scutil_proxy_map(&stdout);
+    macos_proxy_url_from_scutil_map(&values, &target_scheme)
+}
+
+#[cfg_attr(not(any(test, target_os = "windows")), allow(dead_code))]
+fn windows_reg_query_map(output: &str) -> HashMap<String, String> {
+    output
+        .lines()
+        .filter_map(|line| {
+            let parts = line.split_whitespace().collect::<Vec<_>>();
+            if parts.len() < 3 || !parts[1].starts_with("REG_") {
+                return None;
+            }
+            Some((parts[0].to_string(), parts[2..].join(" ")))
+        })
+        .collect()
+}
+
+#[cfg_attr(not(any(test, target_os = "windows")), allow(dead_code))]
+fn windows_reg_dword_enabled(value: Option<&String>) -> bool {
+    value
+        .map(|value| value.trim().eq_ignore_ascii_case("0x1") || value.trim() == "1")
+        .unwrap_or(false)
+}
+
+#[cfg_attr(not(any(test, target_os = "windows")), allow(dead_code))]
+fn windows_proxy_url_from_server(proxy_server: &str, target_scheme: &str) -> Option<String> {
+    let proxy_server = proxy_server.trim();
+    if proxy_server.is_empty() {
+        return None;
+    }
+
+    let entries = proxy_server
+        .split(';')
+        .filter_map(|entry| {
+            let entry = entry.trim();
+            let (kind, value) = entry.split_once('=')?;
+            let kind = kind.trim().to_ascii_lowercase();
+            let value = value.trim();
+            if kind.is_empty() || value.is_empty() {
+                return None;
+            }
+            Some((kind, value.to_string()))
+        })
+        .collect::<HashMap<_, _>>();
+
+    if entries.is_empty() {
+        return system_proxy_value_url("http", proxy_server);
+    }
+
+    let https_order = ["https", "http", "socks"];
+    let http_order = ["http", "socks"];
+    let order: &[&str] = if target_scheme.eq_ignore_ascii_case("https") {
+        &https_order
+    } else {
+        &http_order
+    };
+
+    for kind in order {
+        if let Some(value) = entries.get(*kind) {
+            if let Some(proxy_url) = system_proxy_value_url(kind, value) {
+                return Some(proxy_url);
+            }
+        }
+    }
+
+    None
+}
+
+#[cfg(target_os = "windows")]
+fn system_proxy_url_for_target(target_url: &str) -> Option<String> {
+    let output = StdCommand::new("reg")
+        .args([
+            "query",
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings",
+        ])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+
+    let target_scheme = system_proxy_target_scheme(target_url);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let values = windows_reg_query_map(&stdout);
+    if !windows_reg_dword_enabled(values.get("ProxyEnable")) {
+        return None;
+    }
+    windows_proxy_url_from_server(values.get("ProxyServer")?, &target_scheme)
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn system_proxy_url_for_target(_target_url: &str) -> Option<String> {
+    None
+}
+
 fn current_upstream_http_client_signature(
     upstream_proxy_url: Option<&str>,
     connect_timeout: Duration,
@@ -641,8 +881,12 @@ fn log_sidecar_proxy_signature(signature: &UpstreamHttpClientSignature) {
             "[CodexLocalAccess][sidecar] 上游代理已按旧网关规则使用环境代理 proxy_url={}",
             redact_proxy_url_for_log(proxy_url)
         )),
+        (UpstreamProxySource::SystemAuto, Some(proxy_url)) => logger::log_info(&format!(
+            "[CodexLocalAccess][sidecar] 上游代理已从系统代理配置解析并写入 sidecar proxy_url={}",
+            redact_proxy_url_for_log(proxy_url)
+        )),
         (UpstreamProxySource::SystemAuto, None) => logger::log_info(
-            "[CodexLocalAccess][sidecar] 上游代理已按旧网关规则回退到系统自动代理配置",
+            "[CodexLocalAccess][sidecar] 未解析到可写入 sidecar 的系统代理配置，sidecar 将按自身默认网络行为连接上游",
         ),
         _ => logger::log_warn("[CodexLocalAccess][sidecar] 上游代理状态异常"),
     }
@@ -709,17 +953,15 @@ fn account_has_refresh_token(account: &CodexAccount) -> bool {
 
 fn prune_prepared_account_cache(runtime: &mut GatewayRuntime, now: i64) {
     let allowed_account_ids = runtime.collection.as_ref().map(|collection| {
-        collection
-            .account_ids
-            .iter()
-            .map(String::as_str)
-            .collect::<HashSet<&str>>()
+        effective_sidecar_account_ids(collection)
+            .into_iter()
+            .collect::<HashSet<_>>()
     });
 
     runtime.prepared_accounts.retain(|account_id, entry| {
         let in_collection = allowed_account_ids
             .as_ref()
-            .map(|ids| ids.contains(account_id.as_str()))
+            .map(|ids| ids.contains(account_id))
             .unwrap_or(true);
         in_collection && is_prepared_account_cache_valid(entry, now)
     });
@@ -734,21 +976,19 @@ fn prune_runtime_account_state(runtime: &mut GatewayRuntime) {
         return;
     };
 
-    let allowed_account_ids = collection
-        .account_ids
-        .iter()
-        .map(String::as_str)
+    let allowed_account_ids = effective_sidecar_account_ids(collection)
+        .into_iter()
         .collect::<HashSet<_>>();
 
     runtime
         .prepared_accounts
-        .retain(|account_id, _| allowed_account_ids.contains(account_id.as_str()));
+        .retain(|account_id, _| allowed_account_ids.contains(account_id));
     runtime
         .account_health
-        .retain(|account_id, _| allowed_account_ids.contains(account_id.as_str()));
+        .retain(|account_id, _| allowed_account_ids.contains(account_id));
     runtime
         .response_affinity
-        .retain(|_, binding| allowed_account_ids.contains(binding.account_id.as_str()));
+        .retain(|_, binding| allowed_account_ids.contains(&binding.account_id));
     runtime.model_cooldowns.retain(|key, _| {
         key.split_once(COOLDOWN_KEY_SEPARATOR)
             .map(|(account_id, _)| allowed_account_ids.contains(account_id))
@@ -5696,11 +5936,26 @@ fn build_lan_base_url(port: u16) -> Option<String> {
 }
 
 fn sidecar_config_fingerprint(config_content: &str, manifest_content: &str) -> String {
+    let stable_manifest_content = stable_sidecar_manifest_for_fingerprint(manifest_content);
     let mut hasher = Sha1::new();
     hasher.update(config_content.as_bytes());
     hasher.update(b"\n--manifest--\n");
-    hasher.update(manifest_content.as_bytes());
+    hasher.update(stable_manifest_content.as_bytes());
     format!("{:x}", hasher.finalize())
+}
+
+fn stable_sidecar_manifest_for_fingerprint(manifest_content: &str) -> String {
+    let Ok(mut manifest) = serde_json::from_str::<Value>(manifest_content) else {
+        return manifest_content.to_string();
+    };
+    if let Some(accounts) = manifest.get_mut("accounts").and_then(Value::as_array_mut) {
+        for account in accounts {
+            if let Some(account) = account.as_object_mut() {
+                account.remove("remainingQuota");
+            }
+        }
+    }
+    serde_json::to_string(&manifest).unwrap_or_else(|_| manifest_content.to_string())
 }
 
 #[derive(Debug, Clone)]
@@ -6068,6 +6323,51 @@ fn effective_sidecar_account_ids(collection: &CodexLocalAccessCollection) -> Vec
     account_ids
 }
 
+fn remove_account_refs_from_collection(
+    collection: &mut CodexLocalAccessCollection,
+    remove_ids: &HashSet<String>,
+) -> bool {
+    if remove_ids.is_empty() {
+        return false;
+    }
+
+    let mut changed = false;
+
+    let before_account_ids = collection.account_ids.clone();
+    collection.account_ids.retain(|id| !remove_ids.contains(id));
+    changed |= collection.account_ids != before_account_ids;
+
+    for api_key in &mut collection.api_keys {
+        let before = api_key.account_ids.clone();
+        api_key.account_ids.retain(|id| !remove_ids.contains(id));
+        changed |= api_key.account_ids != before;
+    }
+
+    let before_custom_rules = collection.custom_routing_rules.clone();
+    collection
+        .custom_routing_rules
+        .retain(|rule| !remove_ids.contains(&rule.account_id));
+    changed |= collection.custom_routing_rules != before_custom_rules;
+
+    let before_model_rules = collection.account_model_rules.clone();
+    collection
+        .account_model_rules
+        .retain(|rule| !remove_ids.contains(&rule.account_id));
+    changed |= collection.account_model_rules != before_model_rules;
+
+    if collection
+        .bound_oauth_account_id
+        .as_ref()
+        .map(|id| remove_ids.contains(id))
+        .unwrap_or(false)
+    {
+        collection.bound_oauth_account_id = None;
+        changed = true;
+    }
+
+    changed
+}
+
 fn sidecar_client_api_keys(collection: &CodexLocalAccessCollection) -> Vec<String> {
     let mut keys = Vec::new();
     let mut seen = HashSet::new();
@@ -6194,10 +6494,13 @@ fn sidecar_codex_key_config_value(
 fn sidecar_effective_proxy_signature(
     collection: &CodexLocalAccessCollection,
 ) -> Result<UpstreamHttpClientSignature, String> {
-    let signature = current_upstream_http_client_signature(
+    let mut signature = current_upstream_http_client_signature(
         collection.upstream_proxy_url.as_deref(),
         DEFAULT_UPSTREAM_CONNECT_TIMEOUT,
     );
+    if signature.proxy_source == UpstreamProxySource::SystemAuto && signature.proxy_url.is_none() {
+        signature.proxy_url = system_proxy_url_for_target(DEFAULT_OPENAI_RESPONSES_BASE_URL);
+    }
     if let Some(proxy_url) = signature.proxy_url.as_deref() {
         Proxy::all(proxy_url).map_err(|e| match signature.proxy_source {
             UpstreamProxySource::ApiService => format!("API 代理地址无效: {}", e),
@@ -8466,6 +8769,9 @@ fn is_free_plan_type(plan_type: Option<&str>) -> bool {
 }
 
 fn is_local_access_eligible_account(account: &CodexAccount, restrict_free_accounts: bool) -> bool {
+    if account_requires_provider_gateway(account) {
+        return false;
+    }
     if restrict_free_accounts && is_free_plan_type(account.plan_type.as_deref()) {
         return false;
     }
@@ -8699,6 +9005,14 @@ fn normalize_active_timeout_preset_id(collection: &mut CodexLocalAccessCollectio
 fn sanitize_collection(
     collection: &mut CodexLocalAccessCollection,
 ) -> Result<(bool, HashSet<String>), String> {
+    let accounts = codex_account::list_accounts_checked()?;
+    sanitize_collection_with_accounts(collection, &accounts)
+}
+
+fn sanitize_collection_with_accounts(
+    collection: &mut CodexLocalAccessCollection,
+    accounts: &[CodexAccount],
+) -> Result<(bool, HashSet<String>), String> {
     let mut changed = false;
 
     if collection.port == 0 {
@@ -8725,7 +9039,6 @@ fn sanitize_collection(
         changed = true;
     }
 
-    let accounts = codex_account::list_accounts_checked()?;
     let valid_bound_oauth_account_ids: HashSet<String> = accounts
         .iter()
         .filter(|account| {
@@ -8734,11 +9047,11 @@ fn sanitize_collection(
         .map(|account| account.id.clone())
         .collect();
     let valid_account_ids: HashSet<String> = accounts
-        .into_iter()
+        .iter()
         .filter(|account| {
             is_local_access_eligible_account(account, collection.restrict_free_accounts)
         })
-        .map(|account| account.id)
+        .map(|account| account.id.clone())
         .collect();
 
     let normalized_bound_oauth_account_id =
@@ -8963,6 +9276,29 @@ async fn ensure_runtime_loaded() -> Result<(), String> {
 async fn ensure_gateway_matches_runtime() -> Result<(), String> {
     let _lifecycle_guard = gateway_lifecycle_lock().lock().await;
     ensure_gateway_matches_runtime_locked().await
+}
+
+fn trigger_gateway_reload_in_background(reason: &'static str) {
+    tokio::spawn(async move {
+        match ensure_gateway_matches_runtime().await {
+            Ok(()) => {
+                let mut runtime = gateway_runtime().lock().await;
+                runtime.last_error = None;
+                logger::log_codex_api_info(&format!(
+                    "[CodexLocalAccess] 后台网关重载完成: {}",
+                    reason
+                ));
+            }
+            Err(error) => {
+                let mut runtime = gateway_runtime().lock().await;
+                runtime.last_error = Some(error.clone());
+                logger::log_codex_api_warn(&format!(
+                    "[CodexLocalAccess] 后台网关重载失败: reason={}, error={}",
+                    reason, error
+                ));
+            }
+        }
+    });
 }
 
 async fn ensure_gateway_matches_runtime_locked() -> Result<(), String> {
@@ -9869,6 +10205,12 @@ async fn snapshot_state() -> Result<CodexLocalAccessState, String> {
     {
         runtime.last_error = None;
     }
+    Ok(build_state_snapshot(&runtime))
+}
+
+async fn snapshot_state_without_gateway_reload() -> Result<CodexLocalAccessState, String> {
+    ensure_runtime_loaded_without_start().await?;
+    let runtime = gateway_runtime().lock().await;
     Ok(build_state_snapshot(&runtime))
 }
 
@@ -11637,7 +11979,7 @@ pub async fn save_local_access_accounts(
     account_ids: Vec<String>,
     restrict_free_accounts: bool,
 ) -> Result<CodexLocalAccessState, String> {
-    ensure_runtime_loaded().await?;
+    ensure_runtime_loaded_without_start().await?;
 
     let mut collection = {
         let runtime = gateway_runtime().lock().await;
@@ -11677,10 +12019,11 @@ pub async fn save_local_access_accounts(
             })
     };
 
-    let valid_account_ids: HashSet<String> = codex_account::list_accounts_checked()?
-        .into_iter()
+    let accounts = codex_account::list_accounts_checked()?;
+    let valid_account_ids: HashSet<String> = accounts
+        .iter()
         .filter(|account| is_local_access_eligible_account(account, restrict_free_accounts))
-        .map(|account| account.id)
+        .map(|account| account.id.clone())
         .collect();
 
     let mut next_account_ids = Vec::new();
@@ -11697,19 +12040,22 @@ pub async fn save_local_access_accounts(
     collection.restrict_free_accounts = restrict_free_accounts;
     collection.account_ids = next_account_ids;
     collection.updated_at = now_ms();
-    let (changed, _) = sanitize_collection(&mut collection)?;
+    let (changed, _) = sanitize_collection_with_accounts(&mut collection, &accounts)?;
     if changed {
         collection.updated_at = now_ms();
     }
     save_collection_to_disk(&collection)?;
 
+    let should_reload_gateway = collection.enabled;
     {
         let mut runtime = gateway_runtime().lock().await;
         sync_runtime_collection(&mut runtime, collection);
     }
 
-    ensure_gateway_matches_runtime().await?;
-    snapshot_state().await
+    if should_reload_gateway {
+        trigger_gateway_reload_in_background("保存 API 服务账号集合");
+    }
+    snapshot_state_without_gateway_reload().await
 }
 
 pub async fn update_local_access_routing_strategy(
@@ -11763,13 +12109,16 @@ pub async fn update_local_access_custom_routing(
     collection.updated_at = now_ms();
     save_collection_to_disk(&collection)?;
 
+    let should_reload_gateway = collection.enabled;
     {
         let mut runtime = gateway_runtime().lock().await;
         sync_runtime_collection(&mut runtime, collection);
     }
 
-    ensure_gateway_matches_runtime().await?;
-    snapshot_state().await
+    if should_reload_gateway {
+        trigger_gateway_reload_in_background("删除 API 服务账号集合引用");
+    }
+    snapshot_state_without_gateway_reload().await
 }
 
 pub async fn update_local_access_account_model_rules(
@@ -12157,7 +12506,7 @@ pub async fn remove_local_access_account(
 pub async fn remove_local_access_accounts(
     account_ids: &[String],
 ) -> Result<CodexLocalAccessState, String> {
-    ensure_runtime_loaded().await?;
+    ensure_runtime_loaded_without_start().await?;
 
     let maybe_collection = {
         let runtime = gateway_runtime().lock().await;
@@ -12172,25 +12521,18 @@ pub async fn remove_local_access_accounts(
         .iter()
         .map(|id| id.trim())
         .filter(|id| !id.is_empty())
+        .map(str::to_string)
         .collect::<HashSet<_>>();
     if remove_ids.is_empty() {
         return snapshot_state().await;
     }
 
-    let before_account_ids = collection.account_ids.clone();
-    collection
-        .account_ids
-        .retain(|id| !remove_ids.contains(id.as_str()));
-
-    collection.updated_at = now_ms();
+    let refs_changed = remove_account_refs_from_collection(&mut collection, &remove_ids);
     let (changed, _) = sanitize_collection(&mut collection)?;
-    let account_ids_changed = collection.account_ids != before_account_ids;
-    if !account_ids_changed && !changed {
+    if !refs_changed && !changed {
         return snapshot_state().await;
     }
-    if changed || account_ids_changed {
-        collection.updated_at = now_ms();
-    }
+    collection.updated_at = now_ms();
     save_collection_to_disk(&collection)?;
 
     {
@@ -12631,6 +12973,9 @@ where
         if header_end.is_none() {
             if let Some(end) = find_header_end(&buffer) {
                 content_length = parse_content_length(&buffer[..end])?;
+                if content_length > MAX_HTTP_REQUEST_BYTES.saturating_sub(end) {
+                    return Err("请求体过大".to_string());
+                }
                 header_end = Some(end);
             }
         }
@@ -17043,28 +17388,31 @@ mod tests {
         bridge_websocket_streams, build_account_scoped_upstream_body, build_base_url_with_host,
         build_chat_completion_payload, build_chat_completion_stream_body,
         build_codex_client_models_response, build_collection_base_url, build_images_api_payload,
-        build_local_models_response, build_ordered_account_ids, build_request_routing_hint,
-        build_upstream_websocket_url, calculate_usage_cost_usd, canonical_model_for_client_model,
-        classify_upstream_error_category, cleanup_profile_takeover_without_backup,
-        cleanup_provider_gateway_profile_model_overrides,
+        build_local_access_api_key, build_local_models_response, build_ordered_account_ids,
+        build_request_routing_hint, build_upstream_websocket_url, calculate_usage_cost_usd,
+        canonical_model_for_client_model, classify_upstream_error_category,
+        cleanup_profile_takeover_without_backup, cleanup_provider_gateway_profile_model_overrides,
         collect_local_access_profile_takeover_dirs_from_store, compare_routing_candidates,
         extract_usage_capture, inspect_local_access_profile_config,
         is_codex_local_access_auth_text, is_codex_local_access_config_for_api_key,
         is_image_generation_capability_error, is_local_access_eligible_account,
         is_responses_completion_event, is_stream_incomplete_error_message,
         is_upstream_response_failed_error_message, legacy_stream_error_category,
-        local_access_chat_completions_url, merge_collection_and_account_excluded_models,
-        model_pricing, normalize_account_model_rules, normalize_custom_routing_rules,
-        normalized_sidecar_error_category, parse_codex_retry_after,
+        local_access_chat_completions_url, macos_proxy_url_from_scutil_map,
+        merge_collection_and_account_excluded_models, model_pricing, normalize_account_model_rules,
+        normalize_custom_routing_rules, normalized_sidecar_error_category, parse_codex_retry_after,
         parse_responses_payload_from_upstream, parse_websocket_upstream_error,
         prepare_gateway_request, profile_base_url_matches,
         provider_gateway_default_model_for_account, provider_gateway_models_for_account,
-        recover_invalid_stats_file, remove_codex_local_access_config, resolve_plan_rank,
-        resolve_supported_model_alias, resolve_upstream_target,
-        restore_config_toml_from_takeover_backup, should_retry_single_account_upstream_status,
-        should_treat_response_as_stream, should_try_next_account, sidecar_codex_api_key_auth_id,
-        sidecar_stable_id, validate_client_model_visible, visible_codex_model_ids_for_api_key,
-        websocket_accept_value, websocket_connect_error_from_http_response,
+        read_http_request, recover_invalid_stats_file, remove_account_refs_from_collection,
+        remove_codex_local_access_config, resolve_plan_rank, resolve_supported_model_alias,
+        resolve_upstream_target, restore_config_toml_from_takeover_backup, scutil_proxy_map,
+        should_retry_single_account_upstream_status, should_treat_response_as_stream,
+        should_try_next_account, sidecar_codex_api_key_auth_id, sidecar_config_fingerprint,
+        sidecar_stable_id, system_proxy_target_scheme, system_proxy_value_url,
+        validate_client_model_visible, visible_codex_model_ids_for_api_key, websocket_accept_value,
+        websocket_connect_error_from_http_response, windows_proxy_url_from_server,
+        windows_reg_dword_enabled, windows_reg_query_map,
         write_local_access_profile_model_override, write_provider_gateway_model_catalog,
         write_string_atomic, CodexLocalAccessCollection, CodexLocalAccessGatewayMode,
         CodexLocalAccessScope, GatewayResponseAdapter, ParsedRequest, ResolvedLocalApiKey,
@@ -17072,7 +17420,7 @@ mod tests {
         UsageCapture, CODEX_AUTO_REVIEW_MODEL_ID, CODEX_PROFILE_AUTH_FILE,
         CODEX_PROFILE_CONFIG_FILE, CODEX_PROVIDER_MODEL_BACKUP_FILE,
         CODEX_PROVIDER_MODEL_CATALOG_FILE, DEFAULT_MAX_RETRY_INTERVAL_MS,
-        DEFAULT_SESSION_AFFINITY_TTL_MS,
+        DEFAULT_SESSION_AFFINITY_TTL_MS, MAX_HTTP_REQUEST_BYTES,
     };
     use crate::models::codex::{CodexAccount, CodexApiProviderMode, CodexAppSpeed, CodexTokens};
     use crate::models::codex_local_access::{
@@ -17087,7 +17435,11 @@ mod tests {
     use futures_util::{SinkExt, StreamExt};
     use reqwest::StatusCode;
     use serde_json::{json, Value};
-    use std::{collections::HashMap, fs, path::PathBuf};
+    use std::{
+        collections::{HashMap, HashSet},
+        fs,
+        path::PathBuf,
+    };
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::{TcpListener, TcpStream};
     use tokio::sync::oneshot;
@@ -17095,6 +17447,26 @@ mod tests {
     use tokio_tungstenite::tungstenite::client::IntoClientRequest;
     use tokio_tungstenite::tungstenite::Message;
     use toml_edit::{value, Document};
+
+    #[tokio::test]
+    async fn read_http_request_rejects_declared_request_above_limit() {
+        let (mut client, mut server) = tokio::io::duplex(4096);
+        let request = format!(
+            "POST /v1/responses HTTP/1.1\r\nContent-Length: {}\r\n\r\n",
+            MAX_HTTP_REQUEST_BYTES
+        );
+        client.write_all(request.as_bytes()).await.unwrap();
+
+        let err = tokio::time::timeout(
+            Duration::from_millis(100),
+            read_http_request(&mut server, Duration::from_secs(5)),
+        )
+        .await
+        .expect("oversized request should be rejected before reading body")
+        .expect_err("request should be rejected");
+
+        assert_eq!(err, "请求体过大");
+    }
 
     fn test_local_access_collection(account_ids: Vec<String>) -> CodexLocalAccessCollection {
         CodexLocalAccessCollection {
@@ -17135,6 +17507,103 @@ mod tests {
         assert_eq!(
             sidecar_stable_id("codex:apikey", &["sk-test", "https://api.deepseek.com/v1"]),
             "codex:apikey:b1193dcdb71b"
+        );
+    }
+
+    #[test]
+    fn system_proxy_target_scheme_defaults_to_https_for_invalid_url() {
+        assert_eq!(
+            system_proxy_target_scheme("https://api.openai.com/v1"),
+            "https"
+        );
+        assert_eq!(system_proxy_target_scheme("not a url"), "https");
+    }
+
+    #[test]
+    fn macos_scutil_proxy_prefers_https_static_proxy() {
+        let output = r#"
+<dictionary> {
+  HTTPEnable : 1
+  HTTPPort : 7890
+  HTTPProxy : 127.0.0.1
+  HTTPSEnable : 1
+  HTTPSPort : 7891
+  HTTPSProxy : proxy.local
+  SOCKSEnable : 1
+  SOCKSPort : 7892
+  SOCKSProxy : socks.local
+}
+"#;
+
+        let values = scutil_proxy_map(output);
+
+        assert_eq!(
+            macos_proxy_url_from_scutil_map(&values, "https").as_deref(),
+            Some("http://proxy.local:7891")
+        );
+    }
+
+    #[test]
+    fn macos_scutil_proxy_falls_back_to_socks() {
+        let output = r#"
+<dictionary> {
+  HTTPEnable : 0
+  HTTPSEnable : 0
+  SOCKSEnable : 1
+  SOCKSPort : 7892
+  SOCKSProxy : 127.0.0.1
+}
+"#;
+
+        let values = scutil_proxy_map(output);
+
+        assert_eq!(
+            macos_proxy_url_from_scutil_map(&values, "https").as_deref(),
+            Some("socks5://127.0.0.1:7892")
+        );
+    }
+
+    #[test]
+    fn windows_proxy_server_prefers_https_entry_for_https_target() {
+        assert_eq!(
+            windows_proxy_url_from_server(
+                "http=127.0.0.1:7890;https=proxy.local:7891;socks=127.0.0.1:7892",
+                "https"
+            )
+            .as_deref(),
+            Some("http://proxy.local:7891")
+        );
+    }
+
+    #[test]
+    fn windows_proxy_server_supports_single_host_port() {
+        assert_eq!(
+            windows_proxy_url_from_server("127.0.0.1:7890", "https").as_deref(),
+            Some("http://127.0.0.1:7890")
+        );
+    }
+
+    #[test]
+    fn windows_reg_query_map_reads_proxy_fields() {
+        let output = r#"
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings
+    ProxyEnable    REG_DWORD    0x1
+    ProxyServer    REG_SZ       http=127.0.0.1:7890;https=proxy.local:7891
+"#;
+        let values = windows_reg_query_map(output);
+
+        assert!(windows_reg_dword_enabled(values.get("ProxyEnable")));
+        assert_eq!(
+            values.get("ProxyServer").map(String::as_str),
+            Some("http=127.0.0.1:7890;https=proxy.local:7891")
+        );
+    }
+
+    #[test]
+    fn system_proxy_value_url_preserves_explicit_https_scheme() {
+        assert_eq!(
+            system_proxy_value_url("https", "https://proxy.local:8443").as_deref(),
+            Some("https://proxy.local:8443")
         );
     }
 
@@ -17453,6 +17922,83 @@ wire_api = "responses"
         assert_eq!(rules[0].excluded_models, vec!["gpt-5.4-mini"]);
         assert_eq!(rules[1].account_id, "account-b");
         assert_eq!(rules[1].excluded_models, vec!["gpt-5.3-*"]);
+    }
+
+    #[test]
+    fn remove_account_refs_clears_all_local_access_references() {
+        let mut collection = test_local_access_collection(vec![
+            "account-a".to_string(),
+            "account-b".to_string(),
+            "account-c".to_string(),
+        ]);
+        let mut scoped_key = build_local_access_api_key(Some("scoped"));
+        scoped_key.account_ids = vec!["account-b".to_string(), "account-c".to_string()];
+        collection.api_keys = vec![scoped_key];
+        collection.custom_routing_rules = vec![
+            CodexLocalAccessCustomRoutingRule {
+                account_id: "account-b".to_string(),
+                priority: 10,
+                weight: 2,
+            },
+            CodexLocalAccessCustomRoutingRule {
+                account_id: "account-c".to_string(),
+                priority: 5,
+                weight: 1,
+            },
+        ];
+        collection.account_model_rules = vec![CodexLocalAccessAccountModelRule {
+            account_id: "account-b".to_string(),
+            excluded_models: vec!["gpt-5.4-mini".to_string()],
+        }];
+        collection.bound_oauth_account_id = Some("account-b".to_string());
+
+        let changed = remove_account_refs_from_collection(
+            &mut collection,
+            &HashSet::from(["account-b".to_string()]),
+        );
+
+        assert!(changed);
+        assert_eq!(
+            collection.account_ids,
+            vec!["account-a".to_string(), "account-c".to_string()]
+        );
+        assert_eq!(collection.api_keys[0].account_ids, vec!["account-c"]);
+        assert_eq!(collection.custom_routing_rules.len(), 1);
+        assert_eq!(collection.custom_routing_rules[0].account_id, "account-c");
+        assert!(collection.account_model_rules.is_empty());
+        assert!(collection.bound_oauth_account_id.is_none());
+    }
+
+    #[test]
+    fn sidecar_fingerprint_ignores_remaining_quota() {
+        let config = r#"{"host":"127.0.0.1","port":58393}"#;
+        let manifest_a = r#"{
+          "accounts": [
+            {"id": "account-a", "email": "a@example.com", "remainingQuota": 10, "planRank": 2}
+          ],
+          "routingStrategy": "auto"
+        }"#;
+        let manifest_b = r#"{
+          "accounts": [
+            {"id": "account-a", "email": "a@example.com", "remainingQuota": 90, "planRank": 2}
+          ],
+          "routingStrategy": "auto"
+        }"#;
+        let manifest_c = r#"{
+          "accounts": [
+            {"id": "account-a", "email": "a@example.com", "remainingQuota": 90, "planRank": 3}
+          ],
+          "routingStrategy": "auto"
+        }"#;
+
+        assert_eq!(
+            sidecar_config_fingerprint(config, manifest_a),
+            sidecar_config_fingerprint(config, manifest_b)
+        );
+        assert_ne!(
+            sidecar_config_fingerprint(config, manifest_b),
+            sidecar_config_fingerprint(config, manifest_c)
+        );
     }
 
     #[test]
@@ -19916,6 +20462,23 @@ data: {"error":{"code":"server_error","type":"upstream","message":"stream aborte
             account_upstream_base_url(&account),
             "https://relay.example/v1"
         );
+    }
+
+    #[test]
+    fn chat_completions_api_key_accounts_are_not_eligible_for_local_access_pool() {
+        let mut account = CodexAccount::new_api_key(
+            "api-1".to_string(),
+            "api-key@example.com".to_string(),
+            "sk-test".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("https://api.minimax.io/v1".to_string()),
+            Some("minimax".to_string()),
+            Some("MiniMax".to_string()),
+            Vec::new(),
+        );
+        account.api_wire_api = Some("chat_completions".to_string());
+
+        assert!(!is_local_access_eligible_account(&account, false));
     }
 
     #[test]

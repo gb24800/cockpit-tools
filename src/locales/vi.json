@@ -1764,6 +1764,7 @@
         "freeNotice": "Tài khoản miễn phí chưa được hỗ trợ. Tài khoản miễn phí không thể được chọn.",
         "freeUnsupported": "Tài khoản miễn phí chưa được hỗ trợ",
         "restrictFreeToggle": "Giới hạn tài khoản Free",
+        "chatApiKeyUnsupported": "Không hỗ trợ Chat Completions",
         "freeNoticeRestricted": "Tài khoản Free bị giới hạn. Tắt tùy chọn này để chọn chúng.",
         "freeNoticeUnstable": "Proxy tài khoản Free có thể không ổn định. Hãy dùng thận trọng.",
         "restrictFreeDisableConfirmTitle": "Cho phép tài khoản Free",
@@ -4395,7 +4396,7 @@
   "apiKeyFun": {
     "eyebrow": "Trung chuyển",
     "title": "Relay APIKEY.FUN",
-    "description": "Relay chính thức của Cockpit cung cấp quyền truy cập API mô hình lớn ổn định, mở và có hiệu quả chi phí cao. Nền tảng hỗ trợ các mô hình phổ biến như Claude, OpenAI và Gemini, phù hợp để cấu hình thống nhất trong Codex, Gemini CLI, Claude Code và các công cụ phát triển khác. Đăng ký qua liên kết độc quyền của Cockpit để nhận ưu đãi nạp tiền vĩnh viễn lên tới 5%.",
+    "description": "Relay đối tác chính thức của Cockpit cung cấp quyền truy cập API mô hình lớn ổn định, mở và có hiệu quả chi phí cao. Nền tảng hỗ trợ các mô hình phổ biến như Claude, OpenAI và Gemini, phù hợp để cấu hình thống nhất trong Codex, Gemini CLI, Claude Code và các công cụ phát triển khác. Đăng ký qua liên kết độc quyền của Cockpit để nhận ưu đãi nạp tiền vĩnh viễn lên tới 5%.",
     "register": "Liên kết độc quyền",
     "docs": "Tài liệu chính thức",
     "viewNow": "Xem ngay",

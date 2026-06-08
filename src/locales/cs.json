@@ -1764,6 +1764,7 @@
         "freeNotice": "Bezplatné účty zatím nejsou podporovány. Nelze vybrat bezplatné účty.",
         "freeUnsupported": "Bezplatné účty zatím nejsou podporovány",
         "restrictFreeToggle": "Omezit Free účty",
+        "chatApiKeyUnsupported": "Chat Completions není podporováno",
         "freeNoticeRestricted": "Free účty jsou omezené. Vypněte tuto volbu, chcete-li je vybrat.",
         "freeNoticeUnstable": "Proxy pro Free účty může být nestabilní. Používejte opatrně.",
         "restrictFreeDisableConfirmTitle": "Povolit Free účty",
@@ -4395,7 +4396,7 @@
   "apiKeyFun": {
     "eyebrow": "Přepojení",
     "title": "Relay APIKEY.FUN",
-    "description": "Oficiální relay Cockpit poskytuje stabilní, otevřený a cenově výhodný API přístup k velkým modelům. Podporuje hlavní modely jako Claude, OpenAI a Gemini a hodí se pro jednotnou konfiguraci v Codex, Gemini CLI, Claude Code a dalších vývojářských nástrojích. Registrací přes exkluzivní odkaz Cockpit můžete získat trvalou slevu až 5% na dobíjení.",
+    "description": "Oficiální partnerský relay Cockpit poskytuje stabilní, otevřený a cenově výhodný API přístup k velkým modelům. Podporuje hlavní modely jako Claude, OpenAI a Gemini a hodí se pro jednotnou konfiguraci v Codex, Gemini CLI, Claude Code a dalších vývojářských nástrojích. Registrací přes exkluzivní odkaz Cockpit můžete získat trvalou slevu až 5% na dobíjení.",
     "register": "Exkluzivní odkaz",
     "docs": "Oficiální dokumentace",
     "viewNow": "Zobrazit",

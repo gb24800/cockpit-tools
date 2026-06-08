@@ -1813,6 +1813,7 @@
         "freeNotice": "Akun gratis belum didukung. Akun gratis tidak dapat dipilih.",
         "freeUnsupported": "Akun gratis belum didukung",
         "restrictFreeToggle": "Batasi akun Free",
+        "chatApiKeyUnsupported": "Chat Completions tidak didukung",
         "freeNoticeRestricted": "Akun Free dibatasi. Nonaktifkan ini untuk memilihnya.",
         "freeNoticeUnstable": "Proxy akun Free bisa tidak stabil. Gunakan dengan hati-hati.",
         "restrictFreeDisableConfirmTitle": "Izinkan akun Free",
@@ -4395,7 +4396,7 @@
   "apiKeyFun": {
     "eyebrow": "Perantara",
     "title": "Relay APIKEY.FUN",
-    "description": "Relay resmi Cockpit menyediakan akses API model besar yang stabil, terbuka, dan hemat biaya. Layanan ini mendukung model utama seperti Claude, OpenAI, dan Gemini, serta cocok untuk konfigurasi terpadu di Codex, Gemini CLI, Claude Code, dan alat pengembang lainnya. Dengan mendaftar melalui tautan eksklusif Cockpit, Anda bisa mendapatkan diskon isi ulang permanen hingga 5%.",
+    "description": "Relay mitra resmi Cockpit menyediakan akses API model besar yang stabil, terbuka, dan hemat biaya. Layanan ini mendukung model utama seperti Claude, OpenAI, dan Gemini, serta cocok untuk konfigurasi terpadu di Codex, Gemini CLI, Claude Code, dan alat pengembang lainnya. Dengan mendaftar melalui tautan eksklusif Cockpit, Anda bisa mendapatkan diskon isi ulang permanen hingga 5%.",
     "register": "Tautan eksklusif",
     "docs": "Dokumen resmi",
     "viewNow": "Lihat sekarang",

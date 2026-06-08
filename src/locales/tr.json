@@ -1764,6 +1764,7 @@
         "freeNotice": "Ücretsiz hesaplar henüz desteklenmemektedir. Free accounts cannot be selected.",
         "freeUnsupported": "Ücretsiz hesaplar henüz desteklenmiyor",
         "restrictFreeToggle": "Free hesapları sınırla",
+        "chatApiKeyUnsupported": "Chat Completions desteklenmez",
         "freeNoticeRestricted": "Free hesaplar sınırlıdır. Seçmek için bunu kapatın.",
         "freeNoticeUnstable": "Free hesap proxy'si kararsız olabilir. Dikkatli kullanın.",
         "restrictFreeDisableConfirmTitle": "Free hesaplara izin ver",
@@ -4395,7 +4396,7 @@
   "apiKeyFun": {
     "eyebrow": "Ara geçiş",
     "title": "APIKEY.FUN relay",
-    "description": "Cockpit resmi ara geçiş hizmeti, büyük model API erişimi için kararlı, açık ve yüksek fiyat-performanslı bir çözüm sunar. Claude, OpenAI, Gemini gibi ana akım modelleri destekler; Codex, Gemini CLI, Claude Code ve diğer geliştirici araçlarında tek tip yapılandırma için uygundur. Cockpit özel bağlantısıyla kaydolarak yüklemelerde kalıcı olarak %5’e varan indirim alabilirsiniz.",
+    "description": "Cockpit resmi iş ortağı ara geçiş hizmeti, büyük model API erişimi için kararlı, açık ve yüksek fiyat-performanslı bir çözüm sunar. Claude, OpenAI, Gemini gibi ana akım modelleri destekler; Codex, Gemini CLI, Claude Code ve diğer geliştirici araçlarında tek tip yapılandırma için uygundur. Cockpit özel bağlantısıyla kaydolarak yüklemelerde kalıcı olarak %5’e varan indirim alabilirsiniz.",
     "register": "Özel kayıt linki",
     "docs": "Resmi doküman",
     "viewNow": "Hemen bak",

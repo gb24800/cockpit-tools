@@ -44,7 +44,6 @@ import {
 } from "../stores/usePlatformLayoutStore";
 import { getPlatformLabel } from "../utils/platformMeta";
 import { useCodexAccountStore } from "../stores/useCodexAccountStore";
-import * as codexService from "../services/codexService";
 import * as codexLocalAccessService from "../services/codexLocalAccessService";
 import {
   getCodexAccountGroups,
@@ -1327,7 +1326,7 @@ export function CodexApiServicePage() {
         ? []
         : filterCodexLocalAccessAccountIds(
             accountIds,
-            await codexService.listCodexAccounts(),
+            accounts,
             restrictFreeAccounts,
           );
 
@@ -1345,7 +1344,12 @@ export function CodexApiServicePage() {
       restrictFreeAccounts,
     );
     setState(next);
-    await fetchAccounts();
+    void fetchAccounts().catch((error) => {
+      console.error(
+        "Failed to refresh Codex accounts after API service save:",
+        error,
+      );
+    });
   };
 
   const handleSaveMembers = async (

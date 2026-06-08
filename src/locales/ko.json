@@ -1764,6 +1764,7 @@
         "freeNotice": "무료 계정은 아직 지원되지 않습니다. 무료 계정은 선택할 수 없습니다.",
         "freeUnsupported": "무료 계정은 아직 지원되지 않습니다",
         "restrictFreeToggle": "Free 계정 제한",
+        "chatApiKeyUnsupported": "Chat Completions 미지원",
         "freeNoticeRestricted": "Free 계정은 제한됩니다. 선택하려면 이 옵션을 끄세요.",
         "freeNoticeUnstable": "Free 계정 프록시는 불안정할 수 있습니다. 주의해서 사용하세요.",
         "restrictFreeDisableConfirmTitle": "Free 계정 허용",
@@ -4395,7 +4396,7 @@
   "apiKeyFun": {
     "eyebrow": "중계 서비스",
     "title": "APIKEY.FUN 릴레이",
-    "description": "Cockpit 공식 중계 서비스로, 안정적이고 개방적이며 비용 효율적인 대형 모델 API 접속을 제공합니다. Claude, OpenAI, Gemini 등 주요 모델을 지원하며 Codex, Gemini CLI, Claude Code 및 기타 개발 도구에서 통합 구성하기에 적합합니다. Cockpit 전용 링크로 가입하면 충전 금액에 대해 영구적으로 최대 5% 할인을 받을 수 있습니다.",
+    "description": "Cockpit 공식 파트너 중계 서비스로, 안정적이고 개방적이며 비용 효율적인 대형 모델 API 접속을 제공합니다. Claude, OpenAI, Gemini 등 주요 모델을 지원하며 Codex, Gemini CLI, Claude Code 및 기타 개발 도구에서 통합 구성하기에 적합합니다. Cockpit 전용 링크로 가입하면 충전 금액에 대해 영구적으로 최대 5% 할인을 받을 수 있습니다.",
     "register": "전용 가입 링크",
     "docs": "공식 문서",
     "viewNow": "바로 보기",

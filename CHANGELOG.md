@@ -7,6 +7,29 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.25.4] - 2026-06-08
+
+### Added
+- **WebDAV and local backup retention days can now be configured independently**: WebDAV backup cleanup can use its own retention policy instead of sharing the local backup retention setting.
+
+### Changed
+- **Codex API Service account-pool changes now return without waiting for a gateway reload**: saving API Service members and removing deleted accounts from the pool update local state first and trigger a single background gateway reload, keeping the add/delete flows responsive on large account sets.
+- **Large Codex account pickers now paginate their results**: the API Service member picker and Codex wakeup account pickers show paged account lists, reducing UI work when more than 1,000 accounts are present.
+- **Codex account-page large-list work is more focused**: API Service member saving reuses the current account snapshot instead of issuing another full account read, and team-account profile hydration only targets the current page.
+- **APIKEY.FUN presentation is clearer in dark mode**: the partner relay copy now says “official Cockpit partner relay”, and the APIKEY.FUN page adds dark-theme styling for panels, inputs, buttons, cards, messages, and key rows.
+
+### Fixed
+- **Deleted Codex accounts are fully removed from API Service references**: account pools, scoped API keys, custom routing rules, account model rules, runtime cache, response affinity, cooldowns, and bound OAuth references are cleaned when accounts are deleted.
+- **Codex API Service sidecar no longer restarts for quota-only manifest changes**: sidecar fingerprints ignore volatile remaining-quota fields while still detecting real routing and account changes.
+- **Codex API Service excludes Chat Completions API Key accounts from the regular account pool**: accounts that require the instance-specific provider gateway are no longer selectable for the global API Service pool, and the member picker shows an explicit unsupported status.
+- **Codex API Service is more stable on large local datasets and large requests**: startup raises the process file-descriptor soft limit on macOS/Linux, oversized declared HTTP request bodies are rejected before reading, and the sidecar can resolve macOS/Windows system proxy settings into an explicit upstream proxy URL.
+- **CLIProxyAPI sidecar preserves Codex reasoning effort for manifest models**: model registry entries now keep static thinking support for Codex models and aliases, so requests such as `reasoning.effort = high` survive the sidecar translation path.
+- **Restoring backups no longer overwrites unrelated configuration fields**: import and restore flows preserve configuration values outside the restored backup scope.
+- **MFA backup fields are handled more safely during backup transfer**: backup import/export avoids unsafe dynamic handling of MFA backup fields while keeping the related locale keys in sync.
+- **WebDAV service URL input now aligns with the other settings fields**: the WebDAV address field uses the same width behavior as neighboring settings controls.
+- **Pull request builds are more reliable on Windows runners**: PR builds now use the dedicated Tauri CI config file instead of inline JSON arguments that can be misparsed by Windows shells.
+
+---
 ## [0.25.3] - 2026-06-07
 
 ### Fixed

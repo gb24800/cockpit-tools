@@ -1764,6 +1764,7 @@
         "freeNotice": "Bezpłatne konta nie są jeszcze obsługiwane. Nie można wybrać kont bezpłatnych.",
         "freeUnsupported": "Bezpłatne konta nie są jeszcze obsługiwane",
         "restrictFreeToggle": "Ogranicz konta Free",
+        "chatApiKeyUnsupported": "Chat Completions nieobsługiwane",
         "freeNoticeRestricted": "Konta Free są ograniczone. Wyłącz tę opcję, aby je wybrać.",
         "freeNoticeUnstable": "Proxy kont Free może być niestabilne. Używaj ostrożnie.",
         "restrictFreeDisableConfirmTitle": "Zezwól na konta Free",
@@ -4395,7 +4396,7 @@
   "apiKeyFun": {
     "eyebrow": "Pośrednik",
     "title": "Relay APIKEY.FUN",
-    "description": "Oficjalny relay Cockpit zapewnia stabilny, otwarty i opłacalny dostęp API do dużych modeli. Obsługuje główne modele, takie jak Claude, OpenAI i Gemini, i nadaje się do jednolitej konfiguracji w Codex, Gemini CLI, Claude Code oraz innych narzędziach deweloperskich. Rejestrując się przez ekskluzywny link Cockpit, możesz uzyskać stałą zniżkę do 5% na doładowania.",
+    "description": "Oficjalny partnerski relay Cockpit zapewnia stabilny, otwarty i opłacalny dostęp API do dużych modeli. Obsługuje główne modele, takie jak Claude, OpenAI i Gemini, i nadaje się do jednolitej konfiguracji w Codex, Gemini CLI, Claude Code oraz innych narzędziach deweloperskich. Rejestrując się przez ekskluzywny link Cockpit, możesz uzyskać stałą zniżkę do 5% na doładowania.",
     "register": "Link ekskluzywny",
     "docs": "Oficjalna dokumentacja",
     "viewNow": "Zobacz teraz",

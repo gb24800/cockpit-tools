@@ -1764,6 +1764,7 @@
         "freeNotice": "無料アカウントはまだサポートされていません。無料アカウントは選択できません。",
         "freeUnsupported": "無料アカウントはまだサポートされていません",
         "restrictFreeToggle": "Freeアカウントを制限",
+        "chatApiKeyUnsupported": "Chat Completionsは非対応",
         "freeNoticeRestricted": "Freeアカウントは制限中です。選択するにはこの設定をオフにしてください。",
         "freeNoticeUnstable": "Freeアカウントのプロキシは不安定な場合があります。注意して使用してください。",
         "restrictFreeDisableConfirmTitle": "Freeアカウントを許可",
@@ -4395,7 +4396,7 @@
   "apiKeyFun": {
     "eyebrow": "中継サービス",
     "title": "APIKEY.FUN リレー",
-    "description": "Cockpit 公式の中継サービスで、安定したオープンで高コストパフォーマンスな大規模モデル API 接続を提供します。Claude、OpenAI、Gemini などの主要モデルに対応し、Codex、Gemini CLI、Claude Code などの開発ツールで統一して設定できます。Cockpit 専用リンクから登録すると、チャージが永久に最大 5% 割引になります。",
+    "description": "Cockpit 公式パートナーの中継サービスで、安定したオープンで高コストパフォーマンスな大規模モデル API 接続を提供します。Claude、OpenAI、Gemini などの主要モデルに対応し、Codex、Gemini CLI、Claude Code などの開発ツールで統一して設定できます。Cockpit 専用リンクから登録すると、チャージが永久に最大 5% 割引になります。",
     "register": "専用登録リンク",
     "docs": "公式ドキュメント",
     "viewNow": "今すぐ見る",

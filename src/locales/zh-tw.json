@@ -1764,6 +1764,7 @@
         "freeNotice": "暫不支援 Free 帳號，Free 帳號不可勾選。",
         "freeUnsupported": "暫不支援 Free 帳號",
         "restrictFreeToggle": "限制 Free 帳號使用",
+        "chatApiKeyUnsupported": "Chat Completions 不支援加入",
         "freeNoticeRestricted": "已限制 Free 帳號，關閉後才可勾選。",
         "freeNoticeUnstable": "Free 帳號反代可能不穩定，請謹慎使用。",
         "restrictFreeDisableConfirmTitle": "確認允許 Free 帳號",
@@ -4395,7 +4396,7 @@
   "apiKeyFun": {
     "eyebrow": "中轉站",
     "title": "APIKEY.FUN 中轉站",
-    "description": "Cockpit 官方中轉站，為使用者提供穩定、開放、高性價比的大模型 API 接入服務。支援 Claude、OpenAI、Gemini 等主流模型，適合在 Codex、Gemini CLI、Claude Code 及其他開發工具中統一配置使用。透過 Cockpit 專屬連結註冊，可享最高儲值永久 95 折優惠。",
+    "description": "Cockpit 官方合作中轉站，為使用者提供穩定、開放、高性價比的大模型 API 接入服務。支援 Claude、OpenAI、Gemini 等主流模型，適合在 Codex、Gemini CLI、Claude Code 及其他開發工具中統一配置使用。透過 Cockpit 專屬連結註冊，可享最高儲值永久 95 折優惠。",
     "register": "專屬註冊連結",
     "docs": "官方文件",
     "viewNow": "立即查看",

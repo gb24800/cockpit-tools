@@ -351,7 +351,7 @@
   "apiKeyFun": {
     "eyebrow": "Relay",
     "title": "APIKEY.FUN",
-    "description": "The official Cockpit relay, providing stable, open, and cost-effective large-model API access. It supports mainstream models such as Claude, OpenAI, and Gemini, and is suitable for unified configuration across Codex, Gemini CLI, Claude Code, and other developer tools. Register through the Cockpit exclusive link to get a permanent top-up discount of up to 5%.",
+    "description": "The official Cockpit partner relay, providing stable, open, and cost-effective large-model API access. It supports mainstream models such as Claude, OpenAI, and Gemini, and is suitable for unified configuration across Codex, Gemini CLI, Claude Code, and other developer tools. Register through the Cockpit exclusive link to get a permanent top-up discount of up to 5%.",
     "register": "Exclusive signup",
     "docs": "Official docs",
     "viewNow": "View now",
@@ -2124,6 +2124,7 @@
         "title": "Add to API Service",
         "desc": "Choose Codex OAuth or API Key accounts to include in the API service collection. Added accounts are hidden from the regular overview and managed only from the API service card.",
         "restrictFreeToggle": "Limit Free Accounts",
+        "chatApiKeyUnsupported": "Chat Completions unsupported",
         "freeNoticeRestricted": "Free accounts are limited. Turn this off to select them.",
         "freeNoticeUnstable": "Free-account proxying can be unstable. Use with caution.",
         "restrictFreeDisableConfirmTitle": "Allow Free Accounts",

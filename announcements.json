@@ -56,7 +56,7 @@
       "enabled": false,
       "relayRelated": true,
       "priority": 90,
-      "text": "Cockpit 官方中转站 APIKEY.FUN，统一接入主流模型，点击专属注册享充值优惠",
+      "text": "Cockpit 官方合作中转站 APIKEY.FUN，统一接入主流模型，点击专属注册享充值优惠",
       "badge": "中转",
       "ctaLabel": "查看",
       "ctaUrl": "https://apikey.fun/register?aff=cockpit",
@@ -68,7 +68,7 @@
       "expiresAt": null,
       "locales": {
         "zh-CN": {
-          "text": "Cockpit 官方中转站 APIKEY.FUN，统一接入主流模型，点击专属注册享充值优惠",
+          "text": "Cockpit 官方合作中转站 APIKEY.FUN，统一接入主流模型，点击专属注册享充值优惠",
           "badge": "中转",
           "ctaLabel": "查看"
         },
