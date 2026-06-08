@@ -6918,6 +6918,24 @@ fn close_pids(pids: &[u32], timeout_secs: u64) -> Result<(), String> {
     }
 }
 
+#[cfg(target_os = "windows")]
+pub fn normalize_actual_path_case(path: &std::path::Path) -> std::path::PathBuf {
+    use std::fs;
+    if let Ok(canonical) = fs::canonicalize(path) {
+        let path_str = canonical.to_string_lossy().to_string();
+        let stripped = if path_str.to_lowercase().starts_with("\\\\?\\unc\\") {
+            format!("\\\\{}", &path_str[8..])
+        } else if path_str.to_lowercase().starts_with("\\\\?\\") {
+            path_str[4..].to_string()
+        } else {
+            path_str
+        };
+        std::path::PathBuf::from(stripped)
+    } else {
+        path.to_path_buf()
+    }
+}
+
 /// 启动 Antigravity IDE
 pub fn start_antigravity() -> Result<u32, String> {
     start_antigravity_with_args("", &[])
@@ -6981,7 +6999,11 @@ pub fn start_antigravity_with_args(
     {
         use std::os::windows::process::CommandExt;
 
+        let launch_path = normalize_actual_path_case(&launch_path);
         let mut cmd = Command::new(&launch_path);
+        if let Some(parent) = launch_path.parent() {
+            cmd.current_dir(parent);
+        }
         apply_managed_proxy_env_to_command(&mut cmd);
         if should_detach_child() {
             cmd.creation_flags(0x08000000 | CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS); // CREATE_NO_WINDOW | detached
@@ -7075,7 +7097,11 @@ pub fn start_antigravity_legacy_with_args(
     {
         use std::os::windows::process::CommandExt;
 
+        let launch_path = normalize_actual_path_case(&launch_path);
         let mut cmd = Command::new(&launch_path);
+        if let Some(parent) = launch_path.parent() {
+            cmd.current_dir(parent);
+        }
         apply_managed_proxy_env_to_command(&mut cmd);
         if should_detach_child() {
             cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS);
