@@ -441,6 +441,19 @@ fn desktop_accounts_same_identity(a: &ClaudeAccount, b: &ClaudeAccount) -> bool 
     }
 }
 
+fn cli_accounts_same_identity(a: &ClaudeAccount, b: &ClaudeAccount) -> bool {
+    if a.auth_mode == ClaudeAuthMode::DesktopOAuth || b.auth_mode == ClaudeAuthMode::DesktopOAuth {
+        return false;
+    }
+    match (normalized_account_uuid(a), normalized_account_uuid(b)) {
+        (Some(left), Some(right)) => left == right,
+        _ => match (normalized_account_email(a), normalized_account_email(b)) {
+            (Some(left), Some(right)) => left == right,
+            _ => false,
+        },
+    }
+}
+
 fn merge_tags(left: Option<Vec<String>>, right: Option<Vec<String>>) -> Option<Vec<String>> {
     let mut tags = BTreeSet::new();
     for tag in left
@@ -880,11 +893,7 @@ fn get_claude_code_global_config_path(config_dir: &Path) -> Result<PathBuf, Stri
     if config_json.exists() {
         return Ok(config_json);
     }
-    if std::env::var("CLAUDE_CONFIG_DIR")
-        .ok()
-        .and_then(|value| normalize_non_empty(Some(&value)))
-        .is_some()
-    {
+    if config_dir != get_default_claude_code_config_dir()?.as_path() {
         return Ok(config_dir.join(CLAUDE_CODE_GLOBAL_CONFIG_FILE));
     }
     let home = dirs::home_dir().ok_or_else(|| "无法获取用户主目录".to_string())?;
@@ -3473,6 +3482,52 @@ pub fn import_cli_from_local() -> Result<ClaudeAccount, String> {
     }
 
     upsert_account_from_snapshots(credentials_raw, config_raw)
+}
+
+pub fn sync_cli_account_from_config_dir_if_same(
+    account_id: &str,
+    config_dir: &Path,
+) -> Result<Option<ClaudeAccount>, String> {
+    let existing = load_account(account_id).ok_or_else(|| "Claude 账号不存在".to_string())?;
+    if existing.auth_mode == ClaudeAuthMode::DesktopOAuth {
+        return Ok(None);
+    }
+
+    let credentials_raw = read_claude_code_credentials(config_dir);
+    if credentials_oauth(&credentials_raw).is_none() {
+        return Ok(None);
+    }
+    let config_path = get_claude_code_global_config_path(config_dir)?;
+    let Some(config_raw) = read_config_file(&config_path)? else {
+        return Ok(None);
+    };
+    if config_oauth_account(&config_raw).is_none() {
+        return Ok(None);
+    }
+
+    let incoming =
+        derive_account_from_snapshots(credentials_raw, config_raw, Some(existing.clone()))?;
+    if !cli_accounts_same_identity(&existing, &incoming) {
+        logger::log_warn(&format!(
+            "[Claude CLI] 跳过实例登录态同步：绑定账号与实例目录账号不一致，bind_id={}, config_dir={}",
+            account_id,
+            config_dir.display()
+        ));
+        return Ok(None);
+    }
+
+    if incoming.claude_credentials_raw == existing.claude_credentials_raw
+        && incoming.claude_config_raw == existing.claude_config_raw
+    {
+        return Ok(Some(existing));
+    }
+
+    logger::log_info(&format!(
+        "[Claude CLI] 同步实例目录登录态到账号快照: account_id={}, config_dir={}",
+        account_id,
+        config_dir.display()
+    ));
+    save_account_and_index(incoming).map(Some)
 }
 
 pub fn start_desktop_login() -> Result<ClaudeDesktopLoginStartResponse, String> {

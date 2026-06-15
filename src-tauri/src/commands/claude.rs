@@ -34,6 +34,33 @@ pub(crate) fn powershell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "''"))
 }
 
+#[cfg(target_os = "windows")]
+fn resolve_claude_cli_command() -> String {
+    if let Some(user_profile) = std::env::var_os("USERPROFILE") {
+        let candidate = Path::new(&user_profile)
+            .join(".local")
+            .join("bin")
+            .join("claude.exe");
+        if candidate.exists() {
+            return format!("& {}", powershell_quote(&candidate.to_string_lossy()));
+        }
+    }
+
+    if let Ok(output) = Command::new("where").arg("claude").output() {
+        if output.status.success() {
+            if let Some(path) = String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .map(str::trim)
+                .find(|line| !line.is_empty())
+            {
+                return format!("& {}", powershell_quote(path));
+            }
+        }
+    }
+
+    "claude".to_string()
+}
+
 #[cfg(target_os = "macos")]
 fn escape_applescript(value: &str) -> String {
     value
@@ -78,7 +105,7 @@ pub(crate) fn build_claude_cli_command_for_context(
             command_parts.push(format!("$env:{}={}", key, powershell_quote(value)));
         }
 
-        let mut command = "claude".to_string();
+        let mut command = resolve_claude_cli_command();
         for arg in parsed_args {
             let trimmed = arg.trim();
             if !trimmed.is_empty() {
