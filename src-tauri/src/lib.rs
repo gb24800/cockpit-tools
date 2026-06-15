@@ -425,6 +425,8 @@ pub fn run() {
             commands::claude::update_claude_account_plan,
             commands::claude::update_claude_account_note,
             commands::claude::get_claude_accounts_index_path,
+            commands::claude::claude_get_cli_launch_command,
+            commands::claude::claude_execute_cli_launch_command,
             commands::claude::claude_launch_cli,
             commands::claude::switch_claude_account,
             // Claude Instance Commands

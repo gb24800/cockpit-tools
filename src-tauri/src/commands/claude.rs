@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -84,10 +85,7 @@ fn is_safe_env_key(value: &str) -> bool {
 }
 
 #[cfg(not(target_os = "windows"))]
-fn write_posix_env_script(
-    working_dir: &str,
-    env: &[(String, String)],
-) -> Result<PathBuf, String> {
+fn write_posix_env_script(working_dir: &str, env: &[(String, String)]) -> Result<PathBuf, String> {
     let script_path = temp_claude_cli_script_path("sh");
     let script_path_text = script_path.to_string_lossy();
     let mut script = String::from("#!/bin/sh\n");
@@ -142,10 +140,7 @@ fn write_windows_env_script(
     Ok(script_path)
 }
 
-fn build_claude_cli_command(
-    working_dir: &str,
-    env: &[(String, String)],
-) -> Result<String, String> {
+fn build_claude_cli_command(working_dir: &str, env: &[(String, String)]) -> Result<String, String> {
     let working_dir = normalize_cli_working_dir(working_dir)?;
     #[cfg(target_os = "windows")]
     {
@@ -165,12 +160,12 @@ fn build_claude_cli_command(
         if !env.is_empty() {
             let script_path = write_posix_env_script(&working_dir, env)?;
             let script_path_text = script_path.to_string_lossy();
-            return Ok(format!("sh {}", posix_shell_quote(script_path_text.as_ref())));
+            return Ok(format!(
+                "sh {}",
+                posix_shell_quote(script_path_text.as_ref())
+            ));
         }
-        return Ok(format!(
-            "cd {} && claude",
-            posix_shell_quote(&working_dir)
-        ));
+        return Ok(format!("cd {} && claude", posix_shell_quote(&working_dir)));
     }
 
     #[allow(unreachable_code)]
@@ -324,6 +319,37 @@ fn execute_claude_cli_command(command: &str, terminal: Option<String>) -> Result
 
     #[allow(unreachable_code)]
     Err("Claude CLI 终端执行仅支持 macOS、Windows 和 Linux".to_string())
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClaudeCliLaunchInfo {
+    pub account_id: String,
+    pub account_email: String,
+    pub working_dir: String,
+    pub launch_command: String,
+}
+
+fn prepare_claude_cli_launch(
+    account_id: &str,
+    working_dir: &str,
+) -> Result<(ClaudeAccount, String, String), String> {
+    let account = claude_account::load_account(account_id)
+        .ok_or_else(|| format!("Claude account not found: {}", account_id))?;
+    if account.auth_mode == ClaudeAuthMode::DesktopOAuth {
+        return Err(
+            "Claude Desktop 登录态不能启动 Claude Code CLI，请使用 OAuth / Setup Token 账号。"
+                .to_string(),
+        );
+    }
+    let normalized_working_dir = normalize_cli_working_dir(working_dir)?;
+    let cli_env = claude_account::build_api_key_cli_env(&account)?;
+    let command = build_claude_cli_command(&normalized_working_dir, &cli_env)?;
+    if account.auth_mode != ClaudeAuthMode::ApiKey {
+        claude_account::inject_to_claude_config(account_id, None)?;
+    }
+    crate::modules::provider_current_state::set_current_account_id("claude_cli", Some(account_id))?;
+    Ok((account, normalized_working_dir, command))
 }
 
 #[tauri::command]
@@ -541,6 +567,64 @@ pub fn get_claude_accounts_index_path() -> Result<String, String> {
 }
 
 #[tauri::command]
+pub fn claude_get_cli_launch_command(
+    app: AppHandle,
+    account_id: String,
+    working_dir: String,
+) -> Result<ClaudeCliLaunchInfo, String> {
+    let started_at = Instant::now();
+    logger::log_info(&format!(
+        "[Claude CLI] 准备启动命令: account_id={}, working_dir={}",
+        account_id, working_dir
+    ));
+
+    let (account, normalized_working_dir, command) =
+        prepare_claude_cli_launch(&account_id, &working_dir)?;
+    let _ = crate::modules::tray::update_tray_menu(&app);
+
+    logger::log_info(&format!(
+        "[Claude CLI] 启动命令已准备: account_id={}, email={}, elapsed={}ms",
+        account.id,
+        account.email,
+        started_at.elapsed().as_millis()
+    ));
+
+    Ok(ClaudeCliLaunchInfo {
+        account_id: account.id,
+        account_email: account.email,
+        working_dir: normalized_working_dir,
+        launch_command: command,
+    })
+}
+
+#[tauri::command]
+pub fn claude_execute_cli_launch_command(
+    app: AppHandle,
+    account_id: String,
+    working_dir: String,
+    terminal: Option<String>,
+) -> Result<String, String> {
+    let started_at = Instant::now();
+    logger::log_info(&format!(
+        "[Claude CLI] 开始终端执行: account_id={}, working_dir={}",
+        account_id, working_dir
+    ));
+
+    let (account, _normalized_working_dir, command) =
+        prepare_claude_cli_launch(&account_id, &working_dir)?;
+    let result = execute_claude_cli_command(&command, terminal)?;
+    let _ = crate::modules::tray::update_tray_menu(&app);
+
+    logger::log_info(&format!(
+        "[Claude CLI] 终端执行完成: account_id={}, email={}, elapsed={}ms",
+        account.id,
+        account.email,
+        started_at.elapsed().as_millis()
+    ));
+    Ok(result)
+}
+
+#[tauri::command]
 pub fn claude_launch_cli(
     app: AppHandle,
     account_id: String,
@@ -553,23 +637,8 @@ pub fn claude_launch_cli(
         account_id, working_dir
     ));
 
-    let account = claude_account::load_account(&account_id)
-        .ok_or_else(|| format!("Claude account not found: {}", account_id))?;
-    if account.auth_mode == ClaudeAuthMode::DesktopOAuth {
-        return Err(
-            "Claude Desktop 登录态不能启动 Claude Code CLI，请使用 OAuth / Setup Token 账号。"
-                .to_string(),
-        );
-    }
-    let cli_env = claude_account::build_api_key_cli_env(&account)?;
-    let command = build_claude_cli_command(&working_dir, &cli_env)?;
-    if account.auth_mode != ClaudeAuthMode::ApiKey {
-        claude_account::inject_to_claude_config(&account_id, None)?;
-    }
-    crate::modules::provider_current_state::set_current_account_id(
-        "claude_cli",
-        Some(account_id.as_str()),
-    )?;
+    let (account, _normalized_working_dir, command) =
+        prepare_claude_cli_launch(&account_id, &working_dir)?;
     let result = execute_claude_cli_command(&command, terminal)?;
     let _ = crate::modules::tray::update_tray_menu(&app);
 

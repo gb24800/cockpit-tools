@@ -1209,7 +1209,9 @@ fn normalize_model_catalog(value: Option<Vec<String>>) -> Option<Vec<String>> {
     (!models.is_empty()).then_some(models)
 }
 
-fn normalize_api_extra_env(value: Option<BTreeMap<String, String>>) -> Option<BTreeMap<String, String>> {
+fn normalize_api_extra_env(
+    value: Option<BTreeMap<String, String>>,
+) -> Option<BTreeMap<String, String>> {
     let mut result = BTreeMap::new();
     for (key, value) in value.into_iter().flatten() {
         let key = key.trim().to_ascii_uppercase();
@@ -1512,32 +1514,31 @@ pub fn import_api_key(
     let api_base_url = normalize_api_provider_base_url(provider_config.api_base_url.as_deref())?;
     let require_anthropic_key = is_official_anthropic_api_base_url(api_base_url.as_deref());
     let api_key = normalize_claude_api_key(api_key, require_anthropic_key)?;
-    let api_key_field =
-        normalize_api_key_field(provider_config.api_key_field.as_deref(), api_base_url.as_deref());
+    let api_key_field = normalize_api_key_field(
+        provider_config.api_key_field.as_deref(),
+        api_base_url.as_deref(),
+    );
     let api_provider_name = normalize_non_empty(provider_config.api_provider_name.as_deref())
         .or_else(|| {
             api_base_url.as_deref().and_then(|value| {
-                Url::parse(value)
-                    .ok()
-                    .and_then(|url| url.host_str().map(|host| host.trim_start_matches("www.").to_string()))
+                Url::parse(value).ok().and_then(|url| {
+                    url.host_str()
+                        .map(|host| host.trim_start_matches("www.").to_string())
+                })
             })
         })
         .or_else(|| Some("Anthropic Official".to_string()));
     let api_provider_id = normalize_non_empty(provider_config.api_provider_id.as_deref());
     let api_provider_source_tag =
         normalize_non_empty(provider_config.api_provider_source_tag.as_deref());
-    let api_provider_website =
-        normalize_non_empty(provider_config.api_provider_website.as_deref());
+    let api_provider_website = normalize_non_empty(provider_config.api_provider_website.as_deref());
     let api_provider_api_key_url =
         normalize_non_empty(provider_config.api_provider_api_key_url.as_deref());
     let api_model_catalog = normalize_model_catalog(provider_config.api_model_catalog);
     let api_extra_env = normalize_api_extra_env(provider_config.api_extra_env);
     let id = build_api_key_account_id(&api_key, api_base_url.as_deref());
-    let display_name = build_api_key_display_name(
-        &api_key,
-        account_name,
-        api_provider_name.as_deref(),
-    );
+    let display_name =
+        build_api_key_display_name(&api_key, account_name, api_provider_name.as_deref());
     let now = now_ts_ms();
     let mut account = load_account_file(&id).unwrap_or_else(|| ClaudeAccount {
         id: id.clone(),
@@ -1592,7 +1593,9 @@ pub fn import_api_key(
     account.account_uuid = None;
     account.organization_uuid = None;
     account.organization_name = None;
-    account.plan_type = api_provider_name.clone().or_else(|| Some("API Key".to_string()));
+    account.plan_type = api_provider_name
+        .clone()
+        .or_else(|| Some("API Key".to_string()));
     account.avatar_url = None;
     account.profile_updated_at = None;
     account.quota = None;
@@ -2741,9 +2744,6 @@ fn find_electron_executable_for_desktop_auth() -> Result<PathBuf, String> {
         "electron"
     };
     let mut candidates = Vec::new();
-    if let Some(resource_dir) = get_desktop_auth_resource_dir() {
-        candidates.extend(electron_resource_executable_candidates(&resource_dir));
-    }
     if let Ok(current_dir) = std::env::current_dir() {
         candidates.push(current_dir.join("node_modules").join(".bin").join(bin_name));
     }
@@ -2753,6 +2753,9 @@ fn find_electron_executable_for_desktop_auth() -> Result<PathBuf, String> {
             candidates.push(dir.join("node_modules").join(".bin").join(bin_name));
             current = dir.parent();
         }
+    }
+    if let Some(resource_dir) = get_desktop_auth_resource_dir() {
+        candidates.extend(electron_resource_executable_candidates(&resource_dir));
     }
 
     candidates
@@ -4979,7 +4982,8 @@ pub fn build_api_key_cli_env(account: &ClaudeAccount) -> Result<Vec<(String, Str
         .api_base_url
         .as_deref()
         .and_then(|value| normalize_non_empty(Some(value)));
-    let key_field = normalize_api_key_field(account.api_key_field.as_deref(), api_base_url.as_deref());
+    let key_field =
+        normalize_api_key_field(account.api_key_field.as_deref(), api_base_url.as_deref());
     let mut env = BTreeMap::new();
     if let Some(extra_env) = account.api_extra_env.as_ref() {
         for (key, value) in extra_env {

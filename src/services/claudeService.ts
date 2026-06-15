@@ -19,6 +19,13 @@ type ClaudeOAuthStartResponseRaw = Partial<ClaudeOAuthStartResponse> & {
   interval_seconds?: number;
 };
 
+export interface ClaudeCliLaunchInfo {
+  accountId: string;
+  accountEmail: string;
+  workingDir: string;
+  launchCommand: string;
+}
+
 function normalizeClaudeDesktopLoginStartResponse(
   raw: ClaudeDesktopLoginStartResponseRaw,
 ): ClaudeDesktopLoginStartResponse {
@@ -205,6 +212,28 @@ export async function getClaudeAccountsIndexPath(): Promise<string> {
 
 export async function switchClaudeAccount(accountId: string): Promise<string> {
   return await invoke('switch_claude_account', { accountId });
+}
+
+export async function getClaudeCliLaunchCommand(
+  accountId: string,
+  workingDir: string,
+): Promise<ClaudeCliLaunchInfo> {
+  return await invoke('claude_get_cli_launch_command', {
+    accountId,
+    workingDir,
+  });
+}
+
+export async function executeClaudeCliLaunchCommand(
+  accountId: string,
+  workingDir: string,
+  terminal?: string,
+): Promise<string> {
+  return await invoke('claude_execute_cli_launch_command', {
+    accountId,
+    workingDir,
+    terminal: terminal?.trim() || null,
+  });
 }
 
 export async function launchClaudeCli(

@@ -39,6 +39,7 @@ import { ModalErrorMessage, useModalErrorState } from '../components/ModalErrorM
 import { ExportJsonModal } from '../components/ExportJsonModal';
 import { ManualHelpIconButton } from '../components/ManualHelpIconButton';
 import { QuickSettingsPopover } from '../components/QuickSettingsPopover';
+import { SingleSelectDropdown } from '../components/SingleSelectDropdown';
 import { TagEditModal } from '../components/TagEditModal';
 import { TopCenterPromoBanner } from '../components/TopCenterPromoBanner';
 import { ClaudeIcon } from '../components/icons/ClaudeIcon';
@@ -46,6 +47,7 @@ import { ModelProviderUsagePanel } from '../components/model-provider/ModelProvi
 import { PlatformGroupSwitcher } from '../components/platform/PlatformGroupSwitcher';
 import { useEscClose } from '../hooks/useEscClose';
 import { useExportJsonModal } from '../hooks/useExportJsonModal';
+import { useLaunchTerminalOptions } from '../hooks/useLaunchTerminalOptions';
 import { getProviderCurrentAccountId, type ProviderCurrentPlatform } from '../services/providerCurrentAccountService';
 import {
   isModelProviderUsageUnavailableError,
@@ -127,6 +129,18 @@ interface ClaudeAccountsPageProps {
 interface DeleteConfirmState {
   accountIds: string[];
   email: string;
+}
+
+interface ClaudeCliLaunchModalState {
+  accountId: string;
+  accountEmail: string;
+  workingDir: string;
+  instanceName: string;
+  launchCommand: string;
+  copied: boolean;
+  executing: boolean;
+  executeMessage: string | null;
+  executeError: string | null;
 }
 
 function formatDate(timestamp: number): string {
@@ -372,6 +386,8 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
   const routeInitialSection: ClaudePageSection = subPlatform === 'cli' ? 'cli' : 'desktop';
   const [activeSection, setActiveSection] = useState<ClaudePageSection>(routeInitialSection);
   const activeSubPlatform: ClaudeSubPlatform = activeSection === 'cli' ? 'cli' : 'desktop';
+  const { terminalOptions, selectedTerminal, setSelectedTerminal } =
+    useLaunchTerminalOptions(activeSubPlatform === 'cli');
   const store = useClaudeAccountStore();
   const { platformGroups } = usePlatformLayoutStore();
   const remoteHiddenPlatformIds = useRemoteConfigStore((state) => state.hiddenPlatformIds);
@@ -458,6 +474,7 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
   const oauthPrepareAttemptedRef = useRef(false);
   const [switching, setSwitching] = useState<string | null>(null);
   const [cliLaunchingAccountId, setCliLaunchingAccountId] = useState<string | null>(null);
+  const [cliLaunchModal, setCliLaunchModal] = useState<ClaudeCliLaunchModalState | null>(null);
   const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
   const [tagAccountId, setTagAccountId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
@@ -534,6 +551,7 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
   }, [desktopLogin?.loginId, oauthLogin?.loginId, resetAddModalState]);
 
   useEscClose(showAddModal, closeAddModal);
+  useEscClose(Boolean(cliLaunchModal), () => setCliLaunchModal(null));
   useEscClose(Boolean(deleteConfirm), () => setDeleteConfirm(null));
 
   const refreshCurrentAccountId = useCallback(
@@ -1113,11 +1131,19 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
       if (!selected || typeof selected !== 'string') {
         return;
       }
-      const result = await claudeService.launchClaudeCli(account.id, selected);
+      const launchInfo = await claudeService.getClaudeCliLaunchCommand(account.id, selected);
       await store.fetchAccounts();
       setCurrentAccountId(account.id);
-      setMessage({
-        text: result || t('claude.cli.launchSuccess', '已启动 Claude CLI'),
+      setCliLaunchModal({
+        accountId: launchInfo.accountId || account.id,
+        accountEmail: launchInfo.accountEmail || getClaudeAccountDisplayEmail(account),
+        workingDir: launchInfo.workingDir || selected,
+        instanceName: t('instances.defaultName', '默认实例'),
+        launchCommand: launchInfo.launchCommand,
+        copied: false,
+        executing: false,
+        executeMessage: null,
+        executeError: null,
       });
     } catch (error) {
       setMessage({
@@ -1128,6 +1154,68 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
       });
     } finally {
       setCliLaunchingAccountId(null);
+    }
+  };
+
+  const handleCopyCliLaunchCommand = async () => {
+    if (!cliLaunchModal) return;
+    try {
+      await navigator.clipboard.writeText(cliLaunchModal.launchCommand);
+      setCliLaunchModal((prev) => (prev ? { ...prev, copied: true, executeError: null } : prev));
+      window.setTimeout(() => {
+        setCliLaunchModal((prev) => (prev ? { ...prev, copied: false } : prev));
+      }, 1200);
+    } catch {
+      setCliLaunchModal((prev) =>
+        prev
+          ? {
+              ...prev,
+              executeError: t('common.shared.export.copyFailed', '复制失败，请手动复制'),
+            }
+          : prev,
+      );
+    }
+  };
+
+  const handleExecuteCliInTerminal = async () => {
+    if (!cliLaunchModal || cliLaunchModal.executing) return;
+    setCliLaunchModal((prev) =>
+      prev
+        ? {
+            ...prev,
+            executing: true,
+            executeMessage: null,
+            executeError: null,
+          }
+        : prev,
+    );
+    try {
+      const result = await claudeService.executeClaudeCliLaunchCommand(
+        cliLaunchModal.accountId,
+        cliLaunchModal.workingDir,
+        selectedTerminal,
+      );
+      await store.fetchAccounts();
+      setCurrentAccountId(cliLaunchModal.accountId);
+      setCliLaunchModal((prev) =>
+        prev
+          ? {
+              ...prev,
+              executing: false,
+              executeMessage: result || t('claude.cli.launchSuccess', '已启动 Claude CLI'),
+            }
+          : prev,
+      );
+    } catch (error) {
+      setCliLaunchModal((prev) =>
+        prev
+          ? {
+              ...prev,
+              executing: false,
+              executeError: String(error).replace(/^Error:\s*/, ''),
+            }
+          : prev,
+      );
     }
   };
 
@@ -2517,6 +2605,93 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
         onOpenSavedDirectory={exportModal.openSavedDirectory}
         onCopySavedPath={exportModal.copySavedPath}
       />
+
+      {cliLaunchModal && (
+        <div className="modal-overlay" onClick={() => setCliLaunchModal(null)}>
+          <div className="modal modal-lg" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{t('instances.launchDialog.title', '启动实例')}</h2>
+              <button
+                className="modal-close"
+                onClick={() => setCliLaunchModal(null)}
+                aria-label={t('common.close', '关闭')}
+              >
+                <X />
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="add-status success">
+                <Check size={16} />
+                <span>
+                  {t('accounts.switched', '已切换至 {{email}}', {
+                    email: maskAccountText(cliLaunchModal.accountEmail),
+                  })}
+                </span>
+              </div>
+              <div className="form-group">
+                <label>{t('instances.columns.instance', '实例')}</label>
+                <input
+                  className="form-input"
+                  value={cliLaunchModal.instanceName}
+                  readOnly
+                />
+              </div>
+              <div className="form-group">
+                <label>{t('instances.form.extraArgs', '自定义启动参数')}</label>
+                <textarea
+                  className="form-input instance-args-input"
+                  value={cliLaunchModal.launchCommand}
+                  readOnly
+                />
+                <p className="form-hint">
+                  {t(
+                    'instances.launchDialog.hint',
+                    '可复制命令手动执行，或点击下方按钮直接在终端执行。',
+                  )}
+                </p>
+              </div>
+              <div className="form-group">
+                <label>{t('instances.launchDialog.terminal', '终端')}</label>
+                <SingleSelectDropdown
+                  value={selectedTerminal}
+                  onChange={setSelectedTerminal}
+                  options={terminalOptions}
+                  disabled={cliLaunchModal.executing}
+                  ariaLabel={t('instances.launchDialog.terminal', '终端')}
+                />
+              </div>
+              {cliLaunchModal.executeMessage && (
+                <div className="add-status success">
+                  <Check size={16} />
+                  <span>{cliLaunchModal.executeMessage}</span>
+                </div>
+              )}
+              {cliLaunchModal.executeError && (
+                <div className="form-error">{cliLaunchModal.executeError}</div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button
+                className="btn btn-secondary"
+                onClick={() => void handleCopyCliLaunchCommand()}
+              >
+                <Copy size={16} />
+                {cliLaunchModal.copied ? t('common.success', '成功') : t('common.copy', '复制')}
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => void handleExecuteCliInTerminal()}
+                disabled={cliLaunchModal.executing}
+              >
+                <Play size={16} />
+                {cliLaunchModal.executing
+                  ? t('common.loading', '加载中...')
+                  : t('instances.launchDialog.runInTerminal', '终端执行')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {deleteConfirm && (
         <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}>
