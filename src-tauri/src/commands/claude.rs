@@ -1,9 +1,8 @@
 use serde::Serialize;
 use std::collections::BTreeMap;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::Instant;
 use tauri::AppHandle;
 use tauri_plugin_opener::OpenerExt;
 
@@ -13,7 +12,7 @@ use crate::models::claude::{
 use crate::modules::{claude_account, logger};
 
 #[cfg(not(target_os = "windows"))]
-fn posix_shell_quote(value: &str) -> String {
+pub(crate) fn posix_shell_quote(value: &str) -> String {
     if value.is_empty() {
         return "''".to_string();
     }
@@ -31,7 +30,7 @@ fn posix_shell_quote(value: &str) -> String {
 }
 
 #[cfg(target_os = "windows")]
-fn powershell_quote(value: &str) -> String {
+pub(crate) fn powershell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "''"))
 }
 
@@ -55,93 +54,10 @@ fn normalize_cli_working_dir(working_dir: &str) -> Result<String, String> {
     Ok(trimmed.to_string())
 }
 
-fn temp_claude_cli_script_path(extension: &str) -> PathBuf {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|value| value.as_nanos())
-        .unwrap_or_default();
-    std::env::temp_dir().join(format!(
-        "agtools-claude-cli-{}-{}.{}",
-        std::process::id(),
-        now,
-        extension
-    ))
-}
-
-fn is_safe_env_key(value: &str) -> bool {
-    let mut chars = value.chars();
-    match chars.next() {
-        Some(ch) if ch == '_' || ch.is_ascii_uppercase() => {}
-        _ => return false,
-    }
-    chars.all(|ch| ch == '_' || ch.is_ascii_uppercase() || ch.is_ascii_digit())
-}
-
-#[cfg(not(target_os = "windows"))]
-fn write_posix_env_script(working_dir: &str, env: &[(String, String)]) -> Result<PathBuf, String> {
-    let script_path = temp_claude_cli_script_path("sh");
-    let script_path_text = script_path.to_string_lossy();
-    let mut script = String::from("#!/bin/sh\n");
-    script.push_str(&format!(
-        "rm -f -- {}\n",
-        posix_shell_quote(&script_path_text)
-    ));
-    script.push_str(&format!(
-        "cd {} || exit $?\n",
-        posix_shell_quote(working_dir)
-    ));
-    for (key, value) in env {
-        if !is_safe_env_key(key) {
-            continue;
-        }
-        script.push_str(&format!("export {}={}\n", key, posix_shell_quote(value)));
-    }
-    script.push_str("exec claude\n");
-    fs::write(&script_path, script).map_err(|e| format!("写入 Claude CLI 临时脚本失败: {}", e))?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = fs::set_permissions(&script_path, fs::Permissions::from_mode(0o600));
-    }
-    Ok(script_path)
-}
-
-#[cfg(target_os = "windows")]
-fn write_windows_env_script(
-    working_dir: &str,
-    env: &[(String, String)],
-) -> Result<PathBuf, String> {
-    let script_path = temp_claude_cli_script_path("ps1");
-    let script_path_text = script_path.to_string_lossy();
-    let mut script = String::new();
-    script.push_str(&format!(
-        "Set-Location -LiteralPath {}\n",
-        powershell_quote(working_dir)
-    ));
-    for (key, value) in env {
-        if !is_safe_env_key(key) {
-            continue;
-        }
-        script.push_str(&format!("$env:{} = {}\n", key, powershell_quote(value)));
-    }
-    script.push_str("claude\n");
-    script.push_str(&format!(
-        "Remove-Item -LiteralPath {} -Force -ErrorAction SilentlyContinue\n",
-        powershell_quote(&script_path_text)
-    ));
-    fs::write(&script_path, script).map_err(|e| format!("写入 Claude CLI 临时脚本失败: {}", e))?;
-    Ok(script_path)
-}
-
-fn build_claude_cli_command(working_dir: &str, env: &[(String, String)]) -> Result<String, String> {
+fn build_claude_cli_command(working_dir: &str) -> Result<String, String> {
     let working_dir = normalize_cli_working_dir(working_dir)?;
     #[cfg(target_os = "windows")]
     {
-        if !env.is_empty() {
-            let script_path = write_windows_env_script(&working_dir, env)?;
-            let script_path_text = script_path.to_string_lossy();
-            return Ok(format!("& {}", powershell_quote(script_path_text.as_ref())));
-        }
         return Ok(format!(
             "Set-Location -LiteralPath {}; claude",
             powershell_quote(&working_dir)
@@ -150,14 +66,6 @@ fn build_claude_cli_command(working_dir: &str, env: &[(String, String)]) -> Resu
 
     #[cfg(not(target_os = "windows"))]
     {
-        if !env.is_empty() {
-            let script_path = write_posix_env_script(&working_dir, env)?;
-            let script_path_text = script_path.to_string_lossy();
-            return Ok(format!(
-                "sh {}",
-                posix_shell_quote(script_path_text.as_ref())
-            ));
-        }
         return Ok(format!("cd {} && claude", posix_shell_quote(&working_dir)));
     }
 
@@ -165,7 +73,10 @@ fn build_claude_cli_command(working_dir: &str, env: &[(String, String)]) -> Resu
     Err("当前系统暂不支持生成 Claude CLI 启动命令".to_string())
 }
 
-fn execute_claude_cli_command(command: &str, terminal: Option<String>) -> Result<String, String> {
+pub(crate) fn execute_claude_cli_command(
+    command: &str,
+    terminal: Option<String>,
+) -> Result<String, String> {
     let config = crate::modules::config::get_user_config();
     let terminal = terminal
         .unwrap_or(config.default_terminal)
@@ -336,11 +247,8 @@ fn prepare_claude_cli_launch(
         );
     }
     let normalized_working_dir = normalize_cli_working_dir(working_dir)?;
-    let cli_env = claude_account::build_api_key_cli_env(&account)?;
-    let command = build_claude_cli_command(&normalized_working_dir, &cli_env)?;
-    if account.auth_mode != ClaudeAuthMode::ApiKey {
-        claude_account::inject_to_claude_config(account_id, None)?;
-    }
+    claude_account::inject_to_claude_config(account_id, None)?;
+    let command = build_claude_cli_command(&normalized_working_dir)?;
     crate::modules::provider_current_state::set_current_account_id("claude_cli", Some(account_id))?;
     Ok((account, normalized_working_dir, command))
 }
@@ -650,8 +558,13 @@ pub fn switch_claude_account(app: AppHandle, account_id: String) -> Result<Strin
     let account = claude_account::load_account(&account_id)
         .ok_or_else(|| format!("Claude account not found: {}", account_id))?;
     claude_account::inject_to_claude(&account_id)?;
+    let current_platform = if account.auth_mode == ClaudeAuthMode::DesktopOAuth {
+        "claude"
+    } else {
+        "claude_cli"
+    };
     crate::modules::provider_current_state::set_current_account_id(
-        "claude",
+        current_platform,
         Some(account_id.as_str()),
     )?;
     let _ = crate::modules::tray::update_tray_menu(&app);

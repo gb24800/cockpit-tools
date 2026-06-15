@@ -35,6 +35,7 @@ import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
+import md5 from 'blueimp-md5';
 import { ModalErrorMessage, useModalErrorState } from '../components/ModalErrorMessage';
 import { ExportJsonModal } from '../components/ExportJsonModal';
 import { ManualHelpIconButton } from '../components/ManualHelpIconButton';
@@ -57,7 +58,9 @@ import {
 import { compareCurrentAccountFirst } from '../utils/currentAccountSort';
 import { isPrivacyModeEnabledByDefault, maskSensitiveValue, persistPrivacyModeEnabled } from '../utils/privacy';
 import * as claudeService from '../services/claudeService';
+import * as claudeInstanceService from '../services/claudeInstanceService';
 import { useClaudeAccountStore } from '../stores/useClaudeAccountStore';
+import { useClaudeInstanceStore } from '../stores/useClaudeInstanceStore';
 import {
   findGroupByPlatform,
   resolveGroupChildName,
@@ -98,6 +101,7 @@ import {
 } from '../utils/apiKeyFunPrefill';
 import { getPlatformLabel } from '../utils/platformMeta';
 import { ClaudeInstancesContent } from './ClaudeInstancesPage';
+import type { InstanceProfile } from '../types/instance';
 
 const CLAUDE_FLOW_NOTICE_COLLAPSED_KEY = 'agtools.claude.flow_notice_collapsed';
 const CLAUDE_ACCOUNTS_VIEW_MODE_KEY = 'agtools.claude.accounts_view_mode';
@@ -134,6 +138,7 @@ interface DeleteConfirmState {
 interface ClaudeCliLaunchModalState {
   accountId: string;
   accountEmail: string;
+  instanceId: string;
   workingDir: string;
   instanceName: string;
   launchCommand: string;
@@ -141,6 +146,20 @@ interface ClaudeCliLaunchModalState {
   executing: boolean;
   executeMessage: string | null;
   executeError: string | null;
+}
+
+function joinFilePath(directory: string, fileName: string): string {
+  if (!directory) return fileName;
+  const separator = directory.includes('\\') ? '\\' : '/';
+  return directory.endsWith(separator) ? `${directory}${fileName}` : `${directory}${separator}${fileName}`;
+}
+
+function normalizePathForCompare(value?: string | null): string {
+  return (value || '').trim();
+}
+
+function sanitizeClaudeCliInstanceName(value: string): string {
+  return value.replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim() || 'Claude CLI';
 }
 
 function formatDate(timestamp: number): string {
@@ -389,6 +408,7 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
   const { terminalOptions, selectedTerminal, setSelectedTerminal } =
     useLaunchTerminalOptions(activeSubPlatform === 'cli');
   const store = useClaudeAccountStore();
+  const claudeInstanceStore = useClaudeInstanceStore();
   const { platformGroups } = usePlatformLayoutStore();
   const remoteHiddenPlatformIds = useRemoteConfigStore((state) => state.hiddenPlatformIds);
   const remoteHiddenPlatformSet = useMemo(
@@ -764,7 +784,7 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
     });
   }, [currentSubPlatformAccounts]);
 
-  const accountsForInstances = desktopAccounts;
+  const accountsForInstances = store.accounts;
 
   const toggleAccountSelection = useCallback((accountId: string) => {
     setSelectedIds((prev) => {
@@ -1118,6 +1138,43 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
     }
   };
 
+  const resolveClaudeCliInstanceForAccount = async (
+    account: ClaudeAccount,
+    workingDir: string,
+  ): Promise<InstanceProfile> => {
+    const normalizedWorkingDir = normalizePathForCompare(workingDir);
+    const instances = await claudeInstanceService.listInstances();
+    const existing = instances.find(
+      (instance) =>
+        !instance.isDefault &&
+        (instance.launchMode ?? 'app') === 'cli' &&
+        instance.bindAccountId === account.id &&
+        normalizePathForCompare(instance.workingDir) === normalizedWorkingDir,
+    );
+    if (existing) {
+      return existing;
+    }
+
+    const defaults = await claudeInstanceService.getInstanceDefaults();
+    const displayName = getClaudeAccountDisplayEmail(account) || account.email || account.id;
+    const instanceHash = md5(`${account.id}|${normalizedWorkingDir}`).substring(0, 12);
+    const instanceName = sanitizeClaudeCliInstanceName(
+      `${displayName} CLI ${instanceHash.substring(0, 6)}`,
+    );
+    const userDataDir = joinFilePath(defaults.rootDir, `cli-${instanceHash}`);
+
+    return await claudeInstanceService.createInstance({
+      name: instanceName,
+      userDataDir,
+      workingDir: normalizedWorkingDir,
+      extraArgs: '',
+      bindAccountId: account.id,
+      launchMode: 'cli',
+      copySourceInstanceId: '__default__',
+      initMode: 'copy',
+    });
+  };
+
   const handleLaunchClaudeCli = async (account: ClaudeAccount) => {
     if (cliLaunchingAccountId) return;
     setMessage(null);
@@ -1131,14 +1188,20 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
       if (!selected || typeof selected !== 'string') {
         return;
       }
-      const launchInfo = await claudeService.getClaudeCliLaunchCommand(account.id, selected);
+      const instance = await resolveClaudeCliInstanceForAccount(account, selected);
+      const prepared = await claudeInstanceService.startInstance(instance.id);
+      const launchInfo = await claudeInstanceService.getClaudeInstanceLaunchCommand(prepared.id);
+      await claudeInstanceStore.refreshInstances();
       await store.fetchAccounts();
       setCurrentAccountId(account.id);
       setCliLaunchModal({
-        accountId: launchInfo.accountId || account.id,
-        accountEmail: launchInfo.accountEmail || getClaudeAccountDisplayEmail(account),
-        workingDir: launchInfo.workingDir || selected,
-        instanceName: t('instances.defaultName', '默认实例'),
+        accountId: account.id,
+        accountEmail: getClaudeAccountDisplayEmail(account),
+        instanceId: prepared.id,
+        workingDir: prepared.workingDir || selected,
+        instanceName: prepared.isDefault
+          ? t('instances.defaultName', '默认实例')
+          : prepared.name || t('instances.defaultName', '默认实例'),
         launchCommand: launchInfo.launchCommand,
         copied: false,
         executing: false,
@@ -1190,12 +1253,12 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
         : prev,
     );
     try {
-      const result = await claudeService.executeClaudeCliLaunchCommand(
-        cliLaunchModal.accountId,
-        cliLaunchModal.workingDir,
+      const result = await claudeInstanceService.executeClaudeInstanceLaunchCommand(
+        cliLaunchModal.instanceId,
         selectedTerminal,
       );
       await store.fetchAccounts();
+      await claudeInstanceStore.refreshInstances();
       setCurrentAccountId(cliLaunchModal.accountId);
       setCliLaunchModal((prev) =>
         prev
@@ -1782,7 +1845,7 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
                     isDesktopSubPlatform ? 'claude.flowNotice.desktopDesc' : 'claude.flowNotice.cliDesc',
                     isDesktopSubPlatform
                       ? '本工具可管理 Claude Desktop 登录态。登录会先保存到本地账号库；切号时才写入官方 Claude Desktop。'
-                      : '本工具可管理 Claude Code OAuth 与多供应商 API Key。OAuth 切号会写入本机 Claude Code 配置；API Key 启动 CLI 时注入供应商环境变量。',
+                      : '本工具可管理 Claude Code OAuth 与多供应商 API Key。OAuth 切号会写入本机 Claude Code 配置；API Key 会写入 Claude Code settings.json 的 env。',
                   )}
                 </div>
                 <ul className="ghcp-flow-notice-list">
@@ -1791,7 +1854,7 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
                     isDesktopSubPlatform ? 'claude.flowNotice.desktopPermission' : 'claude.flowNotice.cliPermission',
                     isDesktopSubPlatform
                       ? '权限范围：读取/写入官方 Claude Desktop 应用数据目录；Desktop 快照保存于本工具本地账号数据。'
-                        : '权限范围：读取/写入本机 Claude Code 配置目录与 macOS Keychain 中的 Claude Code 凭据；API Key 账号保存于本工具本地账号数据，启动时创建一次性本机临时脚本。',
+                        : '权限范围：读取/写入本机 Claude Code 配置目录与 macOS Keychain 中的 Claude Code 凭据；API Key 账号保存于本工具本地账号数据，并在切换或启动 CLI 时明文写入 settings.json 的 env。',
                     )}
                   </li>
                   <li>
@@ -2383,7 +2446,7 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
                   <p className="section-desc">
                     {t(
                       'claude.apiKey.desc',
-                      '保存 Claude CLI API Key 作为独立凭证；启动 CLI 时会按供应商注入环境变量，不会写入 Claude Desktop 登录态。',
+                      '保存 Claude CLI API Key 作为独立凭证；切换或启动 CLI 时会写入 Claude Code settings.json 的 env，不会写入 Claude Desktop 登录态。',
                     )}
                   </p>
                   <div className="form-group">
@@ -2485,7 +2548,7 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
                   <p className="oauth-hint">
                     {t(
                       'claude.apiKey.hint',
-                      'API Key 账号仅用于 Claude CLI 启动，不会写入 Claude Desktop 登录态，也不支持订阅额度刷新。',
+                      'API Key 账号仅用于 Claude CLI；会以明文 env 写入 Claude Code settings.json，不会写入 Claude Desktop 登录态，也不支持订阅额度刷新。',
                     )}
                   </p>
                   <button
@@ -2637,7 +2700,7 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
                 />
               </div>
               <div className="form-group">
-                <label>{t('instances.form.extraArgs', '自定义启动参数')}</label>
+                <label>{t('instances.launchDialog.command', '启动命令')}</label>
                 <textarea
                   className="form-input instance-args-input"
                   value={cliLaunchModal.launchCommand}

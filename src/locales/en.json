@@ -423,24 +423,24 @@
       "success": "Config files written: {{paths}}",
       "failed": "Config write failed: {{error}}"
     },
-  "error": {
-    "missingApiKey": "Enter an API Key.",
-    "queryFailed": "Quota check failed: {{error}}",
-    "saveFailed": "Write-in failed: {{error}}"
-  },
-  "models": {
-    "title": "Available models",
-    "desc": "Loaded from the current API Key's models endpoint and passed to Codex or Claude CLI.",
-    "count": "{{count}} models",
-    "loading": "Loading",
-    "loadingDesc": "Loading models from the current API Key...",
-    "empty": "Enter an API Key to load available models.",
-    "emptyFromKey": "The current API Key returned no models.",
-    "queryFailed": "Model list failed: {{error}}"
-  },
-  "copyKey": "Copy Key",
-  "clearKey": "Clear input",
-  "keyManager": {
+    "error": {
+      "missingApiKey": "Enter an API Key.",
+      "queryFailed": "Quota check failed: {{error}}",
+      "saveFailed": "Write-in failed: {{error}}"
+    },
+    "models": {
+      "title": "Available models",
+      "desc": "Loaded from the current API Key's models endpoint and passed to Codex or Claude CLI.",
+      "count": "{{count}} models",
+      "loading": "Loading",
+      "loadingDesc": "Loading models from the current API Key...",
+      "empty": "Enter an API Key to load available models.",
+      "emptyFromKey": "The current API Key returned no models.",
+      "queryFailed": "Model list failed: {{error}}"
+    },
+    "copyKey": "Copy Key",
+    "clearKey": "Clear input",
+    "keyManager": {
       "title": "Key Manager",
       "desc": "Save API Keys for quick switching and automatic quota checks.",
       "saveButton": "Save key",
@@ -4582,9 +4582,9 @@
       "permission": "Permission scope: read/write the official Claude Desktop app data directory. API Keys and Desktop snapshots are saved in this tool's local account data.",
       "network": "Network scope: the Desktop sign-in window opens claude.ai; account refresh may request Claude Web endpoints; API Key import itself does not access the network.",
       "desktopDesc": "This tool manages Claude Desktop sign-in state. Sign-in is saved locally first and is written to official Claude Desktop only when switching accounts.",
-      "cliDesc": "This tool manages Claude Code OAuth and multi-provider API Keys. OAuth switching writes to the local Claude Code config; API Key launch injects provider environment variables.",
+      "cliDesc": "This tool manages Claude Code OAuth and multi-provider API Keys. OAuth switching writes to the local Claude Code config; API Keys write provider env values into Claude Code settings.json.",
       "desktopPermission": "Permission scope: read/write the official Claude Desktop app data directory. Desktop snapshots are saved in this tool's local account data.",
-      "cliPermission": "Permission scope: read/write local Claude Code config and Claude Code credentials in macOS Keychain; API Key accounts are stored in this tool locally, and launch creates a one-time local temporary script.",
+      "cliPermission": "Permission scope: read/write local Claude Code config and Claude Code credentials in macOS Keychain; API Key accounts are stored locally by this tool and written as plaintext env values in settings.json when switching or launching Claude CLI.",
       "desktopNetwork": "Network scope: the Desktop sign-in window opens claude.ai; account refresh may request Claude Web endpoints.",
       "cliNetwork": "Network scope: OAuth authorization reaches Claude official authorization and token/profile/usage endpoints; API Key import itself is offline, and Claude CLI contacts the selected provider after launch."
     },
@@ -4641,14 +4641,14 @@
       "desktop_oauth": "Desktop sign-in"
     },
     "apiKey": {
-      "desc": "Save a Claude CLI API Key as a standalone credential. CLI launch injects provider environment variables and does not write Claude Desktop sign-in state.",
+      "desc": "Save a Claude CLI API Key as a separate credential. Switching or launching Claude CLI writes provider env values into Claude Code settings.json and does not write Claude Desktop sign-in state.",
       "nameLabel": "Account name",
       "namePlaceholder": "Optional, for example APIKEY.FUN",
       "keyLabel": "API Key",
       "placeholder": "Paste provider API Key",
       "hide": "Hide API Key",
       "show": "Show API Key",
-      "hint": "API Key accounts are only used to launch Claude CLI. They are not written to Claude Desktop and do not refresh subscription quota.",
+      "hint": "API Key accounts are only for Claude CLI. They are written as plaintext env values in Claude Code settings.json, do not affect Claude Desktop sign-in state, and do not support subscription quota refresh.",
       "importAction": "Import API Key",
       "required": "Enter an API Key",
       "importSuccess": "Claude API Key account imported: {{name}}",
@@ -4714,6 +4714,7 @@
       "quickLaunch": "CLI Launch",
       "selectWorkingDir": "Select Claude CLI working folder",
       "launchSuccess": "Claude CLI launched",
+      "prepared": "Claude CLI ready",
       "launchFailed": "Failed to launch Claude CLI: {{error}}",
       "localTitle": "Import current Claude Code",
       "localDesc": "Read the current local Claude Code OAuth sign-in state and copy it as a local account snapshot.",

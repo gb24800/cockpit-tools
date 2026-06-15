@@ -13,21 +13,43 @@ use chrono::Utc;
 use sysinfo::{ProcessRefreshKind, System, UpdateKind};
 use uuid::Uuid;
 
-use crate::models::{DefaultInstanceSettings, InstanceProfile, InstanceStore};
+use crate::models::{DefaultInstanceSettings, InstanceLaunchMode, InstanceProfile, InstanceStore};
 use crate::modules;
 use crate::modules::instance::InstanceDefaults;
 use crate::modules::instance_store;
-
-pub use crate::modules::instance_store::{CreateInstanceParams, UpdateInstanceParams};
 
 static CLAUDE_INSTANCE_STORE_LOCK: std::sync::LazyLock<Mutex<()>> =
     std::sync::LazyLock::new(|| Mutex::new(()));
 
 const CLAUDE_INSTANCES_FILE: &str = "claude_instances.json";
 const CLAUDE_GLOBAL_CONFIG_FILE: &str = ".claude.json";
+const CLAUDE_CODE_CONFIG_FILE: &str = ".config.json";
 const CLAUDE_CREDENTIALS_FILE: &str = ".credentials.json";
 const CLAUDE_DESKTOP_CONFIG_FILE: &str = "config.json";
+const CLAUDE_CODE_SETTINGS_FILE: &str = "settings.json";
 const CLAUDE_USER_DATA_DIR_ENV: &str = "CLAUDE_USER_DATA_DIR";
+
+#[derive(Debug, Clone)]
+pub struct CreateInstanceParams {
+    pub name: String,
+    pub user_data_dir: String,
+    pub working_dir: Option<String>,
+    pub extra_args: String,
+    pub bind_account_id: Option<String>,
+    pub copy_source_instance_id: Option<String>,
+    pub init_mode: Option<String>,
+    pub launch_mode: Option<InstanceLaunchMode>,
+}
+
+#[derive(Debug, Clone)]
+pub struct UpdateInstanceParams {
+    pub instance_id: String,
+    pub name: Option<String>,
+    pub working_dir: Option<String>,
+    pub extra_args: Option<String>,
+    pub bind_account_id: Option<Option<String>>,
+    pub launch_mode: Option<InstanceLaunchMode>,
+}
 
 fn instances_path() -> Result<PathBuf, String> {
     let data_dir = modules::account::get_data_dir()?;
@@ -43,7 +65,9 @@ pub fn is_profile_initialized(config_dir: &Path) -> bool {
         || config_dir.join("Network").join("Cookies").exists()
         || config_dir.join("Network").join("Cookies-journal").exists()
         || config_dir.join(CLAUDE_CREDENTIALS_FILE).exists()
+        || config_dir.join(CLAUDE_CODE_CONFIG_FILE).exists()
         || config_dir.join(CLAUDE_GLOBAL_CONFIG_FILE).exists()
+        || config_dir.join(CLAUDE_CODE_SETTINGS_FILE).exists()
 }
 
 pub fn load_instance_store() -> Result<InstanceStore, String> {
@@ -66,6 +90,7 @@ pub fn update_default_settings(
     working_dir: Option<String>,
     extra_args: Option<String>,
     follow_local_account: Option<bool>,
+    launch_mode: Option<InstanceLaunchMode>,
 ) -> Result<DefaultInstanceSettings, String> {
     let _lock = CLAUDE_INSTANCE_STORE_LOCK
         .lock()
@@ -87,6 +112,9 @@ pub fn update_default_settings(
     if let Some(args) = extra_args {
         settings.extra_args = args.trim().to_string();
     }
+    if let Some(mode) = launch_mode {
+        settings.launch_mode = mode;
+    }
     if follow_local_account.is_some() {
         settings.follow_local_account = false;
     }
@@ -98,6 +126,10 @@ pub fn update_default_settings(
 
 pub fn get_default_claude_config_dir() -> Result<PathBuf, String> {
     modules::claude_account::get_default_claude_desktop_user_data_dir()
+}
+
+pub fn get_default_claude_cli_config_dir() -> Result<PathBuf, String> {
+    modules::claude_account::get_default_claude_code_config_dir()
 }
 
 pub fn get_default_instances_root_dir() -> Result<PathBuf, String> {
@@ -155,15 +187,22 @@ fn ensure_target_root_empty(path: &Path) -> Result<(), String> {
 fn resolve_copy_source_config_dir(
     store: &InstanceStore,
     copy_source_instance_id: Option<&str>,
+    launch_mode: &InstanceLaunchMode,
 ) -> Result<PathBuf, String> {
     match copy_source_instance_id {
-        Some("__default__") | None => get_default_claude_config_dir(),
+        Some("__default__") | None => match launch_mode {
+            InstanceLaunchMode::Cli => get_default_claude_cli_config_dir(),
+            InstanceLaunchMode::App => get_default_claude_config_dir(),
+        },
         Some(source_id) => {
             let source = store
                 .instances
                 .iter()
                 .find(|item| item.id == source_id)
                 .ok_or("复制来源实例不存在")?;
+            if &source.launch_mode != launch_mode {
+                return Err("复制来源实例的启动方式不同，请选择同类型实例".to_string());
+            }
             Ok(PathBuf::from(&source.user_data_dir))
         }
     }
@@ -187,6 +226,7 @@ pub fn create_instance(params: CreateInstanceParams) -> Result<InstanceProfile, 
         .as_deref()
         .unwrap_or("copy")
         .to_ascii_lowercase();
+    let launch_mode = params.launch_mode.unwrap_or_default();
     let create_empty = init_mode == "empty";
     let use_existing_dir = init_mode == "existingdir" || init_mode == "existing_dir";
 
@@ -205,13 +245,21 @@ pub fn create_instance(params: CreateInstanceParams) -> Result<InstanceProfile, 
         fs::create_dir_all(&user_dir_path).map_err(|e| format!("创建实例目录失败: {}", e))?;
     } else {
         ensure_target_root_empty(&user_dir_path)?;
-        let source_dir =
-            resolve_copy_source_config_dir(&store, params.copy_source_instance_id.as_deref())?;
+        let source_id = params.copy_source_instance_id.as_deref();
+        let source_dir = resolve_copy_source_config_dir(&store, source_id, &launch_mode)?;
         if !source_dir.exists() {
-            return Err("未找到复制来源目录，请先确保来源实例已初始化".to_string());
+            let is_default_cli_source = launch_mode == InstanceLaunchMode::Cli
+                && matches!(source_id, Some("__default__") | None);
+            if is_default_cli_source {
+                fs::create_dir_all(&user_dir_path)
+                    .map_err(|e| format!("创建实例目录失败: {}", e))?;
+            } else {
+                return Err("未找到复制来源目录，请先确保来源实例已初始化".to_string());
+            }
+        } else {
+            fs::create_dir_all(&user_dir_path).map_err(|e| format!("创建实例目录失败: {}", e))?;
+            instance_store::copy_dir_recursive(&source_dir, &user_dir_path)?;
         }
-        fs::create_dir_all(&user_dir_path).map_err(|e| format!("创建实例目录失败: {}", e))?;
-        instance_store::copy_dir_recursive(&source_dir, &user_dir_path)?;
     }
 
     let instance = InstanceProfile {
@@ -225,7 +273,7 @@ pub fn create_instance(params: CreateInstanceParams) -> Result<InstanceProfile, 
         } else {
             params.bind_account_id
         },
-        launch_mode: crate::models::InstanceLaunchMode::App,
+        launch_mode,
         app_speed: crate::models::codex::CodexAppSpeed::Standard,
         created_at: Utc::now().timestamp_millis(),
         last_launched_at: None,
@@ -275,6 +323,9 @@ pub fn update_instance(params: UpdateInstanceParams) -> Result<InstanceProfile, 
     }
     if let Some(bind) = params.bind_account_id {
         instance.bind_account_id = bind;
+    }
+    if let Some(mode) = params.launch_mode {
+        instance.launch_mode = mode;
     }
 
     let updated = instance.clone();

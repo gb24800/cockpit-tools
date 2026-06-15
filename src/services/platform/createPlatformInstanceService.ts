@@ -80,6 +80,7 @@ export function createPlatformInstanceService(
         workingDir: payload.workingDir ?? null,
         extraArgs: payload.extraArgs ?? "",
         bindAccountId: payload.bindAccountId ?? null,
+        launchMode: payload.launchMode ?? null,
         appSpeed: payload.appSpeed ?? "standard",
         copySourceInstanceId: payload.copySourceInstanceId,
         initMode: payload.initMode ?? "copy",

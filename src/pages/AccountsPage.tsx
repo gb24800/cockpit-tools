@@ -2251,7 +2251,10 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
           </div>
           {(isList || resetLabel) && (
             <div className={isList ? "quota-footer" : undefined}>
-              <span className={isList ? "quota-reset" : "quota-compact-reset"}>
+              <span
+                className={isList ? "quota-reset" : "quota-compact-reset"}
+                title={resetLabel || undefined}
+              >
                 {resetLabel || '\u00A0'}
               </span>
             </div>

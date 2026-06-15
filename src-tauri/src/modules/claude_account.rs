@@ -44,8 +44,22 @@ const CLAUDE_OAUTH_STATE_FILE: &str = "claude_oauth_pending.json";
 const CLAUDE_CODE_CREDENTIALS_FILE: &str = ".credentials.json";
 const CLAUDE_CODE_CONFIG_FILE: &str = ".config.json";
 const CLAUDE_CODE_GLOBAL_CONFIG_FILE: &str = ".claude.json";
+const CLAUDE_CODE_SETTINGS_FILE: &str = "settings.json";
+const CLAUDE_CODE_SETTINGS_MANAGED_ENV_KEYS_FILE: &str =
+    "claude_cli_settings_managed_env_keys.json";
 const CLAUDE_CODE_KEYCHAIN_SERVICE_PREFIX: &str = "Claude Code";
 const CLAUDE_CODE_KEYCHAIN_CREDENTIALS_SUFFIX: &str = "-credentials";
+const CLAUDE_CODE_API_ENV_KEYS: &[&str] = &[
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN",
+    "ANTHROPIC_BASE_URL",
+    "ANTHROPIC_MODEL",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+    "CLAUDE_CODE_ATTRIBUTION_HEADER",
+];
 const CLAUDE_OAUTH_SCOPES: [&str; 6] = [
     "org:create_api_key",
     "user:profile",
@@ -784,7 +798,7 @@ pub fn get_default_claude_desktop_user_data_dir() -> Result<PathBuf, String> {
     Ok(data_dir.join("Claude"))
 }
 
-fn get_default_claude_code_config_dir() -> Result<PathBuf, String> {
+pub fn get_default_claude_code_config_dir() -> Result<PathBuf, String> {
     if let Ok(value) = std::env::var("CLAUDE_CONFIG_DIR") {
         let trimmed = value.trim();
         if !trimmed.is_empty() {
@@ -804,6 +818,14 @@ fn get_effective_claude_code_config_dir(config_dir: Option<&Path>) -> Result<Pat
 
 fn get_claude_code_credentials_path(config_dir: &Path) -> PathBuf {
     config_dir.join(CLAUDE_CODE_CREDENTIALS_FILE)
+}
+
+fn get_claude_code_settings_path(config_dir: &Path) -> PathBuf {
+    config_dir.join(CLAUDE_CODE_SETTINGS_FILE)
+}
+
+fn get_claude_code_settings_managed_env_keys_path() -> Result<PathBuf, String> {
+    Ok(get_data_dir()?.join(CLAUDE_CODE_SETTINGS_MANAGED_ENV_KEYS_FILE))
 }
 
 fn get_claude_code_global_config_path(config_dir: &Path) -> Result<PathBuf, String> {
@@ -4722,6 +4744,200 @@ fn write_config_file(path: &Path, config: &Value) -> Result<(), String> {
     Ok(())
 }
 
+fn normalize_env_key(value: &str) -> Option<String> {
+    let key = value.trim().to_ascii_uppercase();
+    if key.is_empty() {
+        return None;
+    }
+    let mut chars = key.chars();
+    match chars.next() {
+        Some(ch) if ch == '_' || ch.is_ascii_uppercase() => {}
+        _ => return None,
+    }
+    if chars.all(|ch| ch == '_' || ch.is_ascii_uppercase() || ch.is_ascii_digit()) {
+        Some(key)
+    } else {
+        None
+    }
+}
+
+fn managed_env_store_key(path: &Path) -> String {
+    path.to_string_lossy().to_string()
+}
+
+fn read_settings_managed_env_keys() -> BTreeMap<String, Vec<String>> {
+    let Ok(path) = get_claude_code_settings_managed_env_keys_path() else {
+        return BTreeMap::new();
+    };
+    let Ok(Some(value)) = read_config_file(&path) else {
+        return BTreeMap::new();
+    };
+    let mut result = BTreeMap::new();
+    let Some(object) = value.as_object() else {
+        return result;
+    };
+    for (path, keys) in object {
+        let key_list = keys
+            .as_array()
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item.as_str())
+                    .filter_map(normalize_env_key)
+                    .collect::<BTreeSet<_>>()
+                    .into_iter()
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        if !key_list.is_empty() {
+            result.insert(path.clone(), key_list);
+        }
+    }
+    result
+}
+
+fn write_settings_managed_env_keys(map: &BTreeMap<String, Vec<String>>) -> Result<(), String> {
+    let path = get_claude_code_settings_managed_env_keys_path()?;
+    let value = serde_json::to_value(map)
+        .map_err(|e| format!("序列化 Claude CLI settings 管理键失败: {}", e))?;
+    write_config_file(&path, &value)
+}
+
+fn record_settings_managed_env_keys(
+    settings_path: &Path,
+    keys: BTreeSet<String>,
+) -> Result<(), String> {
+    let mut map = read_settings_managed_env_keys();
+    let map_key = managed_env_store_key(settings_path);
+    if keys.is_empty() {
+        map.remove(&map_key);
+    } else {
+        map.insert(map_key, keys.into_iter().collect());
+    }
+    write_settings_managed_env_keys(&map)
+}
+
+fn managed_env_keys_for_settings(settings_path: &Path) -> BTreeSet<String> {
+    let mut keys = CLAUDE_CODE_API_ENV_KEYS
+        .iter()
+        .filter_map(|key| normalize_env_key(key))
+        .collect::<BTreeSet<_>>();
+    let map = read_settings_managed_env_keys();
+    if let Some(recorded) = map.get(&managed_env_store_key(settings_path)) {
+        keys.extend(recorded.iter().filter_map(|key| normalize_env_key(key)));
+    }
+    keys
+}
+
+fn clear_api_key_env_from_claude_code_settings(config_dir: &Path) -> Result<(), String> {
+    let settings_path = get_claude_code_settings_path(config_dir);
+    let recorded_keys = read_settings_managed_env_keys();
+    let has_recorded_keys = recorded_keys.contains_key(&managed_env_store_key(&settings_path));
+    if !settings_path.exists() {
+        if has_recorded_keys {
+            record_settings_managed_env_keys(&settings_path, BTreeSet::new())?;
+        }
+        return Ok(());
+    }
+
+    let keys = managed_env_keys_for_settings(&settings_path);
+    if keys.is_empty() {
+        return Ok(());
+    }
+
+    let mut settings = read_config_file(&settings_path)?.unwrap_or_else(|| json!({}));
+    if !settings.is_object() {
+        settings = json!({});
+    }
+
+    if let Some(env_object) = settings
+        .get_mut("env")
+        .and_then(|value| value.as_object_mut())
+    {
+        for key in &keys {
+            env_object.remove(key);
+        }
+    }
+
+    write_config_file(&settings_path, &settings)?;
+    record_settings_managed_env_keys(&settings_path, BTreeSet::new())
+}
+
+fn build_api_key_cli_env_map(account: &ClaudeAccount) -> Result<BTreeMap<String, String>, String> {
+    let api_key = account
+        .api_key
+        .as_deref()
+        .and_then(|value| normalize_non_empty(Some(value)))
+        .ok_or_else(|| "Claude API Key 账号缺少 API Key".to_string())?;
+    let api_base_url = account
+        .api_base_url
+        .as_deref()
+        .and_then(|value| normalize_non_empty(Some(value)));
+    let key_field =
+        normalize_api_key_field(account.api_key_field.as_deref(), api_base_url.as_deref());
+    let mut env = BTreeMap::new();
+    if let Some(extra_env) = account.api_extra_env.as_ref() {
+        for (key, value) in extra_env {
+            let Some(key) = normalize_env_key(key) else {
+                continue;
+            };
+            let value = value.trim();
+            if value.is_empty() {
+                continue;
+            }
+            if matches!(
+                key.as_str(),
+                "ANTHROPIC_API_KEY" | "ANTHROPIC_AUTH_TOKEN" | "ANTHROPIC_BASE_URL"
+            ) {
+                continue;
+            }
+            env.insert(key, value.to_string());
+        }
+    }
+    if let Some(api_base_url) = api_base_url {
+        env.insert("ANTHROPIC_BASE_URL".to_string(), api_base_url);
+    }
+    env.insert(key_field, api_key);
+    Ok(env)
+}
+
+fn inject_api_key_to_claude_code_settings(
+    account: &ClaudeAccount,
+    config_dir: Option<&Path>,
+) -> Result<(), String> {
+    let config_dir = get_effective_claude_code_config_dir(config_dir)?;
+    let settings_path = get_claude_code_settings_path(&config_dir);
+    let env = build_api_key_cli_env_map(account)?;
+    let managed_keys = env.keys().cloned().collect::<BTreeSet<_>>();
+
+    fs::create_dir_all(&config_dir).map_err(|e| format!("创建 Claude Code 配置目录失败: {}", e))?;
+    let mut settings = read_config_file(&settings_path)?.unwrap_or_else(|| json!({}));
+    if !settings.is_object() {
+        settings = json!({});
+    }
+
+    let keys_to_clear = managed_env_keys_for_settings(&settings_path);
+    let object = settings
+        .as_object_mut()
+        .ok_or_else(|| "Claude settings.json 结构非法".to_string())?;
+    let env_value = object.entry("env".to_string()).or_insert_with(|| json!({}));
+    if !env_value.is_object() {
+        *env_value = json!({});
+    }
+    let env_object = env_value
+        .as_object_mut()
+        .ok_or_else(|| "Claude settings.json env 结构非法".to_string())?;
+    for key in keys_to_clear {
+        env_object.remove(&key);
+    }
+    for (key, value) in env {
+        env_object.insert(key, Value::String(value));
+    }
+
+    write_config_file(&settings_path, &settings)?;
+    record_settings_managed_env_keys(&settings_path, managed_keys)
+}
+
 #[cfg(target_os = "macos")]
 fn claude_code_keychain_service_name() -> String {
     let hash_suffix = std::env::var("CLAUDE_CONFIG_DIR")
@@ -4921,45 +5137,6 @@ fn inject_oauth_account_to_claude_code(
     Ok(())
 }
 
-pub fn build_api_key_cli_env(account: &ClaudeAccount) -> Result<Vec<(String, String)>, String> {
-    if account.auth_mode != ClaudeAuthMode::ApiKey {
-        return Ok(Vec::new());
-    }
-    let api_key = account
-        .api_key
-        .as_deref()
-        .and_then(|value| normalize_non_empty(Some(value)))
-        .ok_or_else(|| "Claude API Key 账号缺少 API Key".to_string())?;
-    let api_base_url = account
-        .api_base_url
-        .as_deref()
-        .and_then(|value| normalize_non_empty(Some(value)));
-    let key_field =
-        normalize_api_key_field(account.api_key_field.as_deref(), api_base_url.as_deref());
-    let mut env = BTreeMap::new();
-    if let Some(extra_env) = account.api_extra_env.as_ref() {
-        for (key, value) in extra_env {
-            let key = key.trim().to_ascii_uppercase();
-            let value = value.trim();
-            if key.is_empty() || value.is_empty() {
-                continue;
-            }
-            if matches!(
-                key.as_str(),
-                "ANTHROPIC_API_KEY" | "ANTHROPIC_AUTH_TOKEN" | "ANTHROPIC_BASE_URL"
-            ) {
-                continue;
-            }
-            env.insert(key, value.to_string());
-        }
-    }
-    if let Some(api_base_url) = api_base_url {
-        env.insert("ANTHROPIC_BASE_URL".to_string(), api_base_url);
-    }
-    env.insert(key_field, api_key);
-    Ok(env.into_iter().collect())
-}
-
 pub fn inject_to_claude_config(account_id: &str, config_dir: Option<&Path>) -> Result<(), String> {
     let account = load_account(account_id).ok_or_else(|| "Claude 账号不存在".to_string())?;
     if account.auth_mode == ClaudeAuthMode::DesktopOAuth {
@@ -4986,11 +5163,14 @@ pub fn inject_to_claude_config(account_id: &str, config_dir: Option<&Path>) -> R
         return Ok(());
     }
     if account.auth_mode == ClaudeAuthMode::ApiKey {
-        return Err(
-            "Claude API Key 账号不能写入 Claude Desktop 登录态，请使用 Claude Desktop 登录账号。"
-                .to_string(),
-        );
+        inject_api_key_to_claude_code_settings(&account, config_dir)?;
+        let mut updated = account.clone();
+        updated.last_used = now_ts_ms();
+        save_account_and_index(updated)?;
+        return Ok(());
     }
+    let config_dir_path = get_effective_claude_code_config_dir(config_dir)?;
+    clear_api_key_env_from_claude_code_settings(&config_dir_path)?;
     inject_oauth_account_to_claude_code(&account, config_dir)?;
 
     let mut updated = account.clone();

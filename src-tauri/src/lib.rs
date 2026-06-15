@@ -439,6 +439,8 @@ pub fn run() {
             commands::claude_instance::claude_stop_instance,
             commands::claude_instance::claude_open_instance_window,
             commands::claude_instance::claude_close_all_instances,
+            commands::claude_instance::claude_get_instance_launch_command,
+            commands::claude_instance::claude_execute_instance_launch_command,
             // System Commands
             commands::system::open_data_folder,
             commands::system::save_text_file,

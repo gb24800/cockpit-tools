@@ -423,24 +423,24 @@
       "success": "已写入配置文件：{{paths}}",
       "failed": "写入配置失败：{{error}}"
     },
-  "error": {
-    "missingApiKey": "请输入 API Key。",
-    "queryFailed": "额度查询失败：{{error}}",
-    "saveFailed": "一键写入失败：{{error}}"
-  },
-  "models": {
-    "title": "可用模型",
-    "desc": "从当前 API Key 的模型接口读取，保存到 Codex 或 Claude CLI 时会带入这些模型目录。",
-    "count": "{{count}} 个模型",
-    "loading": "读取中",
-    "loadingDesc": "正在从当前 API Key 读取模型列表...",
-    "empty": "输入 API Key 后读取可用模型。",
-    "emptyFromKey": "当前 API Key 未返回模型列表。",
-    "queryFailed": "模型列表读取失败：{{error}}"
-  },
-  "copyKey": "复制密钥",
-  "clearKey": "清空输入",
-  "keyManager": {
+    "error": {
+      "missingApiKey": "请输入 API Key。",
+      "queryFailed": "额度查询失败：{{error}}",
+      "saveFailed": "一键写入失败：{{error}}"
+    },
+    "models": {
+      "title": "可用模型",
+      "desc": "从当前 API Key 的模型接口读取，保存到 Codex 或 Claude CLI 时会带入这些模型目录。",
+      "count": "{{count}} 个模型",
+      "loading": "读取中",
+      "loadingDesc": "正在从当前 API Key 读取模型列表...",
+      "empty": "输入 API Key 后读取可用模型。",
+      "emptyFromKey": "当前 API Key 未返回模型列表。",
+      "queryFailed": "模型列表读取失败：{{error}}"
+    },
+    "copyKey": "复制密钥",
+    "clearKey": "清空输入",
+    "keyManager": {
       "title": "密钥管理",
       "desc": "保存常用 API Key，点击即可切换并自动查询额度。",
       "saveButton": "保存密钥",
@@ -4582,9 +4582,9 @@
       "permission": "权限范围：读取/写入官方 Claude Desktop 应用数据目录；API Key 与 Desktop 快照保存于本工具本地账号数据。",
       "network": "网络范围：Desktop 登录窗口访问 claude.ai；刷新账号会请求 Claude Web 相关接口；API Key 导入本身不联网。",
       "desktopDesc": "本工具可管理 Claude Desktop 登录态。登录会先保存到本地账号库；切号时才写入官方 Claude Desktop。",
-      "cliDesc": "本工具可管理 Claude Code OAuth 与多供应商 API Key。OAuth 切号会写入本机 Claude Code 配置；API Key 启动 CLI 时注入供应商环境变量。",
+      "cliDesc": "本工具可管理 Claude Code OAuth 与多供应商 API Key。OAuth 切号会写入本机 Claude Code 配置；API Key 会写入 Claude Code settings.json 的 env。",
       "desktopPermission": "权限范围：读取/写入官方 Claude Desktop 应用数据目录；Desktop 快照保存于本工具本地账号数据。",
-      "cliPermission": "权限范围：读取/写入本机 Claude Code 配置目录与 macOS Keychain 中的 Claude Code 凭据；API Key 账号保存于本工具本地账号数据，启动时创建一次性本机临时脚本。",
+      "cliPermission": "权限范围：读取/写入本机 Claude Code 配置目录与 macOS Keychain 中的 Claude Code 凭据；API Key 账号保存于本工具本地账号数据，并在切换或启动 CLI 时明文写入 settings.json 的 env。",
       "desktopNetwork": "网络范围：Desktop 登录窗口访问 claude.ai；刷新账号会请求 Claude Web 相关接口。",
       "cliNetwork": "网络范围：OAuth 授权访问 Claude 官方授权页和 token/profile/usage 接口；API Key 导入不联网，启动后由 Claude CLI 访问所选供应商。"
     },
@@ -4641,14 +4641,14 @@
       "desktop_oauth": "Desktop 登录"
     },
     "apiKey": {
-      "desc": "保存 Claude CLI API Key 作为独立凭证；启动 CLI 时按供应商注入环境变量，不写入 Claude Desktop 登录态。",
+      "desc": "保存 Claude CLI API Key 作为独立凭证；切换或启动 CLI 时会写入 Claude Code settings.json 的 env，不会写入 Claude Desktop 登录态。",
       "nameLabel": "账号名称",
       "namePlaceholder": "可选，例如 APIKEY.FUN",
       "keyLabel": "API 密钥",
       "placeholder": "粘贴供应商 API Key",
       "hide": "隐藏 API Key",
       "show": "显示 API Key",
-      "hint": "API Key 账号仅用于 Claude CLI 启动，不写入 Claude Desktop 登录态，也不支持订阅额度刷新。",
+      "hint": "API Key 账号仅用于 Claude CLI；会以明文 env 写入 Claude Code settings.json，不会写入 Claude Desktop 登录态，也不支持订阅额度刷新。",
       "importAction": "导入 API Key",
       "required": "请输入 API Key",
       "importSuccess": "Claude API Key 账号已导入：{{name}}",
@@ -4714,6 +4714,7 @@
       "quickLaunch": "CLI 启动",
       "selectWorkingDir": "选择 Claude CLI 工作目录",
       "launchSuccess": "已启动 Claude CLI",
+      "prepared": "Claude CLI 已准备",
       "launchFailed": "启动 Claude CLI 失败：{{error}}",
       "localTitle": "导入当前 Claude Code",
       "localDesc": "读取本机 Claude Code 当前 OAuth 登录态，复制为本工具本地账号快照。",

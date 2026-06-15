@@ -1,10 +1,72 @@
 use std::path::Path;
 
+use serde::Serialize;
+
 use crate::models::claude::ClaudeAuthMode;
-use crate::models::{DefaultInstanceSettings, InstanceProfileView};
+use crate::models::{DefaultInstanceSettings, InstanceLaunchMode, InstanceProfile};
 use crate::modules;
 
 const DEFAULT_INSTANCE_ID: &str = "__default__";
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClaudeInstanceProfileView {
+    pub id: String,
+    pub name: String,
+    pub user_data_dir: String,
+    pub working_dir: Option<String>,
+    pub extra_args: String,
+    pub bind_account_id: Option<String>,
+    pub launch_mode: InstanceLaunchMode,
+    pub created_at: i64,
+    pub last_launched_at: Option<i64>,
+    pub last_pid: Option<u32>,
+    pub running: bool,
+    pub initialized: bool,
+    pub is_default: bool,
+    pub follow_local_account: bool,
+}
+
+impl ClaudeInstanceProfileView {
+    fn from_profile(profile: InstanceProfile, running: bool, initialized: bool) -> Self {
+        let last_pid = if matches!(profile.launch_mode, InstanceLaunchMode::Cli) {
+            None
+        } else {
+            profile.last_pid
+        };
+        Self {
+            id: profile.id,
+            name: profile.name,
+            user_data_dir: profile.user_data_dir,
+            working_dir: profile.working_dir,
+            extra_args: profile.extra_args,
+            bind_account_id: profile.bind_account_id,
+            launch_mode: profile.launch_mode,
+            created_at: profile.created_at,
+            last_launched_at: profile.last_launched_at,
+            last_pid,
+            running,
+            initialized,
+            is_default: false,
+            follow_local_account: false,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClaudeInstanceLaunchInfo {
+    pub instance_id: String,
+    pub user_data_dir: String,
+    pub launch_command: String,
+}
+
+struct ClaudeCliLaunchContext {
+    user_data_dir: String,
+    working_dir: Option<String>,
+    extra_args: String,
+    use_config_env: bool,
+}
 
 fn is_profile_initialized(user_data_dir: &str) -> bool {
     modules::claude_instance::is_profile_initialized(Path::new(user_data_dir))
@@ -40,57 +102,218 @@ fn inject_bound_account_for_instance_start(
     }
 }
 
+fn inject_bound_account_for_cli_instance_start(
+    user_data_dir: &str,
+    bind_account_id: Option<&str>,
+) -> Result<(), String> {
+    let bind_id = bind_account_id
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let Some(bind_id) = bind_id else {
+        return Ok(());
+    };
+
+    let account = modules::claude_account::load_account(bind_id)
+        .ok_or_else(|| format!("绑定账号不存在: {}", bind_id))?;
+    if account.auth_mode == ClaudeAuthMode::DesktopOAuth {
+        return Err(
+            "Claude Desktop 登录账号不能写入 Claude CLI 实例，请选择 Claude CLI OAuth / API Key 账号。"
+                .to_string(),
+        );
+    }
+
+    modules::claude_account::inject_to_claude_config(bind_id, Some(Path::new(user_data_dir)))?;
+    crate::modules::provider_current_state::set_current_account_id("claude_cli", Some(bind_id))?;
+    Ok(())
+}
+
+fn is_cli_launch_mode(mode: &InstanceLaunchMode) -> bool {
+    matches!(mode, InstanceLaunchMode::Cli)
+}
+
+fn default_user_data_dir_for_launch_mode(
+    mode: &InstanceLaunchMode,
+) -> Result<std::path::PathBuf, String> {
+    if is_cli_launch_mode(mode) {
+        modules::claude_instance::get_default_claude_cli_config_dir()
+    } else {
+        modules::claude_instance::get_default_claude_config_dir()
+    }
+}
+
+fn default_instance_view(
+    user_data_dir: &Path,
+    settings: &DefaultInstanceSettings,
+    running: bool,
+    last_pid: Option<u32>,
+) -> ClaudeInstanceProfileView {
+    ClaudeInstanceProfileView {
+        id: DEFAULT_INSTANCE_ID.to_string(),
+        name: String::new(),
+        user_data_dir: user_data_dir.to_string_lossy().to_string(),
+        working_dir: settings.working_dir.clone(),
+        extra_args: settings.extra_args.clone(),
+        bind_account_id: settings.bind_account_id.clone(),
+        launch_mode: settings.launch_mode.clone(),
+        created_at: 0,
+        last_launched_at: None,
+        last_pid: if is_cli_launch_mode(&settings.launch_mode) {
+            None
+        } else {
+            last_pid
+        },
+        running,
+        initialized: modules::claude_instance::is_profile_initialized(user_data_dir),
+        is_default: true,
+        follow_local_account: false,
+    }
+}
+
+fn resolve_cli_launch_context(instance_id: &str) -> Result<ClaudeCliLaunchContext, String> {
+    if instance_id == DEFAULT_INSTANCE_ID {
+        let default_settings = modules::claude_instance::load_default_settings()?;
+        if !is_cli_launch_mode(&default_settings.launch_mode) {
+            return Err("当前实例未启用 CLI 启动方式".to_string());
+        }
+        let default_dir = modules::claude_instance::get_default_claude_cli_config_dir()?;
+        return Ok(ClaudeCliLaunchContext {
+            user_data_dir: default_dir.to_string_lossy().to_string(),
+            working_dir: default_settings.working_dir,
+            extra_args: default_settings.extra_args,
+            use_config_env: false,
+        });
+    }
+
+    let store = modules::claude_instance::load_instance_store()?;
+    let instance = store
+        .instances
+        .into_iter()
+        .find(|item| item.id == instance_id)
+        .ok_or("实例不存在")?;
+    if !is_cli_launch_mode(&instance.launch_mode) {
+        return Err("当前实例未启用 CLI 启动方式".to_string());
+    }
+    Ok(ClaudeCliLaunchContext {
+        user_data_dir: instance.user_data_dir,
+        working_dir: instance.working_dir,
+        extra_args: instance.extra_args,
+        use_config_env: true,
+    })
+}
+
+fn build_cli_launch_command(context: &ClaudeCliLaunchContext) -> String {
+    let parsed_args = modules::process::parse_extra_args(&context.extra_args);
+    let mut command_parts = Vec::new();
+
+    if let Some(dir) = context
+        .working_dir
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        #[cfg(target_os = "windows")]
+        command_parts.push(format!(
+            "Set-Location -LiteralPath {}",
+            crate::commands::claude::powershell_quote(dir)
+        ));
+        #[cfg(not(target_os = "windows"))]
+        command_parts.push(format!(
+            "cd {}",
+            crate::commands::claude::posix_shell_quote(dir)
+        ));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        if context.use_config_env {
+            command_parts.push(format!(
+                "$env:CLAUDE_CONFIG_DIR={}",
+                crate::commands::claude::powershell_quote(&context.user_data_dir)
+            ));
+        }
+        let mut command = "claude".to_string();
+        for arg in parsed_args {
+            let trimmed = arg.trim();
+            if !trimmed.is_empty() {
+                command.push(' ');
+                command.push_str(&crate::commands::claude::powershell_quote(trimmed));
+            }
+        }
+        command_parts.push(command);
+        return command_parts.join("; ");
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let mut command = if context.use_config_env {
+            format!(
+                "CLAUDE_CONFIG_DIR={} claude",
+                crate::commands::claude::posix_shell_quote(&context.user_data_dir)
+            )
+        } else {
+            "claude".to_string()
+        };
+        for arg in parsed_args {
+            let trimmed = arg.trim();
+            if !trimmed.is_empty() {
+                command.push(' ');
+                command.push_str(&crate::commands::claude::posix_shell_quote(trimmed));
+            }
+        }
+        command_parts.push(command);
+        command_parts.join(" && ")
+    }
+}
+
 #[tauri::command]
 pub async fn claude_get_instance_defaults() -> Result<modules::instance::InstanceDefaults, String> {
     modules::claude_instance::get_instance_defaults()
 }
 
 #[tauri::command]
-pub async fn claude_list_instances() -> Result<Vec<InstanceProfileView>, String> {
+pub async fn claude_list_instances() -> Result<Vec<ClaudeInstanceProfileView>, String> {
     let store = modules::claude_instance::load_instance_store()?;
-    let default_dir = modules::claude_instance::get_default_claude_config_dir()?;
-    let default_dir_str = default_dir.to_string_lossy().to_string();
     let default_settings = store.default_settings.clone();
+    let default_dir = default_user_data_dir_for_launch_mode(&default_settings.launch_mode)?;
     let process_entries = modules::claude_instance::collect_claude_process_entries();
 
-    let mut result: Vec<InstanceProfileView> = store
+    let mut result: Vec<ClaudeInstanceProfileView> = store
         .instances
         .into_iter()
         .map(|instance| {
-            let resolved_pid = modules::claude_instance::resolve_claude_pid_from_entries(
-                instance.last_pid,
-                Some(&instance.user_data_dir),
-                &process_entries,
-            );
-            let running = resolved_pid.is_some();
+            let is_cli = is_cli_launch_mode(&instance.launch_mode);
+            let resolved_pid = if is_cli {
+                None
+            } else {
+                modules::claude_instance::resolve_claude_pid_from_entries(
+                    instance.last_pid,
+                    Some(&instance.user_data_dir),
+                    &process_entries,
+                )
+            };
+            let running = !is_cli && resolved_pid.is_some();
             let initialized = is_profile_initialized(&instance.user_data_dir);
-            let mut view = InstanceProfileView::from_profile(instance, running, initialized);
+            let mut view = ClaudeInstanceProfileView::from_profile(instance, running, initialized);
             view.last_pid = resolved_pid;
             view
         })
         .collect();
 
-    let default_pid = modules::claude_instance::resolve_claude_pid_from_entries(
-        default_settings.last_pid,
-        None,
-        &process_entries,
-    );
-    let default_running = default_pid.is_some();
-    result.push(InstanceProfileView {
-        id: DEFAULT_INSTANCE_ID.to_string(),
-        name: String::new(),
-        user_data_dir: default_dir_str,
-        working_dir: default_settings.working_dir.clone(),
-        extra_args: default_settings.extra_args.clone(),
-        bind_account_id: default_settings.bind_account_id.clone(),
-        created_at: 0,
-        last_launched_at: None,
-        last_pid: default_pid,
-        running: default_running,
-        initialized: modules::claude_instance::is_profile_initialized(&default_dir),
-        is_default: true,
-        follow_local_account: false,
-    });
+    let default_pid = if is_cli_launch_mode(&default_settings.launch_mode) {
+        None
+    } else {
+        modules::claude_instance::resolve_claude_pid_from_entries(
+            default_settings.last_pid,
+            None,
+            &process_entries,
+        )
+    };
+    result.push(default_instance_view(
+        &default_dir,
+        &default_settings,
+        default_pid.is_some(),
+        default_pid,
+    ));
 
     Ok(result)
 }
@@ -104,7 +327,8 @@ pub async fn claude_create_instance(
     bind_account_id: Option<String>,
     copy_source_instance_id: Option<String>,
     init_mode: Option<String>,
-) -> Result<InstanceProfileView, String> {
+    launch_mode: Option<InstanceLaunchMode>,
+) -> Result<ClaudeInstanceProfileView, String> {
     let instance = modules::claude_instance::create_instance(
         modules::claude_instance::CreateInstanceParams {
             name,
@@ -114,10 +338,11 @@ pub async fn claude_create_instance(
             bind_account_id,
             copy_source_instance_id,
             init_mode,
+            launch_mode,
         },
     )?;
     let initialized = is_profile_initialized(&instance.user_data_dir);
-    Ok(InstanceProfileView::from_profile(
+    Ok(ClaudeInstanceProfileView::from_profile(
         instance,
         false,
         initialized,
@@ -132,32 +357,28 @@ pub async fn claude_update_instance(
     extra_args: Option<String>,
     bind_account_id: Option<Option<String>>,
     follow_local_account: Option<bool>,
-) -> Result<InstanceProfileView, String> {
+    launch_mode: Option<InstanceLaunchMode>,
+) -> Result<ClaudeInstanceProfileView, String> {
     if instance_id == DEFAULT_INSTANCE_ID {
-        let default_dir = modules::claude_instance::get_default_claude_config_dir()?;
-        let default_dir_str = default_dir.to_string_lossy().to_string();
         let updated = modules::claude_instance::update_default_settings(
             bind_account_id,
             working_dir,
             extra_args,
             follow_local_account,
+            launch_mode,
         )?;
-        let resolved_pid = modules::claude_instance::resolve_claude_pid(updated.last_pid, None);
-        return Ok(InstanceProfileView {
-            id: DEFAULT_INSTANCE_ID.to_string(),
-            name: String::new(),
-            user_data_dir: default_dir_str,
-            working_dir: updated.working_dir,
-            extra_args: updated.extra_args,
-            bind_account_id: updated.bind_account_id,
-            created_at: 0,
-            last_launched_at: None,
-            last_pid: resolved_pid,
-            running: resolved_pid.is_some(),
-            initialized: modules::claude_instance::is_profile_initialized(&default_dir),
-            is_default: true,
-            follow_local_account: false,
-        });
+        let default_dir = default_user_data_dir_for_launch_mode(&updated.launch_mode)?;
+        let resolved_pid = if is_cli_launch_mode(&updated.launch_mode) {
+            None
+        } else {
+            modules::claude_instance::resolve_claude_pid(updated.last_pid, None)
+        };
+        return Ok(default_instance_view(
+            &default_dir,
+            &updated,
+            resolved_pid.is_some(),
+            resolved_pid,
+        ));
     }
 
     let instance = modules::claude_instance::update_instance(
@@ -167,14 +388,20 @@ pub async fn claude_update_instance(
             working_dir,
             extra_args,
             bind_account_id,
+            launch_mode,
         },
     )?;
-    let resolved_pid = modules::claude_instance::resolve_claude_pid(
-        instance.last_pid,
-        Some(&instance.user_data_dir),
-    );
+    let resolved_pid = if is_cli_launch_mode(&instance.launch_mode) {
+        None
+    } else {
+        modules::claude_instance::resolve_claude_pid(
+            instance.last_pid,
+            Some(&instance.user_data_dir),
+        )
+    };
     let initialized = is_profile_initialized(&instance.user_data_dir);
-    let mut view = InstanceProfileView::from_profile(instance, resolved_pid.is_some(), initialized);
+    let mut view =
+        ClaudeInstanceProfileView::from_profile(instance, resolved_pid.is_some(), initialized);
     view.last_pid = resolved_pid;
     Ok(view)
 }
@@ -188,14 +415,26 @@ pub async fn claude_delete_instance(instance_id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn claude_start_instance(instance_id: String) -> Result<InstanceProfileView, String> {
-    modules::logger::log_info(&format!("开始启动 Claude Desktop 实例: {}", instance_id));
-    modules::claude_instance::ensure_claude_launch_path_configured()?;
+pub async fn claude_start_instance(
+    instance_id: String,
+) -> Result<ClaudeInstanceProfileView, String> {
+    modules::logger::log_info(&format!("开始启动 Claude 实例: {}", instance_id));
 
     if instance_id == DEFAULT_INSTANCE_ID {
-        let default_dir = modules::claude_instance::get_default_claude_config_dir()?;
-        let default_dir_str = default_dir.to_string_lossy().to_string();
         let default_settings = modules::claude_instance::load_default_settings()?;
+        let default_dir = default_user_data_dir_for_launch_mode(&default_settings.launch_mode)?;
+        let default_dir_str = default_dir.to_string_lossy().to_string();
+
+        if is_cli_launch_mode(&default_settings.launch_mode) {
+            inject_bound_account_for_cli_instance_start(
+                &default_dir_str,
+                default_settings.bind_account_id.as_deref(),
+            )?;
+            let updated = modules::claude_instance::update_default_pid(None)?;
+            return Ok(default_instance_view(&default_dir, &updated, false, None));
+        }
+
+        modules::claude_instance::ensure_claude_launch_path_configured()?;
 
         if let Some(pid) =
             modules::claude_instance::resolve_claude_pid(default_settings.last_pid, None)
@@ -218,21 +457,12 @@ pub async fn claude_start_instance(instance_id: String) -> Result<InstanceProfil
         )?;
         let _ = modules::claude_instance::update_default_pid(Some(pid))?;
         let running = modules::claude_instance::resolve_claude_pid(Some(pid), None).is_some();
-        return Ok(InstanceProfileView {
-            id: DEFAULT_INSTANCE_ID.to_string(),
-            name: String::new(),
-            user_data_dir: default_dir_str,
-            working_dir: default_settings.working_dir.clone(),
-            extra_args: default_settings.extra_args.clone(),
-            bind_account_id: default_settings.bind_account_id,
-            created_at: 0,
-            last_launched_at: None,
-            last_pid: Some(pid),
+        return Ok(default_instance_view(
+            &default_dir,
+            &default_settings,
             running,
-            initialized: modules::claude_instance::is_profile_initialized(&default_dir),
-            is_default: true,
-            follow_local_account: false,
-        });
+            Some(pid),
+        ));
     }
 
     let store = modules::claude_instance::load_instance_store()?;
@@ -241,6 +471,22 @@ pub async fn claude_start_instance(instance_id: String) -> Result<InstanceProfil
         .into_iter()
         .find(|item| item.id == instance_id)
         .ok_or("实例不存在")?;
+
+    if is_cli_launch_mode(&instance.launch_mode) {
+        inject_bound_account_for_cli_instance_start(
+            &instance.user_data_dir,
+            instance.bind_account_id.as_deref(),
+        )?;
+        let updated = modules::claude_instance::update_instance_last_launched(&instance.id)?;
+        let initialized = is_profile_initialized(&updated.user_data_dir);
+        return Ok(ClaudeInstanceProfileView::from_profile(
+            updated,
+            false,
+            initialized,
+        ));
+    }
+
+    modules::claude_instance::ensure_claude_launch_path_configured()?;
 
     if let Some(pid) = modules::claude_instance::resolve_claude_pid(
         instance.last_pid,
@@ -268,7 +514,7 @@ pub async fn claude_start_instance(instance_id: String) -> Result<InstanceProfil
         modules::claude_instance::resolve_claude_pid(Some(pid), Some(&updated.user_data_dir))
             .is_some();
     let initialized = is_profile_initialized(&updated.user_data_dir);
-    Ok(InstanceProfileView::from_profile(
+    Ok(ClaudeInstanceProfileView::from_profile(
         updated,
         running,
         initialized,
@@ -276,11 +522,22 @@ pub async fn claude_start_instance(instance_id: String) -> Result<InstanceProfil
 }
 
 #[tauri::command]
-pub async fn claude_stop_instance(instance_id: String) -> Result<InstanceProfileView, String> {
+pub async fn claude_stop_instance(
+    instance_id: String,
+) -> Result<ClaudeInstanceProfileView, String> {
     if instance_id == DEFAULT_INSTANCE_ID {
-        let default_dir = modules::claude_instance::get_default_claude_config_dir()?;
-        let default_dir_str = default_dir.to_string_lossy().to_string();
         let default_settings = modules::claude_instance::load_default_settings()?;
+        let default_dir = default_user_data_dir_for_launch_mode(&default_settings.launch_mode)?;
+
+        if is_cli_launch_mode(&default_settings.launch_mode) {
+            let updated_settings = modules::claude_instance::update_default_pid(None)?;
+            return Ok(default_instance_view(
+                &default_dir,
+                &updated_settings,
+                false,
+                None,
+            ));
+        }
 
         if let Some(pid) =
             modules::claude_instance::resolve_claude_pid(default_settings.last_pid, None)
@@ -293,21 +550,12 @@ pub async fn claude_stop_instance(instance_id: String) -> Result<InstanceProfile
             .last_pid
             .and_then(|pid| modules::claude_instance::resolve_claude_pid(Some(pid), None))
             .is_some();
-        return Ok(InstanceProfileView {
-            id: DEFAULT_INSTANCE_ID.to_string(),
-            name: String::new(),
-            user_data_dir: default_dir_str,
-            working_dir: default_settings.working_dir.clone(),
-            extra_args: default_settings.extra_args.clone(),
-            bind_account_id: default_settings.bind_account_id,
-            created_at: 0,
-            last_launched_at: None,
-            last_pid: None,
+        return Ok(default_instance_view(
+            &default_dir,
+            &default_settings,
             running,
-            initialized: modules::claude_instance::is_profile_initialized(&default_dir),
-            is_default: true,
-            follow_local_account: false,
-        });
+            None,
+        ));
     }
 
     let store = modules::claude_instance::load_instance_store()?;
@@ -316,6 +564,16 @@ pub async fn claude_stop_instance(instance_id: String) -> Result<InstanceProfile
         .into_iter()
         .find(|item| item.id == instance_id)
         .ok_or("实例不存在")?;
+
+    if is_cli_launch_mode(&instance.launch_mode) {
+        let updated = modules::claude_instance::update_instance_pid(&instance.id, None)?;
+        let initialized = is_profile_initialized(&updated.user_data_dir);
+        return Ok(ClaudeInstanceProfileView::from_profile(
+            updated,
+            false,
+            initialized,
+        ));
+    }
 
     if let Some(pid) = modules::claude_instance::resolve_claude_pid(
         instance.last_pid,
@@ -326,7 +584,7 @@ pub async fn claude_stop_instance(instance_id: String) -> Result<InstanceProfile
 
     let updated = modules::claude_instance::update_instance_pid(&instance.id, None)?;
     let initialized = is_profile_initialized(&updated.user_data_dir);
-    Ok(InstanceProfileView::from_profile(
+    Ok(ClaudeInstanceProfileView::from_profile(
         updated,
         false,
         initialized,
@@ -338,6 +596,9 @@ pub async fn claude_open_instance_window(instance_id: String) -> Result<(), Stri
     if instance_id == DEFAULT_INSTANCE_ID {
         let default_settings: DefaultInstanceSettings =
             modules::claude_instance::load_default_settings()?;
+        if is_cli_launch_mode(&default_settings.launch_mode) {
+            return Err("Claude CLI 实例不支持窗口定位，请使用启动命令在终端中运行".to_string());
+        }
         modules::claude_instance::focus_claude_instance(default_settings.last_pid, None)
             .map_err(|err| format!("定位 Claude 默认实例窗口失败: {}", err))?;
         return Ok(());
@@ -349,6 +610,9 @@ pub async fn claude_open_instance_window(instance_id: String) -> Result<(), Stri
         .into_iter()
         .find(|item| item.id == instance_id)
         .ok_or("实例不存在")?;
+    if is_cli_launch_mode(&instance.launch_mode) {
+        return Err("Claude CLI 实例不支持窗口定位，请使用启动命令在终端中运行".to_string());
+    }
 
     modules::claude_instance::focus_claude_instance(
         instance.last_pid,
@@ -367,18 +631,47 @@ pub async fn claude_open_instance_window(instance_id: String) -> Result<(), Stri
 #[tauri::command]
 pub async fn claude_close_all_instances() -> Result<(), String> {
     let store = modules::claude_instance::load_instance_store()?;
-    let default_dir = modules::claude_instance::get_default_claude_config_dir()?;
 
     let mut target_dirs = Vec::new();
-    target_dirs.push(default_dir.to_string_lossy().to_string());
+    if !is_cli_launch_mode(&store.default_settings.launch_mode) {
+        let default_dir = modules::claude_instance::get_default_claude_config_dir()?;
+        target_dirs.push(default_dir.to_string_lossy().to_string());
+    }
     for instance in &store.instances {
+        if is_cli_launch_mode(&instance.launch_mode) {
+            continue;
+        }
         let dir = instance.user_data_dir.trim();
         if !dir.is_empty() {
             target_dirs.push(dir.to_string());
         }
     }
 
-    modules::claude_instance::close_claude(&target_dirs, 20)?;
+    if !target_dirs.is_empty() {
+        modules::claude_instance::close_claude(&target_dirs, 20)?;
+    }
     let _ = modules::claude_instance::clear_all_pids();
     Ok(())
+}
+
+#[tauri::command]
+pub async fn claude_get_instance_launch_command(
+    instance_id: String,
+) -> Result<ClaudeInstanceLaunchInfo, String> {
+    let context = resolve_cli_launch_context(&instance_id)?;
+    Ok(ClaudeInstanceLaunchInfo {
+        instance_id,
+        launch_command: build_cli_launch_command(&context),
+        user_data_dir: context.user_data_dir,
+    })
+}
+
+#[tauri::command]
+pub async fn claude_execute_instance_launch_command(
+    instance_id: String,
+    terminal: Option<String>,
+) -> Result<String, String> {
+    let context = resolve_cli_launch_context(&instance_id)?;
+    let command = build_cli_launch_command(&context);
+    crate::commands::claude::execute_claude_cli_command(&command, terminal)
 }
