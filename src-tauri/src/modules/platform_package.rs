@@ -73,6 +73,9 @@ const PLATFORM_PACKAGE_INDEX_CACHE_TTL_MS: i64 = 30 * 60 * 1000;
 const MAX_PLATFORM_PACKAGE_DOWNLOAD_BYTES: u64 = 80 * 1024 * 1024;
 const PLATFORM_PACKAGE_DOWNLOAD_MAX_ATTEMPTS: usize = 3;
 const PLATFORM_PACKAGE_DOWNLOAD_RETRY_BASE_DELAY_MS: u64 = 900;
+const PLATFORM_PACKAGE_PATH_SWITCH_MAX_ATTEMPTS: usize = 12;
+const PLATFORM_PACKAGE_PATH_SWITCH_RETRY_BASE_DELAY_MS: u64 = 250;
+const PLATFORM_PACKAGE_ORPHAN_PROCESS_CLOSE_TIMEOUT_SECS: u64 = 5;
 const PLATFORM_PACKAGE_PROGRESS_EVENT: &str = "platform-package://progress";
 const PLATFORM_PERF_LOG_ENV: &str = "COCKPIT_PLATFORM_PERF_LOG";
 const PLATFORM_PACKAGE_LIST_SLOW_THRESHOLD_MS: u128 = 500;
@@ -628,17 +631,210 @@ fn dir_size(path: &Path) -> u64 {
 }
 
 fn remove_path_if_exists(path: &Path) -> Result<(), String> {
+    remove_path_for_package_switch(path, None)
+}
+
+fn should_retry_platform_package_path_error(error: &io::Error) -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        matches!(error.raw_os_error(), Some(5 | 32 | 33))
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = error;
+        false
+    }
+}
+
+fn path_switch_retry_delay(attempt: usize) -> Duration {
+    Duration::from_millis(
+        PLATFORM_PACKAGE_PATH_SWITCH_RETRY_BASE_DELAY_MS.saturating_mul(attempt as u64),
+    )
+}
+
+fn remove_path_once(path: &Path) -> io::Result<()> {
     if !path.exists() {
         return Ok(());
     }
-    let metadata = fs::symlink_metadata(path)
-        .map_err(|err| format!("读取路径元数据失败: path={}, error={}", path.display(), err))?;
+    let metadata = fs::symlink_metadata(path)?;
     if metadata.is_dir() {
         fs::remove_dir_all(path)
-            .map_err(|err| format!("删除目录失败: path={}, error={}", path.display(), err))
     } else {
         fs::remove_file(path)
-            .map_err(|err| format!("删除文件失败: path={}, error={}", path.display(), err))
+    }
+}
+
+fn remove_path_error_prefix(path: &Path, explicit_prefix: Option<&str>) -> String {
+    if let Some(prefix) = explicit_prefix {
+        return prefix.to_string();
+    }
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.is_dir() => "删除目录失败".to_string(),
+        Ok(_) => "删除文件失败".to_string(),
+        Err(_) => "删除路径失败".to_string(),
+    }
+}
+
+fn remove_path_for_package_switch(path: &Path, error_prefix: Option<&str>) -> Result<(), String> {
+    let mut last_error: Option<io::Error> = None;
+    for attempt in 1..=PLATFORM_PACKAGE_PATH_SWITCH_MAX_ATTEMPTS {
+        match remove_path_once(path) {
+            Ok(()) => {
+                if attempt > 1 {
+                    logger::log_info(&format!(
+                        "[PlatformPackage] 平台包路径删除重试成功: path={}, attempt={}",
+                        path.display(),
+                        attempt
+                    ));
+                }
+                return Ok(());
+            }
+            Err(error)
+                if attempt < PLATFORM_PACKAGE_PATH_SWITCH_MAX_ATTEMPTS
+                    && should_retry_platform_package_path_error(&error) =>
+            {
+                logger::log_warn(&format!(
+                    "[PlatformPackage] 平台包路径删除被占用，等待后重试: path={}, attempt={}, error={}",
+                    path.display(),
+                    attempt,
+                    error
+                ));
+                last_error = Some(error);
+                std::thread::sleep(path_switch_retry_delay(attempt));
+            }
+            Err(error) => {
+                return Err(format!(
+                    "{}: path={}, error={}",
+                    remove_path_error_prefix(path, error_prefix),
+                    path.display(),
+                    error
+                ));
+            }
+        }
+    }
+
+    Err(format!(
+        "{}: path={}, error={}",
+        remove_path_error_prefix(path, error_prefix),
+        path.display(),
+        last_error
+            .map(|error| error.to_string())
+            .unwrap_or_else(|| "unknown".to_string())
+    ))
+}
+
+fn rename_path_for_package_switch(
+    from: &Path,
+    to: &Path,
+    error_prefix: &str,
+) -> Result<(), String> {
+    let mut last_error: Option<io::Error> = None;
+    for attempt in 1..=PLATFORM_PACKAGE_PATH_SWITCH_MAX_ATTEMPTS {
+        match fs::rename(from, to) {
+            Ok(()) => {
+                if attempt > 1 {
+                    logger::log_info(&format!(
+                        "[PlatformPackage] 平台包目录切换重试成功: from={}, to={}, attempt={}",
+                        from.display(),
+                        to.display(),
+                        attempt
+                    ));
+                }
+                return Ok(());
+            }
+            Err(error)
+                if attempt < PLATFORM_PACKAGE_PATH_SWITCH_MAX_ATTEMPTS
+                    && should_retry_platform_package_path_error(&error) =>
+            {
+                logger::log_warn(&format!(
+                    "[PlatformPackage] 平台包目录切换被占用，等待后重试: from={}, to={}, attempt={}, error={}",
+                    from.display(),
+                    to.display(),
+                    attempt,
+                    error
+                ));
+                last_error = Some(error);
+                std::thread::sleep(path_switch_retry_delay(attempt));
+            }
+            Err(error) => {
+                return Err(format!(
+                    "{}: from={}, to={}, error={}",
+                    error_prefix,
+                    from.display(),
+                    to.display(),
+                    error
+                ));
+            }
+        }
+    }
+
+    Err(format!(
+        "{}: from={}, to={}, error={}",
+        error_prefix,
+        from.display(),
+        to.display(),
+        last_error
+            .map(|error| error.to_string())
+            .unwrap_or_else(|| "unknown".to_string())
+    ))
+}
+
+#[cfg(target_os = "windows")]
+fn collect_executable_paths_recursive(root: &Path, paths: &mut Vec<PathBuf>) {
+    let Ok(entries) = fs::read_dir(root) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_executable_paths_recursive(&path, paths);
+            continue;
+        }
+        if path
+            .extension()
+            .and_then(|value| value.to_str())
+            .map(|ext| ext.eq_ignore_ascii_case("exe"))
+            .unwrap_or(false)
+        {
+            paths.push(path);
+        }
+    }
+}
+
+fn close_platform_package_processes_before_switch(platform_id: &str) {
+    #[cfg(target_os = "windows")]
+    {
+        let Ok(current_dir) = package_current_dir(platform_id) else {
+            return;
+        };
+        if !current_dir.exists() {
+            return;
+        }
+        let mut executable_paths = Vec::new();
+        collect_executable_paths_recursive(&current_dir, &mut executable_paths);
+        if executable_paths.is_empty() {
+            return;
+        }
+        match crate::modules::process::close_processes_by_exact_exe_paths(
+            &executable_paths,
+            PLATFORM_PACKAGE_ORPHAN_PROCESS_CLOSE_TIMEOUT_SECS,
+        ) {
+            Ok(closed) if closed > 0 => logger::log_info(&format!(
+                "[PlatformPackage] 已关闭平台包目录中的残留进程: platform={}, closed={}",
+                platform_id, closed
+            )),
+            Ok(_) => {}
+            Err(error) => logger::log_warn(&format!(
+                "[PlatformPackage] 关闭平台包目录残留进程失败，继续尝试切换目录: platform={}, error={}",
+                platform_id, error
+            )),
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = platform_id;
     }
 }
 
@@ -2006,27 +2202,19 @@ fn replace_current_with_prepared(
     }
 
     if current_dir.exists() {
-        fs::rename(&current_dir, &backup_dir).map_err(|err| {
-            format!(
-                "备份旧平台包目录失败: from={}, to={}, error={}",
-                current_dir.display(),
-                backup_dir.display(),
-                err
-            )
-        })?;
+        close_platform_package_processes_before_switch(platform_id);
+        rename_path_for_package_switch(&current_dir, &backup_dir, "备份旧平台包目录失败")?;
     }
 
     let prepared_parent = prepared_root.parent().map(Path::to_path_buf);
-    if let Err(err) = fs::rename(prepared_root, &current_dir) {
+    if let Err(err) =
+        rename_path_for_package_switch(prepared_root, &current_dir, "切换平台包目录失败")
+    {
         if backup_dir.exists() {
-            let _ = fs::rename(&backup_dir, &current_dir);
+            let _ =
+                rename_path_for_package_switch(&backup_dir, &current_dir, "回滚旧平台包目录失败");
         }
-        return Err(format!(
-            "切换平台包目录失败: from={}, to={}, error={}",
-            prepared_root.display(),
-            current_dir.display(),
-            err
-        ));
+        return Err(err);
     }
 
     if backup_dir.exists() {
@@ -2257,7 +2445,10 @@ fn download_remote_package_zip(
 
         if !response.status().is_success() {
             let status = response.status();
-            let message = format!("下载平台包失败: HTTP {} ({})", status, artifact.download_url);
+            let message = format!(
+                "下载平台包失败: HTTP {} ({})",
+                status, artifact.download_url
+            );
             if attempt < PLATFORM_PACKAGE_DOWNLOAD_MAX_ATTEMPTS
                 && should_retry_platform_package_http_status(status)
             {
@@ -3428,6 +3619,52 @@ pub fn install_platform_package(
     install_platform_package_with_operation(app, platform_id, PlatformPackageOperation::Install)
 }
 
+fn stop_platform_runtime_before_package_mutation(
+    platform_id: &str,
+    operation: PlatformPackageOperation,
+) {
+    let started_at = Instant::now();
+    if platform_id == ANTIGRAVITY_PLATFORM_ID {
+        crate::modules::platform_adapter::stop_antigravity_runtime_before_uninstall();
+    } else if platform_id == ANTIGRAVITY_IDE_PLATFORM_ID {
+        crate::modules::platform_adapter::stop_antigravity_ide_runtime_before_uninstall();
+    } else if platform_id == CLAUDE_MANAGER_PLATFORM_ID {
+        crate::modules::platform_adapter::stop_claude_manager_runtime_before_uninstall();
+    } else if platform_id == ZED_PLATFORM_ID {
+        crate::modules::platform_adapter::stop_zed_runtime_before_uninstall();
+    } else if platform_id == KIRO_PLATFORM_ID {
+        crate::modules::platform_adapter::stop_kiro_runtime_before_uninstall();
+    } else if platform_id == GITHUB_COPILOT_PLATFORM_ID {
+        crate::modules::platform_adapter::stop_github_copilot_runtime_before_uninstall();
+    } else if platform_id == WINDSURF_PLATFORM_ID {
+        crate::modules::platform_adapter::stop_windsurf_runtime_before_uninstall();
+    } else if platform_id == CURSOR_PLATFORM_ID {
+        crate::modules::platform_adapter::stop_cursor_runtime_before_uninstall();
+    } else if platform_id == GEMINI_PLATFORM_ID {
+        crate::modules::platform_adapter::stop_gemini_runtime_before_uninstall();
+    } else if platform_id == TRAE_PLATFORM_ID {
+        crate::modules::platform_adapter::stop_trae_runtime_before_uninstall();
+    } else if platform_id == QODER_PLATFORM_ID {
+        crate::modules::platform_adapter::stop_qoder_runtime_before_uninstall();
+    } else if platform_id == CODEBUDDY_PLATFORM_ID {
+        crate::modules::platform_adapter::stop_codebuddy_runtime_before_uninstall();
+    } else if platform_id == CODEBUDDY_CN_PLATFORM_ID {
+        crate::modules::platform_adapter::stop_codebuddy_cn_runtime_before_uninstall();
+    } else if platform_id == WORKBUDDY_PLATFORM_ID {
+        crate::modules::platform_adapter::stop_workbuddy_runtime_before_uninstall();
+    } else if platform_id == CODEX_PLATFORM_ID {
+        crate::modules::platform_adapter::stop_codex_runtime_before_uninstall();
+    } else {
+        crate::modules::platform_adapter::stop_platform_adapter(platform_id);
+    }
+    logger::log_info(&format!(
+        "[PlatformPackage] 平台包操作前停止运行组件完成: platform={}, operation={}, elapsed={}ms",
+        platform_id,
+        operation.as_str(),
+        started_at.elapsed().as_millis()
+    ));
+}
+
 fn install_platform_package_with_operation(
     app: &AppHandle,
     platform_id: &str,
@@ -3453,7 +3690,7 @@ fn install_platform_package_with_operation(
         None,
         None,
     );
-    crate::modules::platform_adapter::stop_platform_adapter(platform_id);
+    stop_platform_runtime_before_package_mutation(platform_id, operation);
 
     let result = install_platform_package_inner(app, platform_id, operation);
     match result {
@@ -3669,43 +3906,7 @@ fn uninstall_platform_package_inner(
         platform_id
     ));
     let started_at = Instant::now();
-    let stop_started_at = Instant::now();
-    if platform_id == ANTIGRAVITY_PLATFORM_ID {
-        crate::modules::platform_adapter::stop_antigravity_runtime_before_uninstall();
-    } else if platform_id == ANTIGRAVITY_IDE_PLATFORM_ID {
-        crate::modules::platform_adapter::stop_antigravity_ide_runtime_before_uninstall();
-    } else if platform_id == CLAUDE_MANAGER_PLATFORM_ID {
-        crate::modules::platform_adapter::stop_claude_manager_runtime_before_uninstall();
-    } else if platform_id == ZED_PLATFORM_ID {
-        crate::modules::platform_adapter::stop_zed_runtime_before_uninstall();
-    } else if platform_id == KIRO_PLATFORM_ID {
-        crate::modules::platform_adapter::stop_kiro_runtime_before_uninstall();
-    } else if platform_id == GITHUB_COPILOT_PLATFORM_ID {
-        crate::modules::platform_adapter::stop_github_copilot_runtime_before_uninstall();
-    } else if platform_id == WINDSURF_PLATFORM_ID {
-        crate::modules::platform_adapter::stop_windsurf_runtime_before_uninstall();
-    } else if platform_id == CURSOR_PLATFORM_ID {
-        crate::modules::platform_adapter::stop_cursor_runtime_before_uninstall();
-    } else if platform_id == GEMINI_PLATFORM_ID {
-        crate::modules::platform_adapter::stop_gemini_runtime_before_uninstall();
-    } else if platform_id == TRAE_PLATFORM_ID {
-        crate::modules::platform_adapter::stop_trae_runtime_before_uninstall();
-    } else if platform_id == QODER_PLATFORM_ID {
-        crate::modules::platform_adapter::stop_qoder_runtime_before_uninstall();
-    } else if platform_id == CODEBUDDY_PLATFORM_ID {
-        crate::modules::platform_adapter::stop_codebuddy_runtime_before_uninstall();
-    } else if platform_id == CODEBUDDY_CN_PLATFORM_ID {
-        crate::modules::platform_adapter::stop_codebuddy_cn_runtime_before_uninstall();
-    } else if platform_id == WORKBUDDY_PLATFORM_ID {
-        crate::modules::platform_adapter::stop_workbuddy_runtime_before_uninstall();
-    } else if platform_id == CODEX_PLATFORM_ID {
-        crate::modules::platform_adapter::stop_codex_runtime_before_uninstall();
-    }
-    logger::log_info(&format!(
-        "[PlatformPackage] 卸载平台包停止运行组件完成: platform={}, elapsed={}ms",
-        platform_id,
-        stop_started_at.elapsed().as_millis()
-    ));
+    stop_platform_runtime_before_package_mutation(platform_id, PlatformPackageOperation::Uninstall);
     if let Some(app) = app {
         emit_platform_package_progress(
             app,
@@ -3723,13 +3924,8 @@ fn uninstall_platform_package_inner(
     let platform_dir = package_dir(platform_id)?;
     if platform_dir.exists() {
         let remove_started_at = Instant::now();
-        fs::remove_dir_all(&platform_dir).map_err(|err| {
-            format!(
-                "删除平台包目录失败: path={}, error={}",
-                platform_dir.display(),
-                err
-            )
-        })?;
+        close_platform_package_processes_before_switch(platform_id);
+        remove_path_for_package_switch(&platform_dir, Some("删除平台包目录失败"))?;
         logger::log_info(&format!(
             "[PlatformPackage] 卸载平台包删除目录完成: platform={}, path={}, elapsed={}ms",
             platform_id,
