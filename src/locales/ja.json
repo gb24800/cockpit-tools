@@ -823,6 +823,13 @@
       "antigravityDualSwitchNoRestartDesc": "切替時にローカルのアカウントデータ書き込みと拡張機能のシームレス切替を1つのフローで実行し、Antigravity IDE を再起動しません。",
       "appAutoLaunch": "ログイン時に Cockpit Tools を起動",
       "appAutoLaunchDesc": "システムログイン後にアプリを自動起動します",
+      "tokenKeeper": "アカウント認証の維持",
+      "tokenKeeperDesc": "有効にすると、期限が近いアカウント認証を遅延後に小分けでバックグラウンド更新します。無効にすると自動保守は止まり、手動更新、切り替え、インポートは引き続き使えます。",
+      "platformQuickSettingsTitle": "プラットフォーム設定",
+      "platformQuickSettingsDesc": "各プラットフォームの設定は各ページへ移動しました。ここからすばやく開けます。",
+      "platformQuickSettingsItemDesc": "プラットフォームページ",
+      "openPlatformSettings": "開く",
+      "platformQuickSettingsOpenAria": "{{platform}} の設定を開く",
       "startupWakeupDisabled": "無効",
       "startupWakeupImmediate": "すぐに起動",
       "startupWakeupDelayed": "遅延して起動",
@@ -883,7 +890,8 @@
       "claudeAutoRefresh": "Claude 使用量の自動更新",
       "claudeAutoRefreshDesc": "Claude アカウントの使用量キャッシュをバックグラウンドで自動更新します。",
       "claudeAppPath": "Claude Desktop 起動ターゲット",
-      "claudeAppPathDesc": "既定プロファイルは Microsoft Store ターゲットを使用できます。複数インスタンスには実際の Claude.exe が必要です。"
+      "claudeAppPathDesc": "既定プロファイルは Microsoft Store ターゲットを使用できます。複数インスタンスには実際の Claude.exe が必要です。",
+      "platformQuickSettingsEntryTitle": "{{platform}} 設定入口"
     },
     "network": {
       "apiTitle": "反重力コックピット API",

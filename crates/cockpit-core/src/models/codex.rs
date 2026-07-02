@@ -141,6 +141,12 @@ pub struct CodexAccount {
     pub subscription_query_next_retry_at: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subscription_query_last_error: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_retry_after: Option<i64>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub quota_exceeded: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_error: Option<String>,
     pub tags: Option<Vec<String>>,
     pub created_at: i64,
     pub last_used: i64,
@@ -364,6 +370,9 @@ impl CodexAccount {
             subscription_query_last_success_at: None,
             subscription_query_next_retry_at: None,
             subscription_query_last_error: None,
+            next_retry_after: None,
+            quota_exceeded: false,
+            last_error: None,
             tags: None,
             created_at: now,
             last_used: now,

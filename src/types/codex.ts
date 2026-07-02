@@ -50,6 +50,9 @@ export interface CodexAccount {
   reauth_reason?: string;
   quota?: CodexQuota;
   quota_error?: CodexQuotaErrorInfo;
+  next_retry_after?: number | null;
+  quota_exceeded?: boolean;
+  last_error?: string | null;
   tags?: string[];
   created_at: number;
   last_used: number;

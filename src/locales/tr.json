@@ -823,6 +823,13 @@
       "antigravityDualSwitchNoRestartDesc": "Hesap değiştirirken yerel hesap verisi yazımı ve eklentinin kesintisiz geçişi tek akışta yürütülür; Antigravity IDE yeniden başlatılmaz.",
       "appAutoLaunch": "Oturum açıldığında Cockpit Tools'u başlat",
       "appAutoLaunchDesc": "Sistem oturumundan sonra uygulamayı otomatik başlat",
+      "tokenKeeper": "Hesap yetkilendirmesini canlı tut",
+      "tokenKeeperDesc": "Açıldığında uygulama süresi yaklaşan hesap yetkilendirmelerini gecikmeli ve küçük gruplar halinde arka planda yeniler; kapatıldığında otomatik bakım durur, elle yenileme, geçiş ve içe aktarma çalışmaya devam eder.",
+      "platformQuickSettingsTitle": "Platform ayarları",
+      "platformQuickSettingsDesc": "Her platformun ayarları artık kendi sayfasında. Buradan hızlıca açın.",
+      "platformQuickSettingsItemDesc": "Platform sayfası",
+      "openPlatformSettings": "Aç",
+      "platformQuickSettingsOpenAria": "{{platform}} ayarlarını aç",
       "startupWakeupDisabled": "Devre dışı",
       "startupWakeupImmediate": "Hemen uyandır",
       "startupWakeupDelayed": "Gecikmeli uyandır",
@@ -883,7 +890,8 @@
       "claudeAutoRefresh": "Claude kota otomatik yenileme",
       "claudeAutoRefreshDesc": "Claude hesaplarının kota önbelleğini arka planda otomatik yeniler.",
       "claudeAppPath": "Claude Desktop başlatma hedefi",
-      "claudeAppPathDesc": "Varsayılan profil Microsoft Store hedefi kullanabilir; çoklu örnekler gerçek Claude.exe ister."
+      "claudeAppPathDesc": "Varsayılan profil Microsoft Store hedefi kullanabilir; çoklu örnekler gerçek Claude.exe ister.",
+      "platformQuickSettingsEntryTitle": "{{platform}} ayar girişi"
     },
     "network": {
       "apiTitle": "Yerçekimine Karşı Kokpit API'si",

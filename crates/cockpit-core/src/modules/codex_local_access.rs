@@ -99,6 +99,7 @@ const DEFAULT_SESSION_AFFINITY_TTL_MS: i64 = 60 * 60 * 1000;
 const MAX_RETRY_INTERVAL_MIN_MS: u64 = 0;
 const MAX_RETRY_INTERVAL_MAX_MS: u64 = 30 * 1000;
 const DEFAULT_MAX_RETRY_INTERVAL_MS: u64 = 3 * 1000;
+const DEFAULT_RATE_LIMIT_COOLDOWN_SECONDS: u64 = 60;
 const LOCAL_ACCESS_TIMEOUT_MIN_MS: u64 = 1_000;
 const LOCAL_ACCESS_TIMEOUT_MAX_MS: u64 = 600_000;
 const LEGACY_STREAM_TOTAL_TIMEOUT_MAX_MS: u64 = 30 * 60 * 1000;
@@ -4415,6 +4416,16 @@ fn parse_codex_retry_after(status: StatusCode, error_body: &str) -> Option<Durat
         .and_then(Value::as_i64)
         .filter(|seconds| *seconds > 0)
         .map(|seconds| Duration::from_secs(seconds as u64))
+}
+
+fn fallback_retry_after_for_upstream_error(
+    status: StatusCode,
+    category: Option<&str>,
+) -> Option<Duration> {
+    if status == StatusCode::TOO_MANY_REQUESTS || category == Some("rate_limited") {
+        return Some(Duration::from_secs(DEFAULT_RATE_LIMIT_COOLDOWN_SECONDS));
+    }
+    None
 }
 
 fn empty_stats_snapshot() -> CodexLocalAccessStats {
@@ -8868,37 +8879,58 @@ async fn set_model_cooldown(
         return;
     }
 
-    let mut runtime = gateway_runtime().lock().await;
     let now = now_ms();
     let next_retry_at_ms = now.saturating_add(retry_after.as_millis() as i64);
-    prune_runtime_routing_state(&mut runtime, now);
-    runtime.model_cooldowns.insert(
-        cooldown_key,
-        AccountModelCooldown {
-            model_key: model_key.trim().to_string(),
-            next_retry_at_ms,
-            reason: reason.trim().to_string(),
-        },
-    );
+    {
+        let mut runtime = gateway_runtime().lock().await;
+        prune_runtime_routing_state(&mut runtime, now);
+        runtime.model_cooldowns.insert(
+            cooldown_key,
+            AccountModelCooldown {
+                model_key: model_key.trim().to_string(),
+                next_retry_at_ms,
+                reason: reason.trim().to_string(),
+            },
+        );
+    }
+
+    let next_retry_after = next_retry_at_ms.saturating_add(999) / 1000;
+    if let Err(err) =
+        codex_account::record_account_runtime_next_retry(account_id, next_retry_after, reason)
+    {
+        logger::log_codex_api_warn(&format!(
+            "[CodexLocalAccess] 写入账号冷却状态失败: account_id={}, error={}",
+            account_id, err
+        ));
+    }
 }
 
 async fn mark_account_success(account: &CodexAccount, request_kind: CodexLocalAccessRequestKind) {
-    let mut runtime = gateway_runtime().lock().await;
-    let now = now_ms();
-    let health = runtime
-        .account_health
-        .entry(account.id.clone())
-        .or_default();
-    health.email = account.email.clone();
-    health.consecutive_failures = 0;
-    health.last_success_at = Some(now);
-    health.last_failure_at = None;
-    health.last_failure_status = None;
-    health.last_failure_category = None;
-    health.last_failure_message = None;
-    if request_kind_is_image(request_kind) {
-        health.image_generation_status = CodexLocalAccessImageGenerationStatus::Available;
-        health.image_generation_checked_at = Some(now);
+    {
+        let mut runtime = gateway_runtime().lock().await;
+        let now = now_ms();
+        let health = runtime
+            .account_health
+            .entry(account.id.clone())
+            .or_default();
+        health.email = account.email.clone();
+        health.consecutive_failures = 0;
+        health.last_success_at = Some(now);
+        health.last_failure_at = None;
+        health.last_failure_status = None;
+        health.last_failure_category = None;
+        health.last_failure_message = None;
+        if request_kind_is_image(request_kind) {
+            health.image_generation_status = CodexLocalAccessImageGenerationStatus::Available;
+            health.image_generation_checked_at = Some(now);
+        }
+    }
+
+    if let Err(err) = codex_account::record_account_runtime_success(&account.id) {
+        logger::log_codex_api_warn(&format!(
+            "[CodexLocalAccess] 清理账号运行态失败: account_id={}, error={}",
+            account.id, err
+        ));
     }
 }
 
@@ -8909,26 +8941,37 @@ async fn mark_account_failure(
     message: &str,
     request_kind: CodexLocalAccessRequestKind,
 ) {
-    let mut runtime = gateway_runtime().lock().await;
-    let now = now_ms();
-    let health = runtime
-        .account_health
-        .entry(account.id.clone())
-        .or_default();
-    health.email = account.email.clone();
-    health.consecutive_failures = health.consecutive_failures.saturating_add(1);
-    health.last_failure_at = Some(now);
-    health.last_failure_status = status;
-    health.last_failure_category = category.map(str::to_string);
-    health.last_failure_message =
-        Some(message.trim().to_string()).filter(|value| !value.is_empty());
-    if category == Some("image_generation_not_enabled") {
-        health.image_generation_status = CodexLocalAccessImageGenerationStatus::Unavailable;
-        health.image_generation_checked_at = Some(now);
-    } else if request_kind_is_image(request_kind)
-        && health.image_generation_status == CodexLocalAccessImageGenerationStatus::Unknown
     {
-        health.image_generation_checked_at = Some(now);
+        let mut runtime = gateway_runtime().lock().await;
+        let now = now_ms();
+        let health = runtime
+            .account_health
+            .entry(account.id.clone())
+            .or_default();
+        health.email = account.email.clone();
+        health.consecutive_failures = health.consecutive_failures.saturating_add(1);
+        health.last_failure_at = Some(now);
+        health.last_failure_status = status;
+        health.last_failure_category = category.map(str::to_string);
+        health.last_failure_message =
+            Some(message.trim().to_string()).filter(|value| !value.is_empty());
+        if category == Some("image_generation_not_enabled") {
+            health.image_generation_status = CodexLocalAccessImageGenerationStatus::Unavailable;
+            health.image_generation_checked_at = Some(now);
+        } else if request_kind_is_image(request_kind)
+            && health.image_generation_status == CodexLocalAccessImageGenerationStatus::Unknown
+        {
+            health.image_generation_checked_at = Some(now);
+        }
+    }
+
+    if let Err(err) =
+        codex_account::record_account_runtime_failure(&account.id, category, message, None)
+    {
+        logger::log_codex_api_warn(&format!(
+            "[CodexLocalAccess] 写入账号失败状态失败: account_id={}, error={}",
+            account.id, err
+        ));
     }
 }
 
@@ -14745,6 +14788,9 @@ fn classify_upstream_error_category(status: StatusCode, body: &str) -> Option<&'
     if parse_codex_retry_after(status, body).is_some() {
         return Some("usage_limit_reached");
     }
+    if status == StatusCode::TOO_MANY_REQUESTS {
+        return Some("rate_limited");
+    }
     let lower = body.to_ascii_lowercase();
     if lower.contains("context length")
         || lower.contains("context_length")
@@ -14761,6 +14807,9 @@ fn classify_upstream_error_category(status: StatusCode, body: &str) -> Option<&'
 
 fn should_try_next_account(status: StatusCode, body: &str) -> bool {
     if status == StatusCode::UNAUTHORIZED {
+        return true;
+    }
+    if status == StatusCode::TOO_MANY_REQUESTS {
         return true;
     }
     if is_image_generation_capability_error(status, body) {
@@ -16730,12 +16779,14 @@ async fn proxy_request_with_account_pool(
                 );
 
                 if !collection.disable_cooling {
-                    if let Some(retry_after) = parse_codex_retry_after(status, &body) {
+                    let retry_after = parse_codex_retry_after(status, &body)
+                        .or_else(|| fallback_retry_after_for_upstream_error(status, category));
+                    if let Some(retry_after) = retry_after {
                         set_model_cooldown(
                             &account.id,
                             &routing_hint.model_key,
                             retry_after,
-                            "usage_limit_reached",
+                            category.unwrap_or("rate_limited"),
                         )
                         .await;
                         round_cooldown_wait = Some(match round_cooldown_wait {
@@ -17611,6 +17662,24 @@ async fn proxy_websocket_with_account_pool(
                                         request_kind,
                                     )
                                     .await;
+                                    if !collection.disable_cooling {
+                                        let retry_status_code = StatusCode::from_u16(retry_status)
+                                            .unwrap_or(StatusCode::BAD_GATEWAY);
+                                        if let Some(retry_after) =
+                                            fallback_retry_after_for_upstream_error(
+                                                retry_status_code,
+                                                Some(retry_category),
+                                            )
+                                        {
+                                            set_model_cooldown(
+                                                &account.id,
+                                                &routing_hint.model_key,
+                                                retry_after,
+                                                retry_category,
+                                            )
+                                            .await;
+                                        }
+                                    }
                                     last_status = retry_status;
                                     last_error =
                                         if retry_status == StatusCode::UNAUTHORIZED.as_u16() {
@@ -17648,6 +17717,22 @@ async fn proxy_websocket_with_account_pool(
                     request_kind,
                 )
                 .await;
+                if !collection.disable_cooling {
+                    let status_code =
+                        StatusCode::from_u16(status).unwrap_or(StatusCode::BAD_GATEWAY);
+                    if let Some(retry_after) = fallback_retry_after_for_upstream_error(
+                        status_code,
+                        Some(err.category.as_str()),
+                    ) {
+                        set_model_cooldown(
+                            &account.id,
+                            &routing_hint.model_key,
+                            retry_after,
+                            err.category.as_str(),
+                        )
+                        .await;
+                    }
+                }
                 last_status = status;
                 last_error = err.message;
                 last_error_category = Some(err.category);
@@ -17801,6 +17886,10 @@ fn parse_websocket_upstream_error(message: &Message) -> Option<WebSocketUpstream
     .to_string();
     let retry_after = usage_retry_after
         .or_else(|| parse_websocket_retry_after_header(&value))
+        .or_else(|| {
+            (category == "rate_limited")
+                .then_some(Duration::from_secs(DEFAULT_RATE_LIMIT_COOLDOWN_SECONDS))
+        })
         .or_else(|| is_connection_limit.then_some(Duration::ZERO));
 
     Some(WebSocketUpstreamError {

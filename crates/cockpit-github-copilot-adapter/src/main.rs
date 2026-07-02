@@ -4,10 +4,10 @@ use cockpit_core::modules::{
     process, vscode_inject,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::path::Path;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 use tiny_http::{Header, Method, Response, Server, StatusCode};
 use tokio::runtime::Runtime;

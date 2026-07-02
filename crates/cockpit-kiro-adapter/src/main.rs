@@ -2,15 +2,22 @@ use cockpit_core::models::{DefaultInstanceSettings, InstanceProfileView, Instanc
 use cockpit_core::modules::{kiro_account, kiro_instance, kiro_oauth, logger, process};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tiny_http::{Header, Method, Response, Server, StatusCode};
 use tokio::runtime::Runtime;
 use uuid::Uuid;
 
 const DEFAULT_INSTANCE_ID: &str = "__default__";
+const KIRO_KEEPALIVE_FAILURE_BACKOFF_SECONDS: i64 = 15 * 60;
+const KIRO_KEEPALIVE_MAX_ACCOUNTS_PER_CYCLE: i32 = 3;
+const KIRO_KEEPALIVE_REFRESH_LEAD_SECONDS: i64 = 15 * 60;
+
+static KIRO_KEEPALIVE_NEXT_ALLOWED: LazyLock<Mutex<HashMap<String, i64>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -247,8 +254,31 @@ fn current_unix_timestamp() -> i64 {
 fn kiro_account_expires_soon(account: &cockpit_core::models::kiro::KiroAccount) -> bool {
     account
         .expires_at
-        .map(|value| value <= current_unix_timestamp() + 5 * 60)
+        .map(|value| value <= current_unix_timestamp() + KIRO_KEEPALIVE_REFRESH_LEAD_SECONDS)
         .unwrap_or(true)
+}
+
+fn kiro_keepalive_allow_attempt(key: &str) -> bool {
+    let now = current_unix_timestamp();
+    let Ok(state) = KIRO_KEEPALIVE_NEXT_ALLOWED.lock() else {
+        return true;
+    };
+    state.get(key).map(|next| *next <= now).unwrap_or(true)
+}
+
+fn kiro_keepalive_clear_backoff(key: &str) {
+    if let Ok(mut state) = KIRO_KEEPALIVE_NEXT_ALLOWED.lock() {
+        state.remove(key);
+    }
+}
+
+fn kiro_keepalive_mark_failure(key: &str) {
+    if let Ok(mut state) = KIRO_KEEPALIVE_NEXT_ALLOWED.lock() {
+        state.insert(
+            key.to_string(),
+            current_unix_timestamp() + KIRO_KEEPALIVE_FAILURE_BACKOFF_SECONDS,
+        );
+    }
 }
 
 fn keepalive_due_kiro_accounts(runtime: &Runtime) -> Result<i32, String> {
@@ -260,9 +290,18 @@ fn keepalive_due_kiro_accounts(runtime: &Runtime) -> Result<i32, String> {
         if !kiro_account_expires_soon(&account) {
             continue;
         }
+        let key = format!("kiro:{}", account.id);
+        if !kiro_keepalive_allow_attempt(&key) {
+            continue;
+        }
+        if refreshed >= KIRO_KEEPALIVE_MAX_ACCOUNTS_PER_CYCLE {
+            logger::log_info("[TokenKeeper][Kiro] 本轮达到保活处理上限，剩余账号延后处理");
+            break;
+        }
 
         match runtime.block_on(kiro_account::refresh_account_token(&account.id)) {
             Ok(updated) => {
+                kiro_keepalive_clear_backoff(&key);
                 if current_id.as_deref() == Some(updated.id.as_str()) {
                     match kiro_instance::get_default_kiro_user_data_dir() {
                         Ok(user_data_dir) => {
@@ -291,8 +330,9 @@ fn keepalive_due_kiro_accounts(runtime: &Runtime) -> Result<i32, String> {
                 ));
             }
             Err(err) => {
+                kiro_keepalive_mark_failure(&key);
                 logger::log_warn(&format!(
-                    "[TokenKeeper][Kiro] Token 保活失败: account_id={}, error={}",
+                    "[TokenKeeper][Kiro] Token 保活失败，进入退避: account_id={}, error={}",
                     account.id, err
                 ));
             }

@@ -820,6 +820,13 @@
       "antigravityDualSwitchNoRestartDesc": "切號時同時執行本地落盤與擴充套件無感切號，不再自動重啟 Antigravity IDE。",
       "appAutoLaunch": "開機時啟動 Cockpit Tools",
       "appAutoLaunchDesc": "系統登入後自動啟動應用程式",
+      "tokenKeeper": "帳號授權保活",
+      "tokenKeeperDesc": "開啟後會在背景延遲並分批刷新快到期的帳號授權；關閉後不再自動保活，只保留手動刷新、切換帳號和匯入。",
+      "platformQuickSettingsTitle": "平台設定入口",
+      "platformQuickSettingsDesc": "各平台設定已移到對應平台頁，可從這裡快速開啟。",
+      "platformQuickSettingsItemDesc": "平台頁設定",
+      "openPlatformSettings": "開啟",
+      "platformQuickSettingsOpenAria": "開啟 {{platform}} 設定",
       "startupWakeupDisabled": "關閉",
       "startupWakeupImmediate": "立即喚醒",
       "startupWakeupDelayed": "延遲喚醒",
@@ -883,7 +890,8 @@
       "claudeAutoRefresh": "Claude 自動重新整理額度",
       "claudeAutoRefreshDesc": "在背景自動更新 Claude 帳號額度快取",
       "claudeAppPath": "Claude Desktop 啟動目標",
-      "claudeAppPathDesc": "預設實例可使用 Microsoft Store 應用目標；多開實例請選擇真實 Claude.exe。"
+      "claudeAppPathDesc": "預設實例可使用 Microsoft Store 應用目標；多開實例請選擇真實 Claude.exe。",
+      "platformQuickSettingsEntryTitle": "{{platform}}設定入口"
     },
     "network": {
       "apiTitle": "反重力駕駛艙 API",

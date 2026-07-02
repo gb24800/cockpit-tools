@@ -866,6 +866,13 @@
       "antigravityDualSwitchNoRestartDesc": "عند تبديل الحساب، يتم تنفيذ كتابة بيانات الحساب محليًا والتبديل السلس عبر الإضافة في تدفق واحد، دون إعادة تشغيل Antigravity IDE.",
       "appAutoLaunch": "تشغيل Cockpit Tools عند تسجيل الدخول",
       "appAutoLaunchDesc": "تشغيل التطبيق تلقائيًا بعد تسجيل الدخول إلى النظام",
+      "tokenKeeper": "إبقاء تفويض الحساب نشطًا",
+      "tokenKeeperDesc": "عند التفعيل، يحدّث التطبيق في الخلفية تفويض الحسابات القريبة من الانتهاء بعد تأخير وبشكل دفعات؛ عند إيقافه تتوقف الصيانة التلقائية ويبقى التحديث اليدوي والتبديل والاستيراد فقط.",
+      "platformQuickSettingsTitle": "إعدادات المنصات",
+      "platformQuickSettingsDesc": "نُقلت إعدادات كل منصة إلى صفحتها. افتحها بسرعة من هنا.",
+      "platformQuickSettingsItemDesc": "صفحة المنصة",
+      "openPlatformSettings": "فتح",
+      "platformQuickSettingsOpenAria": "فتح إعدادات {{platform}}",
       "startupWakeupDisabled": "معطل",
       "startupWakeupImmediate": "تنبيه فوري",
       "startupWakeupDelayed": "تنبيه بعد تأخير",
@@ -929,7 +936,8 @@
       "claudeAutoRefresh": "تحديث حصة Claude تلقائيًا",
       "claudeAutoRefreshDesc": "يحدّث ذاكرة الحصة المؤقتة لحسابات Claude تلقائيًا في الخلفية.",
       "claudeAppPath": "هدف تشغيل Claude Desktop",
-      "claudeAppPathDesc": "يمكن للملف الافتراضي استخدام هدف Microsoft Store؛ أما الملفات متعددة المثيلات فتحتاج Claude.exe الحقيقي."
+      "claudeAppPathDesc": "يمكن للملف الافتراضي استخدام هدف Microsoft Store؛ أما الملفات متعددة المثيلات فتحتاج Claude.exe الحقيقي.",
+      "platformQuickSettingsEntryTitle": "{{platform}} مدخل الإعدادات"
     },
     "network": {
       "apiTitle": "واجهة برمجة تطبيقات قمرة القيادة المضادة للجاذبية",

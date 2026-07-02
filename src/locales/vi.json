@@ -823,6 +823,13 @@
       "antigravityDualSwitchNoRestartDesc": "Khi chuyển tài khoản, việc ghi dữ liệu cục bộ và chuyển đổi liền mạch qua tiện ích mở rộng được thực hiện trong một luồng, không cần khởi động lại Antigravity IDE.",
       "appAutoLaunch": "Khởi chạy Cockpit Tools khi đăng nhập",
       "appAutoLaunchDesc": "Tự động khởi chạy ứng dụng sau khi đăng nhập hệ thống",
+      "tokenKeeper": "Duy trì ủy quyền tài khoản",
+      "tokenKeeperDesc": "Khi bật, ứng dụng làm mới ủy quyền tài khoản sắp hết hạn trong nền sau một khoảng trễ và theo từng nhóm nhỏ; khi tắt, tự động duy trì sẽ dừng, còn làm mới thủ công, chuyển tài khoản và nhập vẫn hoạt động.",
+      "platformQuickSettingsTitle": "Cài đặt nền tảng",
+      "platformQuickSettingsDesc": "Cài đặt của từng nền tảng đã chuyển sang trang riêng. Mở nhanh tại đây.",
+      "platformQuickSettingsItemDesc": "Trang nền tảng",
+      "openPlatformSettings": "Mở",
+      "platformQuickSettingsOpenAria": "Mở cài đặt {{platform}}",
       "startupWakeupDisabled": "Tắt",
       "startupWakeupImmediate": "Đánh thức ngay",
       "startupWakeupDelayed": "Đánh thức sau độ trễ",
@@ -883,7 +890,8 @@
       "claudeAutoRefresh": "Tự động làm mới hạn mức Claude",
       "claudeAutoRefreshDesc": "Tự động làm mới bộ nhớ đệm hạn mức cho tài khoản Claude trong nền.",
       "claudeAppPath": "Mục tiêu khởi chạy Claude Desktop",
-      "claudeAppPathDesc": "Hồ sơ mặc định có thể dùng mục tiêu Microsoft Store; hồ sơ đa phiên bản cần Claude.exe thật."
+      "claudeAppPathDesc": "Hồ sơ mặc định có thể dùng mục tiêu Microsoft Store; hồ sơ đa phiên bản cần Claude.exe thật.",
+      "platformQuickSettingsEntryTitle": "{{platform}} lối vào cài đặt"
     },
     "network": {
       "apiTitle": "API Antigravity Cockpit",

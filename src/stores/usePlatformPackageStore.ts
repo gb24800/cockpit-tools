@@ -537,8 +537,11 @@ function isPlatformPackageInstallRequired(
   return !isPlatformRuntimeReady(packages, platformId);
 }
 
+const SILENT_PREPARE_UPDATES_DELAY_MS = 60_000;
+
 let silentPrepareStarted = false;
 let silentPrepareInFlight = false;
+let silentPrepareTimerId: number | null = null;
 const initialPlatformPackages = mergeKnownPackages(loadCachedPackages());
 
 export const usePlatformPackageStore = create<PlatformPackageStoreState>((set, get) => ({
@@ -553,7 +556,12 @@ export const usePlatformPackageStore = create<PlatformPackageStoreState>((set, g
       const packages = mergeKnownPackages(await listPlatformPackages());
       set({ packages, loading: false, initialized: true });
       persistPackagesCache(packages);
-      void get().prepareUpdates();
+      if (!silentPrepareStarted && !silentPrepareInFlight && silentPrepareTimerId === null) {
+        silentPrepareTimerId = window.setTimeout(() => {
+          silentPrepareTimerId = null;
+          void get().prepareUpdates();
+        }, SILENT_PREPARE_UPDATES_DELAY_MS);
+      }
       return packages;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

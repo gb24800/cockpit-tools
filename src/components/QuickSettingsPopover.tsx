@@ -850,23 +850,36 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
     }
   };
 
-  const getRefreshKeyForType = (t: QuickSettingsType): keyof GeneralConfig => {
-    switch (t) {
-      case 'antigravity': return 'auto_refresh_minutes';
-      case 'codex': return 'codex_auto_refresh_minutes';
-      case 'claude': return 'claude_auto_refresh_minutes';
-      case 'github_copilot': return 'ghcp_auto_refresh_minutes';
-      case 'windsurf': return 'windsurf_auto_refresh_minutes';
-      case 'kiro': return 'kiro_auto_refresh_minutes';
-      case 'cursor': return 'cursor_auto_refresh_minutes';
-      case 'gemini': return 'gemini_auto_refresh_minutes';
-      case 'codebuddy': return 'codebuddy_auto_refresh_minutes';
-      case 'codebuddy_cn': return 'codebuddy_cn_auto_refresh_minutes';
-      case 'qoder': return 'qoder_auto_refresh_minutes';
-      case 'trae': return 'trae_auto_refresh_minutes';
-      case 'workbuddy': return 'workbuddy_auto_refresh_minutes';
-      case 'zed': return 'zed_auto_refresh_minutes';
-      default: return 'auto_refresh_minutes';
+  const getRefreshKeyForType = (platformType: QuickSettingsType): keyof GeneralConfig => {
+    switch (platformType) {
+      case 'antigravity':
+        return 'auto_refresh_minutes';
+      case 'codex':
+        return 'codex_auto_refresh_minutes';
+      case 'claude':
+        return 'claude_auto_refresh_minutes';
+      case 'github_copilot':
+        return 'ghcp_auto_refresh_minutes';
+      case 'windsurf':
+        return 'windsurf_auto_refresh_minutes';
+      case 'kiro':
+        return 'kiro_auto_refresh_minutes';
+      case 'cursor':
+        return 'cursor_auto_refresh_minutes';
+      case 'gemini':
+        return 'gemini_auto_refresh_minutes';
+      case 'codebuddy':
+        return 'codebuddy_auto_refresh_minutes';
+      case 'codebuddy_cn':
+        return 'codebuddy_cn_auto_refresh_minutes';
+      case 'qoder':
+        return 'qoder_auto_refresh_minutes';
+      case 'trae':
+        return 'trae_auto_refresh_minutes';
+      case 'workbuddy':
+        return 'workbuddy_auto_refresh_minutes';
+      case 'zed':
+        return 'zed_auto_refresh_minutes';
     }
   };
 
@@ -1247,15 +1260,10 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
       case 'gemini':
         return t('quickSettings.geminiRefreshInterval', '配额自动刷新');
       case 'codebuddy':
-        return t('quickSettings.refreshInterval', '配额自动刷新');
       case 'codebuddy_cn':
-        return t('quickSettings.refreshInterval', '配额自动刷新');
       case 'qoder':
-        return t('quickSettings.refreshInterval', '配额自动刷新');
       case 'trae':
-        return t('quickSettings.refreshInterval', '配额自动刷新');
       case 'workbuddy':
-        return t('quickSettings.refreshInterval', '配额自动刷新');
       case 'zed':
         return t('quickSettings.refreshInterval', '配额自动刷新');
     }
@@ -1384,14 +1392,15 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
   const showRefreshInput = refreshEditing;
   const currentAccountRefreshPlatform = getCurrentAccountRefreshPlatformForType(type);
   const currentAccountRefreshValue = currentAccountRefreshMap[currentAccountRefreshPlatform] ?? 1;
-  const isCurrentAccountRefreshAllowed = refreshValue > 0;
+  const isCurrentAccountRefreshAllowed = type === 'codex' || refreshValue > 0;
   const currentAccountRefreshDisplayValue = isCurrentAccountRefreshAllowed
     ? String(currentAccountRefreshValue)
     : '-1';
   const isCurrentAccountRefreshPreset = CURRENT_ACCOUNT_REFRESH_PRESETS.includes(
     String(currentAccountRefreshValue),
   );
-  const showCurrentAccountRefreshInput = currentAccountRefreshEditing && isCurrentAccountRefreshAllowed;
+  const showCurrentAccountRefreshInput =
+    currentAccountRefreshEditing && isCurrentAccountRefreshAllowed;
 
   const isThresholdPreset = config ? thresholdPresets.includes(String(config.auto_switch_threshold)) : true;
   const showThresholdInput = thresholdEditing;
@@ -1951,53 +1960,55 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
             )}
 
             {/* ─── Refresh Interval ─── */}
-            <div className="qs-section">
-              <div className="qs-section-header">
-                <RefreshCw size={15} />
-                <span>{getRefreshLabel()}</span>
+            {type !== 'codex' && (
+              <div className="qs-section">
+                <div className="qs-section-header">
+                  <RefreshCw size={15} />
+                  <span>{getRefreshLabel()}</span>
+                </div>
+                <div className="qs-field-group">
+                  {showRefreshInput ? (
+                    <div className="qs-inline-input">
+                      <input
+                        type="number"
+                        min={1}
+                        max={999}
+                        className="qs-select qs-select--input-mode qs-select--with-unit"
+                        value={customRefresh}
+                        placeholder={t('quickSettings.inputMinutes', '输入分钟数')}
+                        onChange={(e) => setCustomRefresh(e.target.value.replace(/[^\d]/g, ''))}
+                        onBlur={handleCustomRefreshApply}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleCustomRefreshApply();
+                          }
+                        }}
+                      />
+                      <span className="qs-input-unit">{t('settings.general.minutes')}</span>
+                    </div>
+                  ) : (
+                    <select
+                      className="qs-select"
+                      value={String(refreshValue)}
+                      onChange={(e) => handleRefreshSelectChange(e.target.value)}
+                    >
+                      {!isPreset && (
+                        <option value={String(refreshValue)}>
+                          {refreshValue} {t('settings.general.minutes')}
+                        </option>
+                      )}
+                      <option value="-1">{t('settings.general.autoRefreshDisabled')}</option>
+                      <option value="2">2 {t('settings.general.minutes')}</option>
+                      <option value="5">5 {t('settings.general.minutes')}</option>
+                      <option value="10">10 {t('settings.general.minutes')}</option>
+                      <option value="15">15 {t('settings.general.minutes')}</option>
+                      <option value="custom">{t('quickSettings.customInput', '自定义')}</option>
+                    </select>
+                  )}
+                </div>
               </div>
-              <div className="qs-field-group">
-                {showRefreshInput ? (
-                  <div className="qs-inline-input">
-                    <input
-                      type="number"
-                      min={1}
-                      max={999}
-                      className="qs-select qs-select--input-mode qs-select--with-unit"
-                      value={customRefresh}
-                      placeholder={t('quickSettings.inputMinutes', '输入分钟数')}
-                      onChange={(e) => setCustomRefresh(e.target.value.replace(/[^\d]/g, ''))}
-                      onBlur={handleCustomRefreshApply}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleCustomRefreshApply();
-                        }
-                      }}
-                    />
-                    <span className="qs-input-unit">{t('settings.general.minutes')}</span>
-                  </div>
-                ) : (
-                  <select
-                    className="qs-select"
-                    value={String(refreshValue)}
-                    onChange={(e) => handleRefreshSelectChange(e.target.value)}
-                  >
-                    {!isPreset && (
-                      <option value={String(refreshValue)}>
-                        {refreshValue} {t('settings.general.minutes')}
-                      </option>
-                    )}
-                    <option value="-1">{t('settings.general.autoRefreshDisabled')}</option>
-                    <option value="2">2 {t('settings.general.minutes')}</option>
-                    <option value="5">5 {t('settings.general.minutes')}</option>
-                    <option value="10">10 {t('settings.general.minutes')}</option>
-                    <option value="15">15 {t('settings.general.minutes')}</option>
-                    <option value="custom">{t('quickSettings.customInput', '自定义')}</option>
-                  </select>
-                )}
-              </div>
-            </div>
+            )}
 
             <div className="qs-section">
               <div className="qs-section-header">
@@ -2054,9 +2065,9 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
                   {isCurrentAccountRefreshAllowed
                     ? t('settings.general.currentAccountRefreshItemDesc')
                     : t(
-                      'settings.general.currentAccountRefreshRequiresAutoRefresh',
-                      '需先开启“配额自动刷新”后，才能设置当前账号刷新。',
-                    )}
+                        'settings.general.currentAccountRefreshRequiresAutoRefresh',
+                        '需先开启“配额自动刷新”后，才能设置当前账号刷新。',
+                      )}
                 </div>
               </div>
             </div>

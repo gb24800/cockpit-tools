@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { open } from '@tauri-apps/plugin-dialog';
@@ -74,7 +74,10 @@ import { getWorkbuddyAccountDisplayEmail } from '../types/workbuddy';
 import { getQoderAccountDisplayEmail } from '../types/qoder';
 import { getTraeAccountDisplayEmail } from '../types/trae';
 import { getZedAccountDisplayEmail } from '../types/zed';
-import { ALL_PLATFORM_IDS, PlatformId } from '../types/platform';
+import { ALL_PLATFORM_IDS, PLATFORM_PAGE_MAP, type PlatformId } from '../types/platform';
+import { getPlatformLabel } from '../utils/platformMeta';
+import { setAntigravityRuntimeTargetFromPlatform } from '../utils/antigravityRuntimeTarget';
+import type { QuickSettingsType } from '../components/QuickSettingsPopover';
 import {
   buildStartupPageOptions,
   DEFAULT_STARTUP_PAGE,
@@ -91,7 +94,7 @@ import { SettingsAccountTransferSection } from '../components/SettingsAccountTra
 import { SettingsWebdavSyncSection } from '../components/SettingsWebdavSyncSection';
 import { useEscClose } from '../hooks/useEscClose';
 import './settings/Settings.css';
-import { 
+import {
   Github, User, Rocket, Save, FolderOpen,
   AlertCircle, RefreshCw, Heart, MessageSquare, FileText, Download, X
 } from 'lucide-react';
@@ -141,6 +144,7 @@ interface GeneralConfig {
   startup_minimized?: boolean;
   floating_card_always_on_top?: boolean;
   app_auto_launch_enabled?: boolean;
+  token_keeper_enabled?: boolean;
   opencode_app_path: string;
   antigravity_app_path: string;
   codex_app_path: string;
@@ -291,6 +295,38 @@ const FALLBACK_PLATFORM_SETTINGS_ORDER: Record<PlatformId, number> = {
   workbuddy: 13,
   zed: 14,
 };
+const SETTINGS_PAGE_CONFIG_UPDATE_SOURCE = 'settings-page';
+const SHOW_PLATFORM_SETTINGS_IN_GENERAL: boolean = false;
+
+type PlatformQuickSettingsEntry = {
+  platformId: PlatformId;
+  quickSettingsType: QuickSettingsType;
+};
+
+const PLATFORM_QUICK_SETTINGS_ENTRIES: PlatformQuickSettingsEntry[] = [
+  { platformId: 'antigravity', quickSettingsType: 'antigravity' },
+  { platformId: 'antigravity_ide', quickSettingsType: 'antigravity' },
+  { platformId: 'codex', quickSettingsType: 'codex' },
+  { platformId: 'claude_manager', quickSettingsType: 'claude' },
+  { platformId: 'github-copilot', quickSettingsType: 'github_copilot' },
+  { platformId: 'windsurf', quickSettingsType: 'windsurf' },
+  { platformId: 'kiro', quickSettingsType: 'kiro' },
+  { platformId: 'cursor', quickSettingsType: 'cursor' },
+  { platformId: 'gemini', quickSettingsType: 'gemini' },
+  { platformId: 'codebuddy', quickSettingsType: 'codebuddy' },
+  { platformId: 'codebuddy_cn', quickSettingsType: 'codebuddy_cn' },
+  { platformId: 'qoder', quickSettingsType: 'qoder' },
+  { platformId: 'trae', quickSettingsType: 'trae' },
+  { platformId: 'workbuddy', quickSettingsType: 'workbuddy' },
+  { platformId: 'zed', quickSettingsType: 'zed' },
+];
+
+const QUICK_SETTINGS_OPEN_DELAYS_MS = [80, 220, 480] as const;
+
+type ConfigUpdatedEventDetail = {
+  source?: string;
+};
+
 type UpdateCheckSource = 'auto' | 'manual';
 type UpdateCheckFinishedDetail = {
   source: UpdateCheckSource;
@@ -405,6 +441,26 @@ export function SettingsPage() {
     }
     return next;
   }, [orderedPlatformIds]);
+  const platformQuickSettingsEntries = useMemo(() => {
+    return [...PLATFORM_QUICK_SETTINGS_ENTRIES].sort((left, right) => {
+      return platformSettingsOrder[left.platformId] - platformSettingsOrder[right.platformId];
+    });
+  }, [platformSettingsOrder]);
+
+  const openPlatformQuickSettings = useCallback((entry: PlatformQuickSettingsEntry) => {
+    setAntigravityRuntimeTargetFromPlatform(entry.platformId);
+    window.dispatchEvent(
+      new CustomEvent('app-request-navigate', { detail: PLATFORM_PAGE_MAP[entry.platformId] }),
+    );
+
+    for (const delay of QUICK_SETTINGS_OPEN_DELAYS_MS) {
+      window.setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent('quick-settings:open', { detail: { type: entry.quickSettingsType } }),
+        );
+      }, delay);
+    }
+  }, []);
 
   const startupPageOptions = useMemo(
     () => buildStartupPageOptions(
@@ -469,6 +525,7 @@ export function SettingsPage() {
   const [startupMinimized, setStartupMinimized] = useState(false);
   const [floatingCardAlwaysOnTop, setFloatingCardAlwaysOnTop] = useState(false);
   const [appAutoLaunchEnabled, setAppAutoLaunchEnabled] = useState(false);
+  const [tokenKeeperEnabled, setTokenKeeperEnabled] = useState(true);
   const [opencodeAppPath, setOpencodeAppPath] = useState('');
   const [antigravityAppPath, setAntigravityAppPath] = useState('');
   const [codexAppPath, setCodexAppPath] = useState('');
@@ -946,6 +1003,7 @@ export function SettingsPage() {
           startupMinimized,
           floatingCardAlwaysOnTop,
           appAutoLaunchEnabled,
+          tokenKeeperEnabled,
           opencodeAppPath,
           antigravityAppPath,
           codexAppPath,
@@ -1041,7 +1099,11 @@ export function SettingsPage() {
           uiScale: normalizedUiScale,
           topRightAdVisible,
         });
-        window.dispatchEvent(new Event('config-updated'));
+        window.dispatchEvent(
+          new CustomEvent<ConfigUpdatedEventDetail>('config-updated', {
+            detail: { source: SETTINGS_PAGE_CONFIG_UPDATE_SOURCE },
+          }),
+        );
       } catch (err) {
         console.error('保存通用配置失败:', err);
         alert(`${t('settings.network.saveFailed').replace('{error}', String(err))}`);
@@ -1078,6 +1140,7 @@ export function SettingsPage() {
     startupMinimized,
     floatingCardAlwaysOnTop,
     appAutoLaunchEnabled,
+    tokenKeeperEnabled,
     generalLoaded,
     language,
     defaultTerminal,
@@ -1166,7 +1229,11 @@ export function SettingsPage() {
       return result;
     }, {} as Partial<Record<CurrentAccountRefreshPlatform, number>>);
     saveCurrentAccountRefreshMinutesMap(payload);
-    window.dispatchEvent(new Event('config-updated'));
+    window.dispatchEvent(
+      new CustomEvent<ConfigUpdatedEventDetail>('config-updated', {
+        detail: { source: SETTINGS_PAGE_CONFIG_UPDATE_SOURCE },
+      }),
+    );
   }, [generalLoaded, currentAccountRefreshMinutes]);
 
   useEffect(() => {
@@ -1187,7 +1254,11 @@ export function SettingsPage() {
 
   // 监听外部配置更新（如 QuickSettingsPopover 保存后同步）
   useEffect(() => {
-    const handleConfigUpdated = () => {
+    const handleConfigUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<ConfigUpdatedEventDetail>).detail;
+      if (detail?.source === SETTINGS_PAGE_CONFIG_UPDATE_SOURCE) {
+        return;
+      }
       suppressGeneralSaveRef.current = true;
       loadGeneralConfig();
     };
@@ -1380,6 +1451,7 @@ export function SettingsPage() {
       setStartupMinimized(config.startup_minimized ?? false);
       setFloatingCardAlwaysOnTop(config.floating_card_always_on_top ?? false);
       setAppAutoLaunchEnabled(config.app_auto_launch_enabled ?? false);
+      setTokenKeeperEnabled(config.token_keeper_enabled ?? true);
       setOpencodeAppPath(config.opencode_app_path || '');
       setAntigravityAppPath(config.antigravity_app_path || '');
       setCodexAppPath(config.codex_app_path || '');
@@ -2905,6 +2977,23 @@ export function SettingsPage() {
 
               <div className="settings-row">
                 <div className="row-label">
+                  <div className="row-title">{t('settings.general.tokenKeeper')}</div>
+                  <div className="row-desc">{t('settings.general.tokenKeeperDesc')}</div>
+                </div>
+                <div className="row-control">
+                  <select
+                    className="settings-select"
+                    value={tokenKeeperEnabled ? 'true' : 'false'}
+                    onChange={(e) => setTokenKeeperEnabled(e.target.value === 'true')}
+                  >
+                    <option value="true">{t('common.enable', '启用')}</option>
+                    <option value="false">{t('common.disable', '停用')}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="settings-row">
+                <div className="row-label">
                   <div className="row-title">{t('settings.general.floatingCardShowNow', '立即显示悬浮卡片')}</div>
                   <div className="row-desc">{t('settings.general.floatingCardShowNowDesc', '关闭后可在这里或托盘菜单中重新打开')}</div>
                 </div>
@@ -2950,7 +3039,41 @@ export function SettingsPage() {
                   </label>
                 </div>
               </div>
+
+              {platformQuickSettingsEntries.map((entry) => {
+                const platformLabel = getPlatformLabel(entry.platformId, t);
+                return (
+                  <div
+                    key={`${entry.platformId}-${entry.quickSettingsType}`}
+                    className="settings-row settings-row--platform-settings-entry"
+                  >
+                    <div className="row-label">
+                      <div className="row-title">
+                        {t('settings.general.platformQuickSettingsEntryTitle', {
+                          platform: platformLabel,
+                        })}
+                      </div>
+                    </div>
+                    <div className="row-control">
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        title={t('settings.general.platformQuickSettingsOpenAria', {
+                          platform: platformLabel,
+                        })}
+                        aria-label={t('settings.general.platformQuickSettingsOpenAria', {
+                          platform: platformLabel,
+                        })}
+                        onClick={() => openPlatformQuickSettings(entry)}
+                      >
+                        {t('settings.general.openPlatformSettings')}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+            {SHOW_PLATFORM_SETTINGS_IN_GENERAL && (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ order: platformSettingsOrder.antigravity }}>
                 <div className="group-title">{t('settings.general.antigravitySettingsTitle', 'Antigravity IDE 设置')}</div>
@@ -5673,6 +5796,7 @@ export function SettingsPage() {
                 </div>
               </div>
             </div>
+            )}
 
           </>
         )}

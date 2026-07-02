@@ -763,6 +763,13 @@
       "floatingCardAlwaysOnTopDesc": "Jendela kartu mengambang baru tetap di atas saat dibuka",
       "appAutoLaunch": "Jalankan Cockpit Tools saat login",
       "appAutoLaunchDesc": "Jalankan aplikasi secara otomatis setelah masuk ke sistem",
+      "tokenKeeper": "Jaga otorisasi akun",
+      "tokenKeeperDesc": "Saat aktif, aplikasi menyegarkan otorisasi akun yang hampir kedaluwarsa di latar belakang setelah jeda dan secara bertahap; saat nonaktif, pemeliharaan otomatis berhenti, sementara refresh manual, pindah akun, dan impor tetap berjalan.",
+      "platformQuickSettingsTitle": "Pengaturan platform",
+      "platformQuickSettingsDesc": "Pengaturan tiap platform kini ada di halaman platform. Buka cepat dari sini.",
+      "platformQuickSettingsItemDesc": "Halaman platform",
+      "openPlatformSettings": "Buka",
+      "platformQuickSettingsOpenAria": "Buka pengaturan {{platform}}",
       "startupWakeupDisabled": "Nonaktif",
       "startupWakeupImmediate": "Bangunkan segera",
       "startupWakeupDelayed": "Bangunkan setelah penundaan",
@@ -929,7 +936,8 @@
       "claudeAutoRefresh": "Penyegaran otomatis kuota Claude",
       "claudeAutoRefreshDesc": "Menyegarkan cache kuota akun Claude secara otomatis di latar belakang.",
       "claudeAppPath": "Target peluncuran Claude Desktop",
-      "claudeAppPathDesc": "Profil default dapat memakai target Microsoft Store; profil multi-instans membutuhkan Claude.exe asli."
+      "claudeAppPathDesc": "Profil default dapat memakai target Microsoft Store; profil multi-instans membutuhkan Claude.exe asli.",
+      "platformQuickSettingsEntryTitle": "{{platform}} akses pengaturan"
     },
     "network": {
       "apiTitle": "API Antigravity Cockpit",

@@ -1,7 +1,7 @@
 {
   "id": "codex",
   "platformId": "codex",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "apiVersion": 1,
   "minCoreVersion": "1.0.0",
   "displayName": "Codex",
@@ -32,6 +32,37 @@
     "cli"
   ],
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-07-02",
+      "notes": [
+        "Removed Codex quota auto-refresh from settings.",
+        "Changed Codex current-account refresh to work independently without relying on quota auto-refresh.",
+        "Changed Codex refresh behavior to avoid default full-account quota scans; authorization keep-alive now only renews due tokens.",
+        "Moved Codex-specific settings to the Codex settings popover, with General settings opening the Codex settings entry.",
+        "Changed platform package replacement to uninstall the old package before installing the downloaded package."
+      ],
+      "locales": {
+        "zh-CN": {
+          "notes": [
+            "Codex 设置去掉配额自动刷新。",
+            "Codex 当前账号刷新改为独立生效，不再依赖配额自动刷新。",
+            "Codex 刷新逻辑改为不默认全量扫描账号配额；账号授权保活只续期到期 token。",
+            "Codex 专属设置迁移到 Codex 设置弹框，通用设置只保留跳转入口。",
+            "平台包替换改为先卸载旧包，再安装已下载的新包。"
+          ]
+        },
+        "zh-TW": {
+          "notes": [
+            "Codex 設定移除配額自動刷新。",
+            "Codex 目前帳號刷新改為獨立生效，不再依賴配額自動刷新。",
+            "Codex 刷新邏輯改為不預設全量掃描帳號配額；帳號授權保活只續期到期 token。",
+            "Codex 專屬設定遷移到 Codex 設定彈框，通用設定只保留跳轉入口。",
+            "平台包替換改為先解除安裝舊包，再安裝已下載的新包。"
+          ]
+        }
+      }
+    },
     {
       "version": "1.0.0",
       "date": "2026-07-01",

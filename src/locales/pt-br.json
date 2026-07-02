@@ -823,6 +823,13 @@
       "antigravityDualSwitchNoRestartDesc": "Ao trocar de conta, a gravação local dos dados e a troca contínua da extensão são executadas em um único fluxo, sem reiniciar o Antigravity IDE.",
       "appAutoLaunch": "Iniciar o Cockpit Tools ao entrar no sistema",
       "appAutoLaunchDesc": "Iniciar o app automaticamente após o login no sistema",
+      "tokenKeeper": "Manter autorização das contas",
+      "tokenKeeperDesc": "Quando ativado, o app renova em segundo plano, após um atraso e em pequenos lotes, autorizações de contas próximas do vencimento; quando desativado, a manutenção automática para, mas atualização manual, troca e importação continuam funcionando.",
+      "platformQuickSettingsTitle": "Configurações das plataformas",
+      "platformQuickSettingsDesc": "As configurações de cada plataforma agora ficam na página dela. Abra rapidamente aqui.",
+      "platformQuickSettingsItemDesc": "Página da plataforma",
+      "openPlatformSettings": "Abrir",
+      "platformQuickSettingsOpenAria": "Abrir configurações de {{platform}}",
       "startupWakeupDisabled": "Desativado",
       "startupWakeupImmediate": "Despertar imediatamente",
       "startupWakeupDelayed": "Despertar com atraso",
@@ -883,7 +890,8 @@
       "claudeAutoRefresh": "Atualização automática de cota do Claude",
       "claudeAutoRefreshDesc": "Atualiza automaticamente em segundo plano o cache de cota das contas do Claude.",
       "claudeAppPath": "Alvo de inicialização do Claude Desktop",
-      "claudeAppPathDesc": "O perfil padrão pode usar um alvo da Microsoft Store; perfis multi-instância precisam do Claude.exe real."
+      "claudeAppPathDesc": "O perfil padrão pode usar um alvo da Microsoft Store; perfis multi-instância precisam do Claude.exe real.",
+      "platformQuickSettingsEntryTitle": "{{platform}} atalho de configurações"
     },
     "network": {
       "apiTitle": "API de cockpit antigravidade",

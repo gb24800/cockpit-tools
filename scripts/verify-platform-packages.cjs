@@ -902,6 +902,9 @@ function verifyPackage(indexPackage, workspaceMembers) {
     if (manifest.adapter) {
       assertZipHas(zipEntries, packageId, adapterEntry);
     }
+    if (packageId === 'claude_manager') {
+      assertZipHas(zipEntries, packageId, 'scripts/claude-desktop-auth-helper.cjs');
+    }
   }
 
   rows.push({

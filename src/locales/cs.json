@@ -820,6 +820,13 @@
       "antigravityDualSwitchNoRestartDesc": "Při přepnutí účtu se v jednom kroku zapíší lokální data účtu a provede plynulé přepnutí rozšíření bez restartu Antigravity IDE.",
       "appAutoLaunch": "Spustit Cockpit Tools po přihlášení",
       "appAutoLaunchDesc": "Po přihlášení do systému spustit aplikaci automaticky",
+      "tokenKeeper": "Udržovat autorizaci účtů",
+      "tokenKeeperDesc": "Po zapnutí aplikace po prodlevě a po dávkách obnovuje autorizace účtů, kterým brzy vyprší platnost; po vypnutí se automatická údržba zastaví a zůstane jen ruční obnovení, přepnutí a import.",
+      "platformQuickSettingsTitle": "Nastavení platforem",
+      "platformQuickSettingsDesc": "Nastavení každé platformy je nyní na její stránce. Otevřete je rychle zde.",
+      "platformQuickSettingsItemDesc": "Stránka platformy",
+      "openPlatformSettings": "Otevřít",
+      "platformQuickSettingsOpenAria": "Otevřít nastavení {{platform}}",
       "startupWakeupDisabled": "Vypnuto",
       "startupWakeupImmediate": "Probudit okamžitě",
       "startupWakeupDelayed": "Probudit se zpožděním",
@@ -883,7 +890,8 @@
       "claudeAutoRefresh": "Automatická obnova kvóty Claude",
       "claudeAutoRefreshDesc": "Automaticky na pozadí obnovuje mezipaměť kvóty účtů Claude.",
       "claudeAppPath": "Cíl spuštění Claude Desktop",
-      "claudeAppPathDesc": "Výchozí profil může použít cíl Microsoft Store; více instancí potřebuje skutečný Claude.exe."
+      "claudeAppPathDesc": "Výchozí profil může použít cíl Microsoft Store; více instancí potřebuje skutečný Claude.exe.",
+      "platformQuickSettingsEntryTitle": "{{platform}} vstup do nastavení"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API​",

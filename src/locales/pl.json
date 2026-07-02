@@ -823,6 +823,13 @@
       "antigravityDualSwitchNoRestartDesc": "Podczas przełączania konta zapis lokalnych danych i płynne przełączenie przez rozszerzenie są wykonywane w jednym przebiegu, bez restartu Antigravity IDE.",
       "appAutoLaunch": "Uruchamiaj Cockpit Tools po zalogowaniu",
       "appAutoLaunchDesc": "Automatycznie uruchamiaj aplikację po zalogowaniu do systemu",
+      "tokenKeeper": "Podtrzymywanie autoryzacji kont",
+      "tokenKeeperDesc": "Po włączeniu aplikacja po opóźnieniu i małymi partiami odnawia w tle autoryzacje kont bliskie wygaśnięcia; po wyłączeniu automatyczne podtrzymywanie zostaje zatrzymane, a ręczne odświeżanie, przełączanie i import nadal działają.",
+      "platformQuickSettingsTitle": "Ustawienia platform",
+      "platformQuickSettingsDesc": "Ustawienia każdej platformy są teraz na jej stronie. Otwórz je szybko tutaj.",
+      "platformQuickSettingsItemDesc": "Strona platformy",
+      "openPlatformSettings": "Otwórz",
+      "platformQuickSettingsOpenAria": "Otwórz ustawienia {{platform}}",
       "startupWakeupDisabled": "Wyłączone",
       "startupWakeupImmediate": "Wybudź natychmiast",
       "startupWakeupDelayed": "Wybudź z opóźnieniem",
@@ -883,7 +890,8 @@
       "claudeAutoRefresh": "Automatyczne odświeżanie limitu Claude",
       "claudeAutoRefreshDesc": "Automatycznie odświeża w tle pamięć podręczną limitów kont Claude.",
       "claudeAppPath": "Cel uruchamiania Claude Desktop",
-      "claudeAppPathDesc": "Profil domyślny może używać celu Microsoft Store; wiele instancji wymaga prawdziwego Claude.exe."
+      "claudeAppPathDesc": "Profil domyślny może używać celu Microsoft Store; wiele instancji wymaga prawdziwego Claude.exe.",
+      "platformQuickSettingsEntryTitle": "{{platform}} wejście ustawień"
     },
     "network": {
       "apiTitle": "API kokpitu antygrawitacyjnego",

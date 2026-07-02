@@ -7,20 +7,25 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
-## [1.0.0] - 2026-07-01
+## [1.0.1] - 2026-07-02
 
 ### Added
-- **Cockpit Tools 1.0.0 is now available**: the host application and all platform packages are aligned to version `1.0.0`.
-- **Platforms now update independently**: each supported platform can be updated and maintained on its own without requiring every user to install a full host application update.
 - **Platforms now run as independent packages**: supported platforms can be installed, uninstalled, updated, repaired, and maintained independently from the host application.
+- **Platforms now update independently**: each supported platform can be updated and maintained on its own without requiring every user to install a full host application update.
+- **General settings now include platform settings shortcuts**: platform-specific settings live on each platform page, while existing users can still jump there from General Settings and open the matching settings dialog.
 
 ### Changed
+- **The host application and all platform packages are aligned to `1.0.1`**: the `1.0.0` release was withdrawn, so `1.0.1` includes the independent platform package capabilities originally prepared for `1.0.0`.
 - **Platform updates no longer affect unrelated users**: when only one platform changes, users of other platforms no longer need to update the whole application.
 - **Platform installation and removal are more flexible**: supported platforms can be installed or removed based on actual use, so unused platforms do not have to stay enabled.
+- **Account authorization keep-alive is lighter**: keep-alive now focuses on nearly expired authorization and uses delayed, batched, and backed-off background work to reduce request pressure with many accounts.
+- **Platform package replacement behaves more like uninstalling then installing**: updates, reloads, and local package replacement are less likely to fail because old package files are still in use.
 
 ### Fixed
 - **Fixed account switching issues in several platforms**: fixed account switching issues in Zed, Antigravity IDE, CodeBuddy, CodeBuddy CN, and Cursor.
 - **Fixed startup issues in several platforms**: Zed, Antigravity IDE, CodeBuddy, CodeBuddy CN, and Cursor now start more reliably after switching or reopening.
+- **Fixed Codex current-account refresh custom settings**: custom values no longer flash and fall back to the default 1-minute value.
+- **Fixed repeated account-state requests on some platforms**: exhausted quota, temporary rate limits, and retry cooldowns are handled separately to reduce repeated requests against failing accounts.
 
 ---
 ## [0.26.6] - 2026-06-22

@@ -27,7 +27,7 @@ use aes_gcm::aead::{Aead, AeadCore, OsRng};
 #[cfg(target_os = "windows")]
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 #[cfg(target_os = "windows")]
-use base64::{Engine as _, engine::general_purpose};
+use base64::{engine::general_purpose, Engine as _};
 #[cfg(not(target_os = "windows"))]
 use cbc::cipher::block_padding::Pkcs7;
 #[cfg(not(target_os = "windows"))]
@@ -40,9 +40,9 @@ use sha1::Sha1;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(target_os = "windows")]
-use windows::Win32::Foundation::{HLOCAL, LocalFree};
+use windows::Win32::Foundation::{LocalFree, HLOCAL};
 #[cfg(target_os = "windows")]
-use windows::Win32::Security::Cryptography::{CRYPT_INTEGER_BLOB, CryptUnprotectData};
+use windows::Win32::Security::Cryptography::{CryptUnprotectData, CRYPT_INTEGER_BLOB};
 
 #[cfg(not(target_os = "windows"))]
 type Aes128CbcEnc = cbc::Encryptor<Aes128>;
@@ -334,7 +334,11 @@ fn run_command_get_trimmed(program: &str, args: &[&str]) -> Option<String> {
         return None;
     }
     let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if value.is_empty() { None } else { Some(value) }
+    if value.is_empty() {
+        None
+    } else {
+        Some(value)
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -518,7 +522,11 @@ fn run_command_get_trimmed(program: &str, args: &[&str]) -> Option<String> {
         return None;
     }
     let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if value.is_empty() { None } else { Some(value) }
+    if value.is_empty() {
+        None
+    } else {
+        Some(value)
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -1486,12 +1494,10 @@ mod tests {
 
         assert_eq!(sessions.len(), 3);
         for scopes in github_copilot_session_scope_sets() {
-            assert!(
-                sessions
-                    .iter()
-                    .any(|session| github_session_scopes_match(session, scopes)
-                        && session["accessToken"].as_str() == Some("ghu_new"))
-            );
+            assert!(sessions
+                .iter()
+                .any(|session| github_session_scopes_match(session, scopes)
+                    && session["accessToken"].as_str() == Some("ghu_new")));
         }
     }
 
@@ -1524,23 +1530,17 @@ mod tests {
         let sessions = sessions_array(sessions);
 
         assert_eq!(sessions.len(), 3);
-        assert!(
-            !sessions
-                .iter()
-                .any(|session| session["id"].as_str() == Some("plain-session"))
-        );
-        assert!(
-            !sessions
-                .iter()
-                .any(|session| session["id"].as_str() == Some("other-account-session"))
-        );
+        assert!(!sessions
+            .iter()
+            .any(|session| session["id"].as_str() == Some("plain-session")));
+        assert!(!sessions
+            .iter()
+            .any(|session| session["id"].as_str() == Some("other-account-session")));
         for scopes in github_copilot_session_scope_sets() {
-            assert!(
-                sessions
-                    .iter()
-                    .any(|session| github_session_scopes_match(session, scopes)
-                        && session["accessToken"].as_str() == Some("ghu_copilot"))
-            );
+            assert!(sessions
+                .iter()
+                .any(|session| github_session_scopes_match(session, scopes)
+                    && session["accessToken"].as_str() == Some("ghu_copilot")));
         }
     }
 
@@ -1574,17 +1574,13 @@ mod tests {
         let sessions = sessions_array(sessions);
 
         assert_eq!(sessions.len(), 3);
-        assert!(
-            !sessions
-                .iter()
-                .any(|session| session["accessToken"].as_str() != Some("ghu_new"))
-        );
+        assert!(!sessions
+            .iter()
+            .any(|session| session["accessToken"].as_str() != Some("ghu_new")));
         for scopes in github_copilot_session_scope_sets() {
-            assert!(
-                sessions
-                    .iter()
-                    .any(|session| github_session_scopes_match(session, scopes))
-            );
+            assert!(sessions
+                .iter()
+                .any(|session| github_session_scopes_match(session, scopes)));
         }
     }
 
@@ -1608,12 +1604,10 @@ mod tests {
         let entries: Vec<serde_json::Value> = serde_json::from_str(&value).unwrap();
 
         assert_eq!(entries.len(), 2);
-        assert!(
-            entries
-                .iter()
-                .any(|entry| entry["id"].as_str() == Some("vscode.github")
-                    && entry["allowed"].as_bool() == Some(true))
-        );
+        assert!(entries
+            .iter()
+            .any(|entry| entry["id"].as_str() == Some("vscode.github")
+                && entry["allowed"].as_bool() == Some(true)));
         assert!(entries.iter().any(|entry| entry["id"].as_str()
             == Some(GITHUB_COPILOT_CHAT_EXTENSION_ID)
             && entry["name"].as_str() == Some(GITHUB_COPILOT_CHAT_EXTENSION_NAME)

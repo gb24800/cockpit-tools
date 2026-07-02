@@ -1,8 +1,8 @@
 use std::time::{Duration, Instant};
 
-use serde::Deserialize;
 use serde::de::DeserializeOwned;
-use serde_json::{Value, json};
+use serde::Deserialize;
+use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
 
 use crate::models::github_copilot::{GitHubCopilotAccount, GitHubCopilotOAuthStartResponse};

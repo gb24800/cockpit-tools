@@ -823,6 +823,13 @@
       "antigravityDualSwitchNoRestartDesc": "Beim Kontowechsel werden lokale Kontodaten geschrieben und der nahtlose Erweiterungswechsel in einem Ablauf ausgeführt, ohne Antigravity IDE neu zu starten.",
       "appAutoLaunch": "Cockpit Tools beim Anmelden starten",
       "appAutoLaunchDesc": "App nach der Systemanmeldung automatisch starten",
+      "tokenKeeper": "Kontoautorisierung aktiv halten",
+      "tokenKeeperDesc": "Wenn aktiviert, erneuert die App bald ablaufende Kontoautorisierungen verzögert und in kleinen Stapeln im Hintergrund; wenn deaktiviert, bleibt nur manuelles Aktualisieren, Wechseln und Importieren.",
+      "platformQuickSettingsTitle": "Plattform-Einstellungen",
+      "platformQuickSettingsDesc": "Die Einstellungen jeder Plattform liegen jetzt auf der jeweiligen Plattformseite. Hier schnell öffnen.",
+      "platformQuickSettingsItemDesc": "Plattformseite",
+      "openPlatformSettings": "Öffnen",
+      "platformQuickSettingsOpenAria": "{{platform}}-Einstellungen öffnen",
       "startupWakeupDisabled": "Deaktiviert",
       "startupWakeupImmediate": "Sofort aufwecken",
       "startupWakeupDelayed": "Mit Verzögerung aufwecken",
@@ -883,7 +890,8 @@
       "claudeAutoRefresh": "Claude-Kontingent automatisch aktualisieren",
       "claudeAutoRefreshDesc": "Aktualisiert den Kontingent-Cache für Claude-Konten automatisch im Hintergrund.",
       "claudeAppPath": "Claude-Desktop-Startziel",
-      "claudeAppPathDesc": "Das Standardprofil kann ein Microsoft-Store-Ziel verwenden; Mehrfachinstanzen benötigen die echte Claude.exe."
+      "claudeAppPathDesc": "Das Standardprofil kann ein Microsoft-Store-Ziel verwenden; Mehrfachinstanzen benötigen die echte Claude.exe.",
+      "platformQuickSettingsEntryTitle": "{{platform}} Einstellungszugang"
     },
     "network": {
       "apiTitle": "Antigravity-Cockpit-API",

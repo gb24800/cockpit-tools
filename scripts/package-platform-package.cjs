@@ -11,6 +11,7 @@ const INDEX_SEED_PATH = path.join(ROOT, 'platform-packages', 'index.seed.json');
 const DEFAULT_DIST_DIR = path.join(ROOT, 'platform-packages', 'dist');
 const STAGING_ROOT = path.join(ROOT, '.tmp', 'platform-package-staging');
 const WORKSPACE_CARGO_TOML_PATH = path.join(ROOT, 'Cargo.toml');
+const CLAUDE_DESKTOP_AUTH_HELPER_SOURCE = path.join(ROOT, 'scripts', 'claude-desktop-auth-helper.cjs');
 const WINDOWS_COMMON_CONTROLS_BUILD_RULE_PATH = path.join(ROOT, 'crates', 'adapter-windows-common-controls-build.rs');
 const WINDOWS_COMMON_CONTROLS_RC_PATH = path.join(ROOT, 'crates', 'windows-common-controls-v6.rc');
 const WINDOWS_COMMON_CONTROLS_MANIFEST_PATH = path.join(ROOT, 'crates', 'windows-common-controls-v6.manifest');
@@ -312,6 +313,17 @@ function copyCodexRuntimeHelpers(packageRoot, manifest, os, arch) {
   return [path.relative(packageRoot, targetPath)];
 }
 
+function copyClaudeDesktopAuthHelper(packageRoot, manifest) {
+  if (manifest.id !== 'claude_manager') return [];
+
+  const targetPath = path.join(packageRoot, 'scripts', 'claude-desktop-auth-helper.cjs');
+  assertFile(CLAUDE_DESKTOP_AUTH_HELPER_SOURCE, 'claude_manager: Claude desktop auth helper');
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  fs.copyFileSync(CLAUDE_DESKTOP_AUTH_HELPER_SOURCE, targetPath);
+  fs.chmodSync(targetPath, 0o755);
+  return [path.relative(packageRoot, targetPath)];
+}
+
 function createZip(packageRoot, zipPath) {
   fs.rmSync(zipPath, { force: true });
   fs.mkdirSync(path.dirname(zipPath), { recursive: true });
@@ -432,7 +444,10 @@ function main() {
     }
 
     const adapterEntry = copyAdapterIfAvailable(packageRoot, stagedPackageRoot, manifest, args.os, args.adapterBinDir);
-    const helperEntries = copyCodexRuntimeHelpers(stagedPackageRoot, manifest, args.os, args.arch);
+    const helperEntries = [
+      ...copyCodexRuntimeHelpers(stagedPackageRoot, manifest, args.os, args.arch),
+      ...copyClaudeDesktopAuthHelper(stagedPackageRoot, manifest),
+    ];
     if (manifest.adapter) {
       const cratePath = path.join(ROOT, 'crates', expectedAdapterCrateName(args.platformId), 'Cargo.toml');
       assertFile(cratePath, `${args.platformId}: adapter crate`);

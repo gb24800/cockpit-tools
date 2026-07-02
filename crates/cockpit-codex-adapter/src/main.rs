@@ -38,6 +38,7 @@ const HOST_EVENT_TIMEOUT: Duration = Duration::from_secs(10);
 const CODEX_LOCAL_ACCESS_CHAT_TEST_STREAM_EVENT: &str = "codex-local-access-chat-test-stream";
 const CODEX_MODEL_PROVIDER_CHAT_TEST_PROGRESS_EVENT: &str = "codex://model-provider-test-progress";
 const CODEX_KEEPALIVE_FAILURE_BACKOFF_SECONDS: i64 = 15 * 60;
+const CODEX_KEEPALIVE_MAX_ACCOUNTS_PER_CYCLE: i32 = 3;
 
 static CODEX_KEEPALIVE_NEXT_ALLOWED: std::sync::LazyLock<Mutex<HashMap<String, i64>>> =
     std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
@@ -2150,49 +2151,59 @@ fn refresh_current_quota(runtime: &Runtime) -> Result<Value, String> {
     to_value(runtime.block_on(codex_quota::refresh_account_quota(&account.id))?)
 }
 
-fn refresh_imported_accounts(
+fn refresh_imported_accounts_in_background(
     runtime: &Runtime,
-    accounts: Vec<CodexAccount>,
-) -> Result<Vec<CodexAccount>, String> {
-    let mut result = Vec::with_capacity(accounts.len());
-    for account in accounts {
-        if account.is_api_key_auth() {
-            result.push(account);
-            continue;
-        }
-
-        match runtime.block_on(codex_quota::refresh_account_quota(&account.id)) {
-            Ok(_) => {}
-            Err(error) => logger::log_warn(&format!(
-                "Codex adapter 导入后刷新配额失败: account_id={}, email={}, error={}",
-                account.id, account.email, error
-            )),
-        }
-
-        result.push(codex_account::load_account(&account.id).unwrap_or(account));
+    accounts: &[CodexAccount],
+    source: &'static str,
+) {
+    let refresh_targets = accounts
+        .iter()
+        .filter(|account| !account.is_api_key_auth())
+        .map(|account| (account.id.clone(), account.email.clone()))
+        .collect::<Vec<_>>();
+    if refresh_targets.is_empty() {
+        return;
     }
-    Ok(result)
+
+    let total = refresh_targets.len();
+    runtime.handle().spawn(async move {
+        logger::log_info(&format!(
+            "Codex adapter 导入后后台刷新配额开始: source={}, total={}",
+            source, total
+        ));
+        for (account_id, email) in refresh_targets {
+            match codex_quota::refresh_account_quota(&account_id).await {
+                Ok(_) => {}
+                Err(error) => logger::log_warn(&format!(
+                    "Codex adapter 导入后后台刷新配额失败: source={}, account_id={}, email={}, error={}",
+                    source, account_id, email, error
+                )),
+            }
+        }
+        logger::log_info(&format!(
+            "Codex adapter 导入后后台刷新配额完成: source={}, total={}",
+            source, total
+        ));
+    });
 }
 
 fn import_from_local(runtime: &Runtime) -> Result<Value, String> {
     let account = codex_account::import_from_local()?;
-    let mut accounts = refresh_imported_accounts(runtime, vec![account])?;
-    to_value(
-        accounts
-            .pop()
-            .ok_or_else(|| "账号导入后无法读取".to_string())?,
-    )
+    refresh_imported_accounts_in_background(runtime, std::slice::from_ref(&account), "local");
+    to_value(account)
 }
 
 fn import_from_json(runtime: &Runtime, json_content: String) -> Result<Value, String> {
     let accounts = runtime.block_on(codex_account::import_from_json(&json_content))?;
-    to_value(refresh_imported_accounts(runtime, accounts)?)
+    refresh_imported_accounts_in_background(runtime, &accounts, "json");
+    to_value(accounts)
 }
 
 fn import_from_files(runtime: &Runtime, file_paths: Vec<String>) -> Result<Value, String> {
     let result = runtime.block_on(codex_account::import_from_files(file_paths))?;
+    refresh_imported_accounts_in_background(runtime, &result.imported, "files");
     to_value(codex_account::CodexFileImportResult {
-        imported: refresh_imported_accounts(runtime, result.imported)?,
+        imported: result.imported,
         failed: result.failed,
     })
 }
@@ -2809,6 +2820,10 @@ fn keepalive_due_codex_accounts(runtime: &Runtime) -> Result<i32, String> {
         let key = format!("codex:{}", account.id);
         if !codex_keepalive_allow_attempt(&key) {
             continue;
+        }
+        if refreshed >= CODEX_KEEPALIVE_MAX_ACCOUNTS_PER_CYCLE {
+            logger::log_info("[TokenKeeper][Codex] 本轮达到保活处理上限，剩余账号延后处理");
+            break;
         }
 
         match runtime.block_on(codex_account::keepalive_managed_account(

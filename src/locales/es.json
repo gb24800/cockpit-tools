@@ -820,6 +820,13 @@
       "antigravityDualSwitchNoRestartDesc": "Al cambiar cuenta, se escriben los datos locales y se ejecuta el cambio fluido de la extensión en un solo flujo, sin reiniciar Antigravity IDE.",
       "appAutoLaunch": "Iniciar Cockpit Tools al iniciar sesión",
       "appAutoLaunchDesc": "Iniciar la aplicación automáticamente después de iniciar sesión en el sistema",
+      "tokenKeeper": "Mantener autorización de cuentas",
+      "tokenKeeperDesc": "Al activarlo, la app renueva en segundo plano, con retraso y por lotes pequeños, las autorizaciones próximas a caducar; al desactivarlo se detiene el mantenimiento automático y siguen disponibles la actualización manual, el cambio y la importación.",
+      "platformQuickSettingsTitle": "Ajustes de plataformas",
+      "platformQuickSettingsDesc": "Los ajustes de cada plataforma están ahora en su página. Ábrelos rápido aquí.",
+      "platformQuickSettingsItemDesc": "Página de plataforma",
+      "openPlatformSettings": "Abrir",
+      "platformQuickSettingsOpenAria": "Abrir ajustes de {{platform}}",
       "startupWakeupDisabled": "Desactivado",
       "startupWakeupImmediate": "Despertar inmediatamente",
       "startupWakeupDelayed": "Despertar con retraso",
@@ -883,7 +890,8 @@
       "claudeAutoRefresh": "Actualización automática de cuota de Claude",
       "claudeAutoRefreshDesc": "Actualiza automáticamente en segundo plano la caché de cuota de las cuentas de Claude.",
       "claudeAppPath": "Destino de inicio de Claude Desktop",
-      "claudeAppPathDesc": "El perfil predeterminado puede usar un destino de Microsoft Store; las instancias múltiples necesitan el Claude.exe real."
+      "claudeAppPathDesc": "El perfil predeterminado puede usar un destino de Microsoft Store; las instancias múltiples necesitan el Claude.exe real.",
+      "platformQuickSettingsEntryTitle": "{{platform}} acceso a ajustes"
     },
     "network": {
       "apiTitle": "API de cabina antigravedad",

@@ -2292,6 +2292,93 @@ pub fn save_account(account: &CodexAccount) -> Result<(), String> {
     Ok(())
 }
 
+fn normalize_runtime_error_message(message: &str) -> Option<String> {
+    let trimmed = message.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+fn runtime_failure_is_quota_exceeded(category: Option<&str>, message: &str) -> bool {
+    let category = category.unwrap_or_default().trim();
+    if category == "usage_limit_reached" {
+        return true;
+    }
+    if category == "rate_limited" {
+        return false;
+    }
+
+    let lower = message.to_ascii_lowercase();
+    lower.contains("usage_limit_reached")
+        || lower.contains("insufficient_quota")
+        || lower.contains("quota exceeded")
+}
+
+pub fn record_account_runtime_success(account_id: &str) -> Result<(), String> {
+    let Some(mut account) = load_account(account_id) else {
+        return Ok(());
+    };
+
+    let had_next_retry = account.next_retry_after.take().is_some();
+    let had_last_error = account.last_error.take().is_some();
+    let had_quota_exceeded = account.quota_exceeded;
+    account.quota_exceeded = false;
+
+    let changed = had_next_retry || had_last_error || had_quota_exceeded;
+    if changed {
+        save_account(&account)?;
+    }
+    Ok(())
+}
+
+pub fn record_account_runtime_failure(
+    account_id: &str,
+    category: Option<&str>,
+    message: &str,
+    next_retry_after: Option<i64>,
+) -> Result<(), String> {
+    let Some(mut account) = load_account(account_id) else {
+        return Ok(());
+    };
+
+    let next_error = normalize_runtime_error_message(message);
+    let next_quota_exceeded = runtime_failure_is_quota_exceeded(category, message);
+    let changed = account.next_retry_after != next_retry_after
+        || account.quota_exceeded != next_quota_exceeded
+        || account.last_error != next_error;
+
+    if changed {
+        account.next_retry_after = next_retry_after;
+        account.quota_exceeded = next_quota_exceeded;
+        account.last_error = next_error;
+        save_account(&account)?;
+    }
+    Ok(())
+}
+
+pub fn record_account_runtime_next_retry(
+    account_id: &str,
+    next_retry_after: i64,
+    reason: &str,
+) -> Result<(), String> {
+    let Some(mut account) = load_account(account_id) else {
+        return Ok(());
+    };
+
+    let quota_exceeded = runtime_failure_is_quota_exceeded(Some(reason), "");
+    let changed = account.next_retry_after != Some(next_retry_after)
+        || account.quota_exceeded != quota_exceeded;
+
+    if changed {
+        account.next_retry_after = Some(next_retry_after);
+        account.quota_exceeded = quota_exceeded;
+        save_account(&account)?;
+    }
+    Ok(())
+}
+
 /// 删除单个账号
 pub fn delete_account_file(account_id: &str) -> Result<(), String> {
     crate::modules::account_store::delete_account(ACCOUNT_STORE_PLATFORM, account_id)?;

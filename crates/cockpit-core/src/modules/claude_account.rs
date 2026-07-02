@@ -29,7 +29,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 use url::{form_urlencoded, Url};
 
 const ACCOUNTS_INDEX_FILE: &str = "claude_accounts.json";
@@ -80,6 +80,9 @@ const CLAUDE_DESKTOP_CONFIG_FILE_NAME: &str = "claude_desktop_config.json";
 const CLAUDE_DESKTOP_CONFIG_LIBRARY_DIR: &str = "configLibrary";
 const CLAUDE_DESKTOP_THREEP_DIR_NAME: &str = "Claude-3p";
 const CLAUDE_DESKTOP_AUTH_HELPER_SCRIPT: &str = "scripts/claude-desktop-auth-helper.cjs";
+const CLAUDE_MANAGER_PLATFORM_PACKAGE_ID: &str = "claude_manager";
+const PLATFORM_PACKAGES_DIR_NAME: &str = "platform-packages";
+const PLATFORM_PACKAGE_CURRENT_DIR_NAME: &str = "current";
 const CLAUDE_DESKTOP_AUTH_STATUS_FILE: &str = "claude_desktop_auth_status.json";
 const CLAUDE_DESKTOP_AUTH_EXPORT_FILE: &str = "claude_desktop_auth_export.json";
 const CLAUDE_DESKTOP_COOKIE_EXPORT_FILE: &str = "claude_desktop_cookie_probe_cookies.json";
@@ -4372,39 +4375,78 @@ fn backup_current_desktop_profile(target_dir: &Path) -> Result<Option<PathBuf>, 
     Ok(Some(backup_dir))
 }
 
-fn get_desktop_auth_resource_dir() -> Option<PathBuf> {
-    crate::get_app_handle()
-        .and_then(|app| app.path().resource_dir().ok())
-        .or_else(|| {
-            std::env::current_dir()
-                .ok()
-                .map(|dir| dir.join("src-tauri").join("resources"))
-        })
-        .filter(|path| path.exists())
+fn path_file_name_eq(path: &Path, expected: &str) -> bool {
+    path.file_name().and_then(|name| name.to_str()) == Some(expected)
+}
+
+fn claude_platform_package_current_dir_from_exe(exe: &Path) -> Option<PathBuf> {
+    let mut current = exe.parent();
+    while let Some(dir) = current {
+        if path_file_name_eq(dir, PLATFORM_PACKAGE_CURRENT_DIR_NAME) {
+            let package_dir = dir.parent()?;
+            if path_file_name_eq(package_dir, CLAUDE_MANAGER_PLATFORM_PACKAGE_ID)
+                && package_dir
+                    .parent()
+                    .map(|parent| path_file_name_eq(parent, PLATFORM_PACKAGES_DIR_NAME))
+                    .unwrap_or(false)
+            {
+                return Some(dir.to_path_buf());
+            }
+        }
+        current = dir.parent();
+    }
+    None
+}
+
+fn push_desktop_auth_helper_candidates(candidates: &mut Vec<PathBuf>, dir: &Path) {
+    candidates.push(dir.join(CLAUDE_DESKTOP_AUTH_HELPER_SCRIPT));
+    candidates.push(
+        dir.join("resources")
+            .join(CLAUDE_DESKTOP_AUTH_HELPER_SCRIPT),
+    );
+    candidates.push(
+        dir.join("Resources")
+            .join(CLAUDE_DESKTOP_AUTH_HELPER_SCRIPT),
+    );
 }
 
 fn find_desktop_auth_helper_script() -> Result<PathBuf, String> {
     let mut candidates = Vec::new();
-    if let Some(resource_dir) = get_desktop_auth_resource_dir() {
-        candidates.push(resource_dir.join(CLAUDE_DESKTOP_AUTH_HELPER_SCRIPT));
-    }
-    if let Ok(current_dir) = std::env::current_dir() {
-        candidates.push(current_dir.join(CLAUDE_DESKTOP_AUTH_HELPER_SCRIPT));
-    }
-    if let Ok(exe) = std::env::current_exe() {
-        let mut current = exe.parent();
-        while let Some(dir) = current {
-            candidates.push(dir.join(CLAUDE_DESKTOP_AUTH_HELPER_SCRIPT));
-            current = dir.parent();
+    let exe = std::env::current_exe()
+        .map_err(|error| format!("无法读取 Claude adapter 执行路径: {}", error))?;
+    let package_current_dir = claude_platform_package_current_dir_from_exe(&exe).ok_or_else(|| {
+        format!(
+            "Claude 平台包运行路径异常，无法定位 {}/{}/{}。请重新安装或修复 Claude 平台包。当前执行文件: {}",
+            PLATFORM_PACKAGES_DIR_NAME,
+            CLAUDE_MANAGER_PLATFORM_PACKAGE_ID,
+            PLATFORM_PACKAGE_CURRENT_DIR_NAME,
+            exe.display()
+        )
+    })?;
+
+    candidates.push(package_current_dir.join(CLAUDE_DESKTOP_AUTH_HELPER_SCRIPT));
+
+    let mut current = exe.parent();
+    while let Some(dir) = current {
+        push_desktop_auth_helper_candidates(&mut candidates, dir);
+        if dir == package_current_dir.as_path() {
+            break;
         }
+        current = dir.parent();
     }
+
+    let checked_paths: Vec<String> = candidates
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect();
     candidates
         .into_iter()
         .find(|path| path.exists())
         .ok_or_else(|| {
             format!(
-                "未找到 Claude 授权 helper 脚本，请确认 {} 存在。",
-                CLAUDE_DESKTOP_AUTH_HELPER_SCRIPT
+                "Claude 平台包缺少登录组件 {}，请重新安装或修复 Claude 平台包。已检查路径: {}",
+                CLAUDE_DESKTOP_AUTH_HELPER_SCRIPT,
+                checked_paths.join(" | ")
             )
         })
 }

@@ -1077,6 +1077,13 @@
       "floatingCardAlwaysOnTopDesc": "New floating card windows stay on top when opened",
       "appAutoLaunch": "Launch Cockpit Tools at login",
       "appAutoLaunchDesc": "Automatically start the app after system sign-in",
+      "tokenKeeper": "Account authorization keep-alive",
+      "tokenKeeperDesc": "When enabled, the app refreshes nearly expired account authorization in the background after a delay and in small batches. When disabled, automatic keep-alive stops; manual refresh, switching, and import still work.",
+      "platformQuickSettingsTitle": "Platform settings",
+      "platformQuickSettingsDesc": "Platform settings now live on each platform page. Open them quickly here.",
+      "platformQuickSettingsItemDesc": "Platform page",
+      "openPlatformSettings": "Open",
+      "platformQuickSettingsOpenAria": "Open {{platform}} settings",
       "startupWakeupDisabled": "Disabled",
       "startupWakeupImmediate": "Wake up immediately",
       "startupWakeupDelayed": "Wake up after delay",
@@ -1239,7 +1246,8 @@
       "claudeAutoRefresh": "Claude quota auto refresh",
       "claudeAutoRefreshDesc": "Automatically refresh cached quota for Claude accounts in the background.",
       "claudeAppPath": "Claude Desktop launch target",
-      "claudeAppPathDesc": "The default profile can use a Microsoft Store target; multi-instance profiles need the real Claude.exe."
+      "claudeAppPathDesc": "The default profile can use a Microsoft Store target; multi-instance profiles need the real Claude.exe.",
+      "platformQuickSettingsEntryTitle": "{{platform}} settings entry"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API",

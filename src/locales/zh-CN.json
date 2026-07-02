@@ -1077,6 +1077,13 @@
       "floatingCardAlwaysOnTopDesc": "新打开的悬浮卡片窗口默认保持置顶",
       "appAutoLaunch": "开机自启动 Cockpit Tools",
       "appAutoLaunchDesc": "系统登录后自动启动应用",
+      "tokenKeeper": "账号授权保活",
+      "tokenKeeperDesc": "开启后后台会延迟并分批刷新快过期的账号授权；关闭后不再自动保活，只保留手动刷新、切号和导入。",
+      "platformQuickSettingsTitle": "平台设置入口",
+      "platformQuickSettingsDesc": "各平台设置已迁移到对应平台页，可从这里快速打开。",
+      "platformQuickSettingsItemDesc": "平台页设置",
+      "openPlatformSettings": "打开",
+      "platformQuickSettingsOpenAria": "打开 {{platform}} 设置",
       "startupWakeupDisabled": "关闭",
       "startupWakeupImmediate": "立即唤醒",
       "startupWakeupDelayed": "延时唤醒",
@@ -1239,7 +1246,8 @@
       "claudeAutoRefresh": "Claude 自动刷新配额",
       "claudeAutoRefreshDesc": "后台自动更新 Claude 账号配额缓存",
       "claudeAppPath": "Claude Desktop 启动目标",
-      "claudeAppPathDesc": "默认实例可使用 Microsoft Store 应用目标；多开实例请选择真实 Claude.exe。"
+      "claudeAppPathDesc": "默认实例可使用 Microsoft Store 应用目标；多开实例请选择真实 Claude.exe。",
+      "platformQuickSettingsEntryTitle": "{{platform}}设置入口"
     },
     "network": {
       "apiTitle": "反重力驾驶舱 API",
