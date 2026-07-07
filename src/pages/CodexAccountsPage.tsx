@@ -15995,15 +15995,7 @@ export function CodexAccountsPage() {
                     ) : null}
                   </label>
                   <label className="codex-account-note-field">
-                    <span className="codex-account-note-label-row">
-                      <span>{t("codex.accountNote.mailUrlLabel", "邮件地址")}</span>
-                      <span className="codex-account-note-label-hint">
-                        {t(
-                          "codex.accountNote.mailUrlHint",
-                          "填写可打开的邮件查询网页地址",
-                        )}
-                      </span>
-                    </span>
+                    <span>{t("codex.accountNote.mailUrlLabel", "邮件地址")}</span>
                     <div className="codex-account-note-input-row">
                       <input
                         className="codex-account-note-input"
@@ -16016,7 +16008,7 @@ export function CodexAccountsPage() {
                         }}
                         placeholder={t(
                           "codex.accountNote.mailUrlPlaceholder",
-                          "https://.../mail.php?mail=...&pwd=...",
+                          "填写可打开的邮件查询网页地址",
                         )}
                         disabled={activeAccountNoteSaving}
                       />

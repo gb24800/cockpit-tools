@@ -4765,20 +4765,6 @@
   font-weight: 600;
 }
 
-.codex-account-note-label-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 6px;
-  min-width: 0;
-}
-
-.codex-account-note-label-hint {
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 500;
-}
-
 .codex-account-note-input-row {
   display: flex;
   align-items: stretch;
