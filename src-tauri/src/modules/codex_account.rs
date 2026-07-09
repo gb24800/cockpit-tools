@@ -5344,7 +5344,7 @@ fn extract_bearer_token_from_header(value: &str) -> Option<String> {
         return None;
     }
     let token = normalize_optional_ref(Some(token))?;
-    is_importable_access_token(token).then(|| token.to_string())
+    is_importable_access_token(&token).then(|| token.to_string())
 }
 
 fn extract_opaque_access_token_from_text(value: &str) -> Option<String> {
@@ -5725,7 +5725,6 @@ fn extract_access_token_only_from_value(
     match value {
         serde_json::Value::String(raw) => normalize_optional_ref(Some(raw))
             .filter(|token| is_importable_access_token(token))
-            .map(ToOwned::to_owned)
             .or_else(|| extract_opaque_access_token_from_text(raw))
             .map(|token| (token, CodexAccessTokenImportHints::default())),
         serde_json::Value::Object(_) => first_personal_access_token_string(value)
