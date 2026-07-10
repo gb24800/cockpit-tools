@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Trash2,
+  Undo2,
   Users,
   Wrench,
   X,
@@ -52,6 +53,7 @@ import type { CodexAccount } from "../types/codex";
 import type {
   CodexLocalAccessAddressKind,
   CodexLocalAccessAccountModelRule,
+  CodexLocalAccessApiKey,
   CodexLocalAccessChatMessage,
   CodexLocalAccessChatStreamEvent,
   CodexLocalAccessClientBaseUrlHost,
@@ -101,6 +103,7 @@ interface ApiKeyPolicyDraft {
   modelPrefix: string;
   allowedModels: string;
   excludedModels: string;
+  inheritAccountPool: boolean;
   accountIds: string[];
 }
 
@@ -312,6 +315,45 @@ function parseModelRuleText(value: string): string[] {
 
 function serializeModelRules(values: string[] | null | undefined): string {
   return (values ?? []).join("\n");
+}
+
+function apiKeyInheritsAccountPool(apiKey: CodexLocalAccessApiKey): boolean {
+  return (
+    apiKey.inheritAccountPool ?? ((apiKey.accountIds?.length ?? 0) === 0)
+  );
+}
+
+function apiKeyPolicyDraftFromValue(
+  apiKey: CodexLocalAccessApiKey,
+): ApiKeyPolicyDraft {
+  return {
+    modelPrefix: apiKey.modelPrefix ?? "",
+    allowedModels: serializeModelRules(apiKey.allowedModels),
+    excludedModels: serializeModelRules(apiKey.excludedModels),
+    inheritAccountPool: apiKeyInheritsAccountPool(apiKey),
+    accountIds: apiKey.accountIds ?? [],
+  };
+}
+
+function sameStringList(left: string[], right: string[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
+  );
+}
+
+function apiKeyPolicyDraftIsDirty(
+  apiKey: CodexLocalAccessApiKey,
+  draft: ApiKeyPolicyDraft,
+): boolean {
+  const persisted = apiKeyPolicyDraftFromValue(apiKey);
+  return (
+    draft.modelPrefix !== persisted.modelPrefix ||
+    draft.allowedModels !== persisted.allowedModels ||
+    draft.excludedModels !== persisted.excludedModels ||
+    draft.inheritAccountPool !== persisted.inheritAccountPool ||
+    !sameStringList(draft.accountIds, persisted.accountIds)
+  );
 }
 
 function toggleStringSelection(values: string[], value: string): string[] {
@@ -641,6 +683,16 @@ export function CodexApiServicePage() {
       if (!stats) return null;
       return stats[statsRange];
     }, [stats, statsRange]);
+  const apiKeyStatsById = useMemo(
+    () =>
+      new Map(
+        (selectedStatsWindow?.apiKeys ?? []).map((item) => [
+          item.apiKeyId,
+          item,
+        ]),
+      ),
+    [selectedStatsWindow?.apiKeys],
+  );
   const totals = selectedStatsWindow?.totals;
   const memberIds = collection?.accountIds ?? [];
   const localAccessAccounts = useMemo(() => accounts, [accounts]);
@@ -652,6 +704,14 @@ export function CodexApiServicePage() {
         )
         .filter((account): account is CodexAccount => Boolean(account)),
     [memberIds, localAccessAccounts],
+  );
+  const memberAccountIds = useMemo(
+    () => memberAccounts.map((account) => account.id),
+    [memberAccounts],
+  );
+  const memberAccountIdSet = useMemo(
+    () => new Set(memberAccountIds),
+    [memberAccountIds],
   );
   const accountModelRuleCount = collection?.accountModelRules.length ?? 0;
   const accountModelRuleAllSelected =
@@ -1003,17 +1063,17 @@ export function CodexApiServicePage() {
         (collection?.apiKeys ?? []).map((apiKey) => [apiKey.id, apiKey.label]),
       ),
     );
-    setApiKeyPolicyDrafts(
+    setApiKeyPolicyDrafts((currentDrafts) =>
       Object.fromEntries(
-        (collection?.apiKeys ?? []).map((apiKey) => [
-          apiKey.id,
-          {
-            modelPrefix: apiKey.modelPrefix ?? "",
-            allowedModels: serializeModelRules(apiKey.allowedModels),
-            excludedModels: serializeModelRules(apiKey.excludedModels),
-            accountIds: apiKey.accountIds ?? [],
-          },
-        ]),
+        (collection?.apiKeys ?? []).map((apiKey) => {
+          const currentDraft = currentDrafts[apiKey.id];
+          return [
+            apiKey.id,
+            currentDraft && apiKeyPolicyDraftIsDirty(apiKey, currentDraft)
+              ? currentDraft
+              : apiKeyPolicyDraftFromValue(apiKey),
+          ];
+        }),
       ),
     );
   }, [collection?.apiKeys]);
@@ -1520,6 +1580,18 @@ export function CodexApiServicePage() {
   const handleSaveApiKeyPolicy = async (apiKeyId: string) => {
     const draft = apiKeyPolicyDrafts[apiKeyId];
     if (!draft) return;
+    const accountIds = draft.accountIds.filter((accountId) =>
+      memberAccountIdSet.has(accountId),
+    );
+    if (!draft.inheritAccountPool && accountIds.length === 0) {
+      setError(
+        t(
+          "codex.apiService.keys.accountScopeRequired",
+          "自定义账号池至少需要选择 1 个账号",
+        ),
+      );
+      return;
+    }
     await runAction(
       async () => {
         const next = await codexLocalAccessService.updateCodexLocalAccessApiKey(
@@ -1528,13 +1600,22 @@ export function CodexApiServicePage() {
             modelPrefix: draft.modelPrefix.trim(),
             allowedModels: parseModelRuleText(draft.allowedModels),
             excludedModels: parseModelRuleText(draft.excludedModels),
-            accountIds: draft.accountIds,
+            accountIds,
+            inheritAccountPool: draft.inheritAccountPool,
           },
         );
         setState(next);
       },
-      t("codex.apiService.keys.policySaved", "Key 模型策略已保存"),
+      t("codex.apiService.keys.policySaved", "Key 策略已保存"),
     );
+  };
+
+  const handleResetApiKeyPolicy = (apiKey: CodexLocalAccessApiKey) => {
+    setApiKeyPolicyDrafts((drafts) => ({
+      ...drafts,
+      [apiKey.id]: apiKeyPolicyDraftFromValue(apiKey),
+    }));
+    setError("");
   };
 
   const handleToggleApiKey = async (apiKeyId: string, enabled: boolean) => {
@@ -2959,28 +3040,56 @@ export function CodexApiServicePage() {
           <section className="codex-api-service-panel">
             <div className="codex-api-service-panel-head">
               <h2>{t("codex.localAccess.apiKeysTitle", "客户端 Key")}</h2>
-              <button
-                type="button"
-                className="btn btn-primary btn-sm"
-                onClick={() => void handleCreateApiKey()}
-                disabled={busy || !collection}
-              >
-                <Plus size={14} />
-                {t("codex.localAccess.apiKeyAdd", "新增 Key")}
-              </button>
+              <div className="codex-api-service-head-actions">
+                <div
+                  className="codex-api-service-range-tabs"
+                  aria-label={t(
+                    "codex.apiService.keys.usageRange",
+                    "Key 用量统计周期",
+                  )}
+                >
+                  {statsRangeOptions.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      className={statsRange === option.key ? "active" : ""}
+                      onClick={() => setStatsRange(option.key)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => void handleCreateApiKey()}
+                  disabled={busy || !collection}
+                >
+                  <Plus size={14} />
+                  {t("codex.localAccess.apiKeyAdd", "新增 Key")}
+                </button>
+              </div>
             </div>
             <div className="codex-api-service-table">
               {(collection?.apiKeys ?? []).map((apiKey) => {
                 const labelDraft = apiKeyDrafts[apiKey.id] ?? apiKey.label;
-                const policyDraft = apiKeyPolicyDrafts[apiKey.id] ?? {
-                  modelPrefix: apiKey.modelPrefix ?? "",
-                  allowedModels: serializeModelRules(apiKey.allowedModels),
-                  excludedModels: serializeModelRules(apiKey.excludedModels),
-                  accountIds: apiKey.accountIds ?? [],
-                };
-                const keyStats = selectedStatsWindow?.apiKeys.find(
-                  (item) => item.apiKeyId === apiKey.id,
+                const policyDraft =
+                  apiKeyPolicyDrafts[apiKey.id] ??
+                  apiKeyPolicyDraftFromValue(apiKey);
+                const persistedInheritAccountPool =
+                  apiKeyInheritsAccountPool(apiKey);
+                const persistedAccountIds = apiKey.accountIds ?? [];
+                const policyDirty = apiKeyPolicyDraftIsDirty(
+                  apiKey,
+                  policyDraft,
                 );
+                const validDraftAccountIds = policyDraft.accountIds.filter(
+                  (accountId) => memberAccountIdSet.has(accountId),
+                );
+                const customScopeInvalid =
+                  !policyDraft.inheritAccountPool &&
+                  validDraftAccountIds.length === 0;
+                const keyStats = apiKeyStatsById.get(apiKey.id);
                 const keyUsage = keyStats?.usage;
                 const keySuccessRate =
                   keyUsage && keyUsage.requestCount > 0
@@ -3070,18 +3179,30 @@ export function CodexApiServicePage() {
                       </div>
                     </div>
                     <div className="api-key-usage-strip">
-                      <span>
-                        {policyDraft.accountIds.length === 0
+                      <span
+                        className={
+                          !persistedInheritAccountPool &&
+                          persistedAccountIds.length === 0
+                            ? "warning"
+                            : undefined
+                        }
+                      >
+                        {persistedInheritAccountPool
                           ? t(
                               "codex.apiService.keys.accountScopeInheritedCount",
                               "账号池：继承 {{count}} 个",
                               { count: memberAccounts.length },
                             )
+                          : persistedAccountIds.length === 0
+                            ? t(
+                                "codex.apiService.keys.accountScopeUnavailable",
+                                "账号池：无可用账号",
+                              )
                           : t(
                               "codex.apiService.keys.accountScopeCount",
                               "账号池：{{selected}}/{{total}}",
                               {
-                                selected: policyDraft.accountIds.length,
+                                selected: persistedAccountIds.length,
                                 total: memberAccounts.length,
                               },
                             )}
@@ -3116,11 +3237,19 @@ export function CodexApiServicePage() {
                         <span>
                           {t(
                             "codex.apiService.keys.advancedPolicyTitle",
-                            "高级功能：模型策略",
+                            "账号池与模型策略",
                           )}
                         </span>
                       </span>
                       <span className="codex-api-service-key-advanced-state">
+                        {policyDirty && (
+                          <span className="api-key-policy-dirty">
+                            {t(
+                              "codex.apiService.keys.unsaved",
+                              "未保存",
+                            )}
+                          </span>
+                        )}
                         {policyExpanded
                           ? t("common.collapse", "收起")
                           : t("common.expand", "展开")}
@@ -3134,21 +3263,82 @@ export function CodexApiServicePage() {
                             <span>
                               {t(
                                 "codex.apiService.keys.accountScope",
-                                "可调用账号",
+                                "账号轮转范围",
                               )}
                             </span>
                             <span className="api-key-account-scope-hint">
-                              {policyDraft.accountIds.length === 0
+                              {policyDraft.inheritAccountPool
                                 ? t(
                                     "codex.apiService.keys.accountScopeInherit",
-                                    "未选择时继承服务账号池",
+                                    "随服务账号池自动更新",
                                   )
+                                : customScopeInvalid
+                                  ? t(
+                                      "codex.apiService.keys.accountScopeRequired",
+                                      "自定义账号池至少需要选择 1 个账号",
+                                    )
                                 : t(
                                     "codex.apiService.keys.accountScopeSelected",
                                     "已选择 {{count}} 个账号",
-                                    { count: policyDraft.accountIds.length },
+                                    { count: validDraftAccountIds.length },
                                   )}
                             </span>
+                          </div>
+                          <div className="api-key-account-scope-mode">
+                            <button
+                              type="button"
+                              className={
+                                policyDraft.inheritAccountPool ? "active" : ""
+                              }
+                              onClick={() =>
+                                setApiKeyPolicyDrafts((drafts) => ({
+                                  ...drafts,
+                                  [apiKey.id]: {
+                                    ...(drafts[apiKey.id] ?? policyDraft),
+                                    inheritAccountPool: true,
+                                  },
+                                }))
+                              }
+                              disabled={busy}
+                            >
+                              {t(
+                                "codex.apiService.keys.accountScopeModeInherit",
+                                "继承服务池",
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              className={
+                                policyDraft.inheritAccountPool ? "" : "active"
+                              }
+                              onClick={() =>
+                                setApiKeyPolicyDrafts((drafts) => {
+                                  const currentDraft =
+                                    drafts[apiKey.id] ?? policyDraft;
+                                  const reusableAccountIds =
+                                    currentDraft.accountIds.filter((accountId) =>
+                                      memberAccountIdSet.has(accountId),
+                                    );
+                                  return {
+                                    ...drafts,
+                                    [apiKey.id]: {
+                                      ...currentDraft,
+                                      inheritAccountPool: false,
+                                      accountIds:
+                                        reusableAccountIds.length > 0
+                                          ? reusableAccountIds
+                                          : memberAccountIds,
+                                    },
+                                  };
+                                })
+                              }
+                              disabled={busy || memberAccounts.length === 0}
+                            >
+                              {t(
+                                "codex.apiService.keys.accountScopeModeCustom",
+                                "自定义账号池",
+                              )}
+                            </button>
                           </div>
                           {memberAccounts.length === 0 ? (
                             <div className="codex-api-service-empty">
@@ -3169,9 +3359,12 @@ export function CodexApiServicePage() {
                                   >
                                     <input
                                       type="checkbox"
-                                      checked={policyDraft.accountIds.includes(
-                                        account.id,
-                                      )}
+                                      checked={
+                                        policyDraft.inheritAccountPool ||
+                                        policyDraft.accountIds.includes(
+                                          account.id,
+                                        )
+                                      }
                                       onChange={() =>
                                         setApiKeyPolicyDrafts((drafts) => {
                                           const currentDraft =
@@ -3189,7 +3382,9 @@ export function CodexApiServicePage() {
                                           };
                                         })
                                       }
-                                      disabled={busy}
+                                      disabled={
+                                        busy || policyDraft.inheritAccountPool
+                                      }
                                     />
                                     <span>
                                       <strong title={presentation.displayName}>
@@ -3284,11 +3479,25 @@ export function CodexApiServicePage() {
                           <div className="codex-api-service-policy-actions">
                             <button
                               type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => handleResetApiKeyPolicy(apiKey)}
+                              disabled={busy || !policyDirty}
+                            >
+                              <Undo2 size={14} />
+                              {t(
+                                "codex.apiService.keys.resetPolicy",
+                                "撤销修改",
+                              )}
+                            </button>
+                            <button
+                              type="button"
                               className="btn btn-secondary btn-sm"
                               onClick={() =>
                                 void handleSaveApiKeyPolicy(apiKey.id)
                               }
-                              disabled={busy}
+                              disabled={
+                                busy || !policyDirty || customScopeInvalid
+                              }
                             >
                               <Check size={14} />
                               {t(

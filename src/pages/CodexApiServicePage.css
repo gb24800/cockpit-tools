@@ -950,6 +950,12 @@
   overflow-wrap: anywhere;
 }
 
+.api-key-usage-strip span.warning {
+  border-color: color-mix(in srgb, var(--warning) 32%, var(--codex-api-border-soft));
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  color: var(--warning);
+}
+
 .codex-api-service-key-advanced-toggle {
   display: flex;
   align-items: center;
@@ -985,6 +991,15 @@
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 700;
+}
+
+.api-key-policy-dirty {
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--warning) 32%, var(--codex-api-border-soft));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  color: var(--warning);
+  line-height: 1.2;
 }
 
 .codex-api-service-key-advanced-state svg {
@@ -1040,6 +1055,39 @@
   white-space: nowrap;
 }
 
+.api-key-account-scope-mode {
+  display: inline-flex;
+  justify-self: start;
+  gap: 3px;
+  max-width: 100%;
+  padding: 3px;
+  border: 1px solid var(--codex-api-border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-secondary) 82%, transparent);
+}
+
+.api-key-account-scope-mode button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.api-key-account-scope-mode button.active {
+  background: color-mix(in srgb, var(--primary) 11%, transparent);
+  color: var(--primary);
+}
+
+.api-key-account-scope-mode button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .api-key-account-scope-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1078,6 +1126,11 @@
   cursor: not-allowed;
 }
 
+.api-key-account-scope-item:has(input:disabled) {
+  cursor: default;
+  opacity: 0.72;
+}
+
 .api-key-account-scope-item > span {
   display: grid;
   gap: 3px;
@@ -1107,7 +1160,7 @@
 
 .codex-api-service-policy-grid {
   display: grid;
-  grid-template-columns: minmax(180px, 0.75fr) minmax(240px, 1fr) minmax(240px, 1fr) minmax(132px, auto);
+  grid-template-columns: minmax(180px, 0.75fr) minmax(240px, 1fr) minmax(240px, 1fr) minmax(190px, auto);
   align-items: start;
   gap: 10px;
   min-width: 0;
@@ -1153,6 +1206,7 @@
   display: flex;
   justify-content: flex-end;
   align-items: flex-end;
+  gap: 6px;
   height: 96px;
   min-width: 0;
 }
@@ -1962,6 +2016,26 @@
 
   .codex-api-service-key-main {
     grid-template-columns: 1fr;
+  }
+
+  .api-key-account-scope-header,
+  .codex-api-service-policy-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .api-key-account-scope-hint {
+    white-space: normal;
+  }
+
+  .api-key-account-scope-mode,
+  .codex-api-service-range-tabs {
+    width: 100%;
+  }
+
+  .api-key-account-scope-mode button,
+  .codex-api-service-range-tabs button {
+    flex: 1 1 0;
   }
 
   .codex-api-service-policy-actions .btn {

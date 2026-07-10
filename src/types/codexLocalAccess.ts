@@ -55,6 +55,7 @@ export interface CodexLocalAccessApiKey {
   id: string;
   label: string;
   key: string;
+  inheritAccountPool?: boolean;
   accountIds?: string[];
   modelPrefix?: string | null;
   allowedModels: string[];

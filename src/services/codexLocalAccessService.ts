@@ -228,6 +228,7 @@ export async function updateCodexLocalAccessApiKey(
     allowedModels?: string[] | null;
     excludedModels?: string[] | null;
     accountIds?: string[] | null;
+    inheritAccountPool?: boolean | null;
   },
 ): Promise<CodexLocalAccessState> {
   return await invoke("codex_local_access_update_api_key", {
@@ -238,6 +239,7 @@ export async function updateCodexLocalAccessApiKey(
     allowedModels: payload.allowedModels ?? null,
     excludedModels: payload.excludedModels ?? null,
     accountIds: payload.accountIds ?? null,
+    inheritAccountPool: payload.inheritAccountPool ?? null,
   });
 }
 
