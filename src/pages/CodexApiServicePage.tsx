@@ -44,6 +44,12 @@ import {
 } from "../stores/usePlatformLayoutStore";
 import { getPlatformLabel } from "../utils/platformMeta";
 import { useCodexAccountStore } from "../stores/useCodexAccountStore";
+import {
+  isCodexApiKeyScopeAccountActive,
+  reconcileCodexApiKeyScopeAccountIds,
+  selectCodexApiKeyScopeAccounts,
+} from "../utils/codexApiKeyAccountScope";
+import { resolveCodexApiServiceCompatibilityBaseUrls } from "../utils/codexApiServiceCompatibility";
 import * as codexLocalAccessService from "../services/codexLocalAccessService";
 import {
   getCodexAccountGroups,
@@ -336,17 +342,6 @@ function apiKeyHasFixedAccountScope(
       accountIds.length === 1 &&
       apiKey.id === `provider_gateway_${accountIds[0]}`,
   );
-}
-
-function apiKeySelectableAccountIds(
-  collection: CodexLocalAccessCollection | null,
-  apiKey: CodexLocalAccessApiKey | null | undefined,
-): string[] {
-  const ids = new Set<string>(collection?.accountIds ?? []);
-  for (const accountId of apiKey?.accountIds ?? []) {
-    if (accountId) ids.add(accountId);
-  }
-  return [...ids];
 }
 
 function apiKeyPolicyDraftFromValue(
@@ -762,6 +757,10 @@ export function CodexApiServicePage() {
   const modelIds = state?.modelIds ?? [];
   const exampleModelId = modelIds[0] ?? "gpt-5.5";
   const exampleApiKey = collection?.apiKey || "<api-key>";
+  const compatibilityBaseUrls = useMemo(
+    () => resolveCodexApiServiceCompatibilityBaseUrls(displayBaseUrl),
+    [displayBaseUrl],
+  );
   const compatibilityExamples = useMemo(
     () => [
       {
@@ -776,7 +775,7 @@ export function CodexApiServicePage() {
           "Base URL uses /v1.",
         ),
         value: [
-          `OPENAI_BASE_URL=${displayBaseUrl}/v1`,
+          `OPENAI_BASE_URL=${compatibilityBaseUrls.openai}`,
           `OPENAI_API_KEY=${exampleApiKey}`,
           `OPENAI_MODEL=${exampleModelId}`,
         ].join("\n"),
@@ -790,7 +789,7 @@ export function CodexApiServicePage() {
           "Codex-native Responses entry.",
         ),
         value: [
-          `OPENAI_BASE_URL=${displayBaseUrl}/v1`,
+          `OPENAI_BASE_URL=${compatibilityBaseUrls.openai}`,
           `OPENAI_API_KEY=${exampleApiKey}`,
           `OPENAI_MODEL=${exampleModelId}`,
           "OPENAI_API_ENDPOINT=/responses",
@@ -808,7 +807,7 @@ export function CodexApiServicePage() {
           "Use the same service key.",
         ),
         value: [
-          `ANTHROPIC_BASE_URL=${displayBaseUrl}`,
+          `ANTHROPIC_BASE_URL=${compatibilityBaseUrls.root}`,
           `ANTHROPIC_API_KEY=${exampleApiKey}`,
           `ANTHROPIC_MODEL=${exampleModelId}`,
         ].join("\n"),
@@ -822,7 +821,7 @@ export function CodexApiServicePage() {
           "Base URL uses /v1beta.",
         ),
         value: [
-          `GEMINI_BASE_URL=${displayBaseUrl}/v1beta`,
+          `GEMINI_BASE_URL=${compatibilityBaseUrls.gemini}`,
           `GEMINI_API_KEY=${exampleApiKey}`,
           `GEMINI_MODEL=${exampleModelId}`,
         ].join("\n"),
@@ -836,13 +835,13 @@ export function CodexApiServicePage() {
           "Use Authorization: Bearer.",
         ),
         value: [
-          `OLLAMA_HOST=${displayBaseUrl}`,
+          `OLLAMA_HOST=${compatibilityBaseUrls.root}`,
           `OLLAMA_API_KEY=${exampleApiKey}`,
           `OLLAMA_MODEL=${exampleModelId}`,
         ].join("\n"),
       },
     ],
-    [displayBaseUrl, exampleApiKey, exampleModelId, t],
+    [compatibilityBaseUrls, exampleApiKey, exampleModelId, t],
   );
   const modelPricingRows = useMemo<ModelPricingRow[]>(() => {
     const presetMap = new Map<string, CodexLocalAccessModelPricing>();
@@ -1604,12 +1603,12 @@ export function CodexApiServicePage() {
     if (!draft) return;
     const apiKey = collection?.apiKeys.find((item) => item.id === apiKeyId);
     if (!apiKey) return;
-    const selectableAccountIdSet = new Set(
-      apiKeySelectableAccountIds(collection, apiKey),
-    );
-    const accountIds = draft.accountIds.filter((accountId) =>
-      selectableAccountIdSet.has(accountId),
-    );
+    const accountIds = reconcileCodexApiKeyScopeAccountIds({
+      accounts: localAccessAccounts,
+      restrictFreeAccounts: collection?.restrictFreeAccounts ?? true,
+      persistedAccountIds: apiKey.accountIds ?? [],
+      draftAccountIds: draft.accountIds,
+    });
     if (
       apiKeyHasFixedAccountScope(apiKey, collection) &&
       (draft.inheritAccountPool || accountIds.length === 0)
@@ -3133,19 +3132,14 @@ export function CodexApiServicePage() {
                   apiKey,
                   collection,
                 );
-                const keySelectableAccountIds = apiKeySelectableAccountIds(
-                  collection,
-                  apiKey,
+                const keySelectableAccounts = selectCodexApiKeyScopeAccounts({
+                  accounts: localAccessAccounts,
+                  restrictFreeAccounts: collection?.restrictFreeAccounts ?? true,
+                  scopedAccountIds: apiKey.accountIds ?? [],
+                });
+                const keySelectableAccountIds = keySelectableAccounts.map(
+                  (account) => account.id,
                 );
-                const keySelectableAccounts = keySelectableAccountIds
-                  .map((accountId) =>
-                    localAccessAccounts.find(
-                      (account) => account.id === accountId,
-                    ),
-                  )
-                  .filter((account): account is CodexAccount =>
-                    Boolean(account),
-                  );
                 const keySelectableAccountIdSet = new Set(
                   keySelectableAccounts.map((account) => account.id),
                 );
@@ -3456,12 +3450,13 @@ export function CodexApiServicePage() {
                                   >
                                     <input
                                       type="checkbox"
-                                      checked={
-                                        policyDraft.inheritAccountPool ||
-                                        policyDraft.accountIds.includes(
-                                          account.id,
-                                        )
-                                      }
+                                      checked={isCodexApiKeyScopeAccountActive({
+                                        accountId: account.id,
+                                        inheritAccountPool:
+                                          policyDraft.inheritAccountPool,
+                                        accountIds: policyDraft.accountIds,
+                                        inheritedAccountIds: memberAccountIds,
+                                      })}
                                       onChange={() =>
                                         setApiKeyPolicyDrafts((drafts) => {
                                           const currentDraft =

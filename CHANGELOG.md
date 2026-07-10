@@ -7,6 +7,26 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [1.1.6] - 2026-07-10
+
+### Fixed
+
+- **Fixed Codex API Service compatibility snippets duplicating `/v1`**: OpenAI and Responses now use the service's existing `/v1` base URL, while Anthropic, Gemini, and Ollama receive the correct service-root paths.
+
+---
+## [1.1.5] - 2026-07-10
+
+### Added
+
+- **Codex API Service client keys can use independent account-pool scopes**: each key can inherit the service pool or select its own OAuth and API Key accounts, with the selected scope shown alongside that key's request, token, success-rate, and estimate totals.
+
+### Fixed
+
+- **Fixed scoped client keys bypassing their selected account pool at the sidecar**: account IDs are now carried into the sidecar manifest and enforced before credential selection.
+- **Fixed session affinity leaking an account choice between client API keys**: affinity cache entries are now namespaced by client key, so different keys may safely use the same downstream session identifier without crossing account-pool scopes.
+- **Fixed the release metadata version drift**: frontend, Tauri, and lockfile package versions now stay aligned.
+
+---
 ## [1.1.4] - 2026-07-10
 
 ### Changed
