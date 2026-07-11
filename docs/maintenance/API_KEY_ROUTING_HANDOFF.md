@@ -339,3 +339,15 @@ size: 19277824 bytes
 time: 2026-07-11 12:29:46 +08:00
 sha256: 007AF7AA6D49F2A8DFAA6EDABD3A8FF4F0A95566060988EAF95C70F6C74C8ED7
 ```
+
+Local installation verification:
+
+- NSIS silent installer exit code: `0`.
+- Installed product version: `1.1.10`.
+- Installed application SHA-256:
+  `F8936EE5418E2AD350EA33671FFF03DDA5E7274F1574B6DC6670AA510375EBA1`.
+- Restarted application process ID: `16860`.
+- API sidecar port `54548`: listening.
+- Unauthenticated `GET /v1/models`: HTTP `401`, confirming the restarted
+  service is reachable and enforcing authentication without recording a
+  client API Key in the verification log.
