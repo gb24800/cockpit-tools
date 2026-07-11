@@ -8828,7 +8828,12 @@ fn try_launch_via_shortcut(shortcut_pattern: &str) -> Result<Option<u32>, String
                         .to_string_lossy()
                         .to_string();
                     let name_lower = name.to_lowercase();
-                    if name_lower.contains(shortcut_pattern) && name_lower.ends_with(".lnk") {
+                    let matches_pattern = if shortcut_pattern == "antigravity" {
+                        name_lower.contains("antigravity") && !name_lower.contains("antigravity ide")
+                    } else {
+                        name_lower.contains(shortcut_pattern)
+                    };
+                    if matches_pattern && name_lower.ends_with(".lnk") {
                         crate::modules::logger::log_info(&format!(
                             "[Shortcut Launch] 找到任务栏快捷方式: {}, 尝试通过快捷方式启动",
                             name
