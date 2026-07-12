@@ -121,6 +121,11 @@ import {
   splitValidityFilterValues,
 } from "../../utils/accountValidityFilter";
 import {
+  buildCodexPlanFilterOptions,
+  createCodexPlanFilterCounts,
+  incrementCodexPlanFilterCount,
+} from "../../utils/codexAccountOverview";
+import {
   resolveCodexProviderCapabilityProfile,
   type CodexProviderEnableModePreference,
   type CodexProviderWireApi,
@@ -2271,25 +2276,22 @@ export function CodexModelProviderManager({
   );
 
   const providerOauthTierCounts = useMemo(() => {
-    const counts = new Map<string, number>();
+    const counts = createCodexPlanFilterCounts(
+      providerOauthEligibleAccounts.length,
+    );
     providerOauthEligibleAccounts.forEach((account) => {
-      const key = resolvePlanKey(account);
-      counts.set(key, (counts.get(key) ?? 0) + 1);
+      incrementCodexPlanFilterCount(counts, resolvePlanKey(account));
     });
-    return {
-      all: providerOauthEligibleAccounts.length,
-      counts,
-    };
+    return counts;
   }, [providerOauthEligibleAccounts, resolvePlanKey]);
 
   const providerOauthTierFilterOptions = useMemo<MultiSelectFilterOption[]>(
     () =>
-      Array.from(providerOauthTierCounts.counts.entries()).map(([value, count]) => ({
-        value,
-        label: `${value} (${count})`,
-        count,
-      })),
-    [providerOauthTierCounts.counts],
+      buildCodexPlanFilterOptions(providerOauthTierCounts, {
+        includeError: false,
+        pendingLabel: t("codex.pendingAuth.badge", "待授权"),
+      }),
+    [providerOauthTierCounts, t],
   );
 
   const providerOauthAvailableTags = useMemo(() => {

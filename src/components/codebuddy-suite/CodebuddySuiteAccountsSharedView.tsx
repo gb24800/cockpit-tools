@@ -158,6 +158,9 @@ export interface CodebuddySuiteAccountsPlatformConfig<
   oauthProviderControl?: ReactNode;
   showMfaQuickCode?: boolean;
   CheckinModal?: ComponentType<CheckinModalProps<TAccount>>;
+  getReauthorizationReason?: (account: TAccount) => string | null;
+  reauthorizingAccount?: TAccount | null;
+  onReauthorize?: (account: TAccount) => void;
 }
 
 interface CodebuddySuiteAccountsSharedViewProps<
@@ -522,6 +525,8 @@ export function CodebuddySuiteAccountsSharedView<
       );
       const hasQuotaData = platformConfig.hasQuotaData(account, groups);
       const refreshFailed = !!account.quota_query_last_error?.trim();
+      const reauthorizationReason =
+        platformConfig.getReauthorizationReason?.(account) || null;
       const shouldShowQuota = hasQuotaData && !refreshFailed;
       const statusText = refreshFailed
         ? t(
@@ -534,6 +539,24 @@ export function CodebuddySuiteAccountsSharedView<
           );
       return (
         <>
+          {reauthorizationReason && (
+            <div
+              className={`quota-error-inline ${variant === "table" ? "table" : ""}`}
+            >
+              <CircleAlert size={14} />
+              <span title={reauthorizationReason}>{reauthorizationReason}</span>
+              {platformConfig.onReauthorize && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline quota-error-action"
+                  onClick={() => platformConfig.onReauthorize?.(account)}
+                >
+                  <KeyRound size={12} />
+                  {t("common.reauthorize", "重新授权")}
+                </button>
+              )}
+            </div>
+          )}
           <div className="quota-item">
             <div className="quota-header">
               <span className="quota-name">
@@ -1250,10 +1273,12 @@ export function CodebuddySuiteAccountsSharedView<
                   <ChevronLeft size={14} />
                 </button>
                 <h2>
-                  {t(
-                    platformConfig.addAccountTitleKey,
-                    platformConfig.addAccountTitleDefault,
-                  )}
+                  {platformConfig.reauthorizingAccount
+                    ? t("common.reauthorize", "重新授权")
+                    : t(
+                        platformConfig.addAccountTitleKey,
+                        platformConfig.addAccountTitleDefault,
+                      )}
                 </h2>
                 <button
                   className="modal-close"
@@ -1263,33 +1288,35 @@ export function CodebuddySuiteAccountsSharedView<
                   <X size={18} />
                 </button>
               </div>
-              <div className="modal-tabs">
-                <button
-                  className={`modal-tab ${addTab === "oauth" ? "active" : ""}`}
-                  onClick={() => openAddModal("oauth")}
-                >
-                  <Globe size={14} />{" "}
-                  {t("common.shared.addModal.oauth", "授权登录")}
-                </button>
-                <button
-                  className={`modal-tab ${addTab === "token" ? "active" : ""}`}
-                  onClick={() => openAddModal("token")}
-                >
-                  <KeyRound size={14} />
-                  {t(
-                    platformConfig.tokenTabLabelKey ||
-                      "common.shared.addModal.token",
-                    platformConfig.tokenTabLabelDefault || "Token / JSON",
-                  )}
-                </button>
-                <button
-                  className={`modal-tab ${addTab === "json" ? "active" : ""}`}
-                  onClick={() => openAddModal("json")}
-                >
-                  <Database size={14} />
-                  {t("common.shared.addModal.import", "本地导入")}
-                </button>
-              </div>
+              {!platformConfig.reauthorizingAccount && (
+                <div className="modal-tabs">
+                  <button
+                    className={`modal-tab ${addTab === "oauth" ? "active" : ""}`}
+                    onClick={() => openAddModal("oauth")}
+                  >
+                    <Globe size={14} />{" "}
+                    {t("common.shared.addModal.oauth", "授权登录")}
+                  </button>
+                  <button
+                    className={`modal-tab ${addTab === "token" ? "active" : ""}`}
+                    onClick={() => openAddModal("token")}
+                  >
+                    <KeyRound size={14} />
+                    {t(
+                      platformConfig.tokenTabLabelKey ||
+                        "common.shared.addModal.token",
+                      platformConfig.tokenTabLabelDefault || "Token / JSON",
+                    )}
+                  </button>
+                  <button
+                    className={`modal-tab ${addTab === "json" ? "active" : ""}`}
+                    onClick={() => openAddModal("json")}
+                  >
+                    <Database size={14} />
+                    {t("common.shared.addModal.import", "本地导入")}
+                  </button>
+                </div>
+              )}
               <div className="modal-body">
                 <ModalErrorMessage
                   message={addStatus === "error" ? addMessage : null}
@@ -1301,6 +1328,19 @@ export function CodebuddySuiteAccountsSharedView<
                 {addTab === "oauth" && (
                   <div className="add-section oauth-section">
                     {platformConfig.oauthProviderControl}
+                    {platformConfig.reauthorizingAccount && (
+                      <div className="oauth-reauthorization-target">
+                        <KeyRound size={14} />
+                        <span>{t("common.reauthorize", "重新授权")}</span>
+                        <strong>
+                          {maskAccountText(
+                            platformConfig.getDisplayEmail(
+                              platformConfig.reauthorizingAccount,
+                            ),
+                          )}
+                        </strong>
+                      </div>
+                    )}
                     <p className="section-desc">
                       {t(
                         platformConfig.oauthDescKey,

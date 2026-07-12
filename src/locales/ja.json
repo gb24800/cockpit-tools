@@ -6,6 +6,7 @@
     "saving": "保存中...",
     "delete": "削除",
     "refresh": "更新",
+    "reauthorize": "再認証",
     "loading": "読み込み中...",
     "success": "成功",
     "failed": "失敗",

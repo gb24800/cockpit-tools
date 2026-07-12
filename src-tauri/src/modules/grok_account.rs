@@ -846,10 +846,37 @@ fn accounts_match_for_upsert(candidate: &GrokAccount, existing: &GrokAccount) ->
     candidate.email != "unknown@grok.local" && existing.email.eq_ignore_ascii_case(&candidate.email)
 }
 
-fn upsert_candidate(mut candidate: GrokAccount) -> Result<GrokAccount, String> {
+fn resolve_reauth_target(
+    candidate: &GrokAccount,
+    target_account_id: Option<&str>,
+) -> Result<Option<GrokAccount>, String> {
+    let Some(target_account_id) = target_account_id else {
+        return Ok(None);
+    };
+    let target_account_id = normalize_id(target_account_id)?;
+    let target = load_account(&target_account_id)
+        .ok_or_else(|| format!("Grok 重新授权目标账号不存在: {}", target_account_id))?;
+    if !target.email.trim().is_empty()
+        && target.email != "unknown@grok.local"
+        && !target.email.eq_ignore_ascii_case(&candidate.email)
+    {
+        return Err(format!(
+            "Grok 重新授权账号邮箱不匹配: 目标账号为 {}，本次授权为 {}",
+            target.email, candidate.email
+        ));
+    }
+    Ok(Some(target))
+}
+
+fn upsert_candidate(
+    mut candidate: GrokAccount,
+    reauth_target_account_id: Option<&str>,
+) -> Result<GrokAccount, String> {
     let _guard = ACCOUNT_LOCK.lock().map_err(|_| "获取 Grok 账号锁失败")?;
     let _store_guard = acquire_store_lock()?;
-    if let Some(existing) = find_existing_account(&candidate) {
+    let existing = resolve_reauth_target(&candidate, reauth_target_account_id)?
+        .or_else(|| find_existing_account(&candidate));
+    if let Some(existing) = existing {
         if candidate.refresh_token.is_none() {
             candidate.refresh_token = existing.refresh_token.clone();
         }
@@ -901,14 +928,14 @@ fn upsert_candidate(mut candidate: GrokAccount) -> Result<GrokAccount, String> {
     Ok(candidate)
 }
 
-pub fn upsert_oauth(payload: GrokOAuthCompletePayload) -> Result<GrokAccount, String> {
+fn oauth_account_candidate(payload: GrokOAuthCompletePayload) -> GrokAccount {
     let now = now_ms();
     let expires_at_raw = payload
         .auth_raw
         .get("expires_at")
         .filter(|value| !value.is_null())
         .cloned();
-    upsert_candidate(GrokAccount {
+    GrokAccount {
         id: Uuid::new_v4().to_string(),
         email: payload.email,
         tags: None,
@@ -944,7 +971,18 @@ pub fn upsert_oauth(payload: GrokOAuthCompletePayload) -> Result<GrokAccount, St
         usage_updated_at: None,
         created_at: now,
         last_used: now,
-    })
+    }
+}
+
+pub fn upsert_oauth(payload: GrokOAuthCompletePayload) -> Result<GrokAccount, String> {
+    upsert_candidate(oauth_account_candidate(payload), None)
+}
+
+pub fn upsert_oauth_for_reauth(
+    payload: GrokOAuthCompletePayload,
+    target_account_id: &str,
+) -> Result<GrokAccount, String> {
+    upsert_candidate(oauth_account_candidate(payload), Some(target_account_id))
 }
 
 fn parse_auth_registry(value: &Value) -> Result<GrokAccount, String> {
@@ -1009,7 +1047,7 @@ pub fn import_from_json(content: &str) -> Result<Vec<GrokAccountView>, String> {
     let mut accounts = Vec::new();
     for value in values {
         let candidate = parse_auth_registry(&value)?;
-        let account = upsert_candidate(candidate)?;
+        let account = upsert_candidate(candidate, None)?;
         accounts.push(GrokAccountView::from(&account));
     }
     Ok(accounts)

@@ -37,6 +37,28 @@ func TestEnsureImageGenerationTool_ResponsesLiteFalseStillInjectsTool(t *testing
 	}
 }
 
+func TestNormalizeCodexParallelToolCallsForTools_RemovesFieldWithoutTopLevelTools(t *testing.T) {
+	body := []byte(`{"parallel_tool_calls":false,"input":[{"type":"additional_tools","tools":[{"type":"custom","name":"exec"}]}]}`)
+	result := normalizeCodexParallelToolCallsForTools(body)
+
+	if gjson.GetBytes(result, "parallel_tool_calls").Exists() {
+		t.Fatalf("parallel_tool_calls should be removed without top-level tools: %s", result)
+	}
+	if !gjson.GetBytes(result, "input.0.tools").IsArray() {
+		t.Fatalf("additional_tools input should be preserved: %s", result)
+	}
+}
+
+func TestNormalizeCodexParallelToolCallsForTools_PreservesFalseWithTopLevelTools(t *testing.T) {
+	body := []byte(`{"parallel_tool_calls":false,"tools":[{"type":"custom","name":"exec"}]}`)
+	result := normalizeCodexParallelToolCallsForTools(body)
+
+	parallelToolCalls := gjson.GetBytes(result, "parallel_tool_calls")
+	if !parallelToolCalls.Exists() || parallelToolCalls.Bool() {
+		t.Fatalf("parallel_tool_calls=false should be preserved with top-level tools: %s", result)
+	}
+}
+
 func TestEnsureImageGenerationTool_NoTools(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","input":"draw a cat"}`)
 	result := ensureImageGenerationTool(body, "gpt-5.4", nil, nil)

@@ -770,7 +770,7 @@ export function InstancesManager<TAccount extends AccountLike>({
     ((isCodexApp || isClaudeApp) &&
       resolveInstanceLaunchMode(instance) === "cli");
   const supportsStopControl = instances.some(
-    (item) => !usesTerminalLaunch(item) || isGrokApp,
+    (item) => !usesTerminalLaunch(item),
   );
   const hidePathFieldInEditModal = isCliOnlyApp && Boolean(editing?.isDefault);
   const showWorkingDirField =
@@ -1504,7 +1504,7 @@ export function InstancesManager<TAccount extends AccountLike>({
   const handleStart = async (instance: InstanceProfile) => {
     await startStoppedInstance(instance, {
       showRunningNotice:
-        supportsStopControl && (!usesTerminalLaunch(instance) || isGrokApp),
+        supportsStopControl && !usesTerminalLaunch(instance),
       showSuccessMessage: true,
     });
   };
@@ -2614,9 +2614,7 @@ export function InstancesManager<TAccount extends AccountLike>({
                       maskAccountText={maskAccountText}
                       resolveApiServiceLabel={resolveApiServiceLabel}
                       renderAccountMenuItems={renderAccountMenuItems}
-                      disabled={
-                        isInstanceBusy || (isGrokApp && instance.running)
-                      }
+                      disabled={isInstanceBusy}
                       missing={accountMissing}
                       placeholder={t("instances.labels.unbound", "未绑定")}
                       unboundLabel={t("instances.form.unbound", "不绑定")}
@@ -2701,7 +2699,7 @@ export function InstancesManager<TAccount extends AccountLike>({
                       <ExternalLink size={16} />
                     </button>
                   )}
-                  {(!isTerminalLaunchInstance || isGrokApp) && (
+                  {!isTerminalLaunchInstance && (
                     <button
                       className="icon-button danger"
                       title={t("instances.actions.stop", "停止")}
@@ -2722,7 +2720,6 @@ export function InstancesManager<TAccount extends AccountLike>({
                     onClick={() => openEditModal(instance)}
                     disabled={
                       isInstanceBusy ||
-                      (isGrokApp && instance.running) ||
                       restartingAll ||
                       bulkActionLoading
                     }
@@ -2735,7 +2732,6 @@ export function InstancesManager<TAccount extends AccountLike>({
                     onClick={() => handleDelete(instance)}
                     disabled={
                       instance.isDefault ||
-                      (isGrokApp && instance.running) ||
                       isInstanceBusy ||
                       restartingAll ||
                       bulkActionLoading

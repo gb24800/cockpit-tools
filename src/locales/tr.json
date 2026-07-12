@@ -6,6 +6,7 @@
     "saving": "Kaydediliyor...",
     "delete": "Sil",
     "refresh": "Yenile",
+    "reauthorize": "Yeniden yetkilendir",
     "loading": "Yükleniyor...",
     "success": "Başarılı",
     "failed": "Hata",

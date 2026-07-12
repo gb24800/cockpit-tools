@@ -44,8 +44,12 @@ export async function startGrokOAuthLogin(): Promise<GrokOAuthLoginStartResponse
 
 export async function completeGrokOAuthLogin(
   loginId: string,
+  reauthAccountId?: string | null,
 ): Promise<GrokAccount> {
-  return await invoke('grok_oauth_login_complete', { loginId });
+  return await invoke('grok_oauth_login_complete', {
+    loginId,
+    reauthAccountId: reauthAccountId ?? null,
+  });
 }
 
 export async function cancelGrokOAuthLogin(loginId?: string): Promise<void> {

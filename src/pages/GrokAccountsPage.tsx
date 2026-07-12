@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, ChevronLeft, Copy, Play, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ModalErrorMessage } from "../components/ModalErrorMessage";
@@ -46,6 +46,21 @@ function getGrokCliInstallCommand(): string {
     : GROK_CLI_INSTALL_COMMAND_UNIX;
 }
 
+function getGrokReauthorizationReason(account: GrokAccount): string | null {
+  const reason = account.status_reason?.trim() || "";
+  const normalized = `${account.status || ""} ${reason}`.toLowerCase();
+  if (
+    account.status === "reauth_required" ||
+    normalized.includes("invalid_grant") ||
+    normalized.includes("refresh token has been revoked") ||
+    normalized.includes("refresh_token 为空") ||
+    normalized.includes("access_denied")
+  ) {
+    return reason || "invalid_grant";
+  }
+  return null;
+}
+
 interface GrokAccountLaunchModalState {
   instanceId: string;
   accountEmail: string;
@@ -71,6 +86,8 @@ export function GrokAccountsPage() {
   const [installError, setInstallError] = useState<string | null>(null);
   const [installErrorScrollKey, setInstallErrorScrollKey] = useState(0);
   const store = useGrokAccountStore();
+  const [reauthTargetAccount, setReauthTargetAccount] =
+    useState<GrokAccount | null>(null);
 
   useEscClose(!!launchModal, () => setLaunchModal(null));
 
@@ -96,7 +113,11 @@ export function GrokAccountsPage() {
     },
     oauthService: {
       startLogin: grokService.startGrokOAuthLogin,
-      completeLogin: grokService.completeGrokOAuthLogin,
+      completeLogin: (loginId) =>
+        grokService.completeGrokOAuthLogin(
+          loginId,
+          reauthTargetAccount?.id ?? null,
+        ),
       cancelLogin: grokService.cancelGrokOAuthLogin,
     },
     dataService: {
@@ -139,6 +160,20 @@ export function GrokAccountsPage() {
     resolveOauthSuccessMessage: () =>
       t("grok.oauth.success", "Grok OAuth 登录成功"),
   });
+
+  useEffect(() => {
+    if (!page.showAddModal) {
+      setReauthTargetAccount(null);
+    }
+  }, [page.showAddModal]);
+
+  const handleReauthorize = useCallback(
+    (account: GrokAccount) => {
+      setReauthTargetAccount(account);
+      page.openAddModal("oauth");
+    },
+    [page.openAddModal],
+  );
 
   const handleCopyLaunchCommand = async () => {
     if (!launchModal?.launchCommand) return;
@@ -415,6 +450,9 @@ export function GrokAccountsPage() {
     quotaPrefix: "grok",
     tableUsageClassName: "grok-table-usage",
     showMfaQuickCode: false,
+    getReauthorizationReason: getGrokReauthorizationReason,
+    reauthorizingAccount: reauthTargetAccount,
+    onReauthorize: handleReauthorize,
   };
 
   return (

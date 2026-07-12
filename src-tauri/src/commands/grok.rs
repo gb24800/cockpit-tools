@@ -1,6 +1,7 @@
 use crate::models::grok::{GrokAccountView, GrokOAuthStartResponse};
 use crate::modules::{grok_account, grok_oauth, logger};
 use serde::Serialize;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use tauri::AppHandle;
@@ -255,9 +256,9 @@ pub fn grok_execute_cli_install_command(terminal: Option<String>) -> Result<(), 
 
 #[cfg(test)]
 mod tests {
-    use super::{expand_home_path, parse_grok_client_version};
     #[cfg(unix)]
     use super::validate_cli_file;
+    use super::{expand_home_path, parse_grok_client_version};
 
     #[test]
     fn expands_tilde_prefixed_cli_path() {
@@ -340,9 +341,35 @@ pub async fn grok_oauth_login_start() -> Result<GrokOAuthStartResponse, String> 
 pub async fn grok_oauth_login_complete(
     app: AppHandle,
     login_id: String,
+    reauth_account_id: Option<String>,
 ) -> Result<GrokAccountView, String> {
     let payload = grok_oauth::complete_login(&login_id).await?;
-    let account = grok_account::upsert_oauth(payload)?;
+    let reauth_account_id = reauth_account_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let was_current_account = if let Some(account_id) = reauth_account_id {
+        match grok_account::current_account_id() {
+            Ok(current_account_id) => current_account_id.as_deref() == Some(account_id),
+            Err(error) => {
+                logger::log_warn(&format!(
+                    "[Grok OAuth] 重新授权前对账默认账号失败: {}",
+                    error
+                ));
+                false
+            }
+        }
+    } else {
+        false
+    };
+    let account = if let Some(account_id) = reauth_account_id {
+        grok_account::upsert_oauth_for_reauth(payload, account_id)?
+    } else {
+        grok_account::upsert_oauth(payload)?
+    };
+    if was_current_account {
+        grok_account::inject_to_default(&account.id)?;
+    }
     let view = match grok_account::refresh_account(&account.id).await {
         Ok(view) => view,
         Err(error) => {

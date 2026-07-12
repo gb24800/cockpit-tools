@@ -52,6 +52,7 @@ import {
   setAccountsOverviewFilterPersistenceEnabled,
   writeAccountsOverviewFilterField,
 } from '../utils/accountsOverviewFilterPersistence';
+import { normalizeTimestamp } from '../utils/dataExtract';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -2432,7 +2433,8 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
   // ─── Utilities ────────────────────────────────────────────────────────
   const formatDate = useCallback(
     (timestamp: number) => {
-      const d = new Date(timestamp * 1000);
+      const normalized = normalizeTimestamp(timestamp);
+      const d = new Date((normalized ?? 0) * 1000);
       return (
         d.toLocaleDateString(locale, {
           year: 'numeric',

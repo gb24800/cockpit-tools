@@ -52,6 +52,11 @@ import {
   splitValidityFilterValues,
 } from "../utils/accountValidityFilter";
 import {
+  buildCodexPlanFilterOptions,
+  createCodexPlanFilterCounts,
+  incrementCodexPlanFilterCount,
+} from "../utils/codexAccountOverview";
+import {
   formatCodexQuotaPoolPercent,
   summarizeCodexQuotaPool,
   type CodexQuotaPoolItem,
@@ -279,6 +284,22 @@ function formatQuotaPoolLabel(
   weeklyLabel: string,
 ): string {
   return `${baseLabel} · ${hourlyLabel} ${formatCodexQuotaPoolPercent(pool.hourly)} · ${weeklyLabel} ${formatCodexQuotaPoolPercent(pool.weekly)}`;
+}
+
+function summarizeQuotaPoolsByPlan(
+  accounts: CodexAccount[],
+): Record<string, CodexQuotaPoolItem> {
+  const accountsByPlan: Record<string, CodexAccount[]> = {};
+  accounts.forEach((account) => {
+    const planKey = getCodexPlanFilterKey(account);
+    (accountsByPlan[planKey] ??= []).push(account);
+  });
+  return Object.fromEntries(
+    Object.entries(accountsByPlan).map(([planKey, planAccounts]) => [
+      planKey,
+      summarizeCodexQuotaPool(planAccounts).all,
+    ]),
+  );
 }
 
 function areSetsEqual(left: Set<string>, right: Set<string>): boolean {
@@ -732,31 +753,24 @@ export function CodexLocalAccessModal({
   );
 
   const tierCounts = useMemo(() => {
-    const counts = {
-      all: localAccessAccounts.length,
-      VALID: 0,
-      FREE: 0,
-      API_KEY: 0,
-      PLUS: 0,
-      PRO: 0,
-      TEAM: 0,
-      ENTERPRISE: 0,
-      ERROR: 0,
-    };
+    const counts = createCodexPlanFilterCounts(localAccessAccounts.length);
     localAccessAccounts.forEach((account) => {
       if (!isBlockingCodexQuotaError(account.quota_error)) {
         counts.VALID += 1;
       }
       const tier = getCodexPlanFilterKey(account);
-      if (tier in counts) {
-        counts[tier as keyof typeof counts] += 1;
-      }
+      incrementCodexPlanFilterCount(counts, tier);
       if (isBlockingCodexQuotaError(account.quota_error)) {
         counts.ERROR += 1;
       }
     });
     return counts;
   }, [localAccessAccounts]);
+
+  const quotaPoolByPlan = useMemo(
+    () => summarizeQuotaPoolsByPlan(localAccessAccounts),
+    [localAccessAccounts],
+  );
 
   const allTierFilterLabel = useMemo(
     () =>
@@ -776,68 +790,28 @@ export function CodexLocalAccessModal({
   );
 
   const tierFilterOptions = useMemo<MultiSelectFilterOption[]>(
-    () => [
-      {
-        value: "FREE",
-        label: formatQuotaPoolLabel(
-          `FREE (${tierCounts.FREE})`,
-          quotaPoolSummary.byPlan.FREE,
-          quotaPoolLabels.hourly,
-          quotaPoolLabels.weekly,
-        ),
-      },
-      {
-        value: "API_KEY",
-        label: formatQuotaPoolLabel(
-          `API Key (${tierCounts.API_KEY})`,
-          quotaPoolSummary.byPlan.API_KEY,
-          quotaPoolLabels.hourly,
-          quotaPoolLabels.weekly,
-        ),
-      },
-      {
-        value: "PLUS",
-        label: formatQuotaPoolLabel(
-          `PLUS (${tierCounts.PLUS})`,
-          quotaPoolSummary.byPlan.PLUS,
-          quotaPoolLabels.hourly,
-          quotaPoolLabels.weekly,
-        ),
-      },
-      {
-        value: "PRO",
-        label: formatQuotaPoolLabel(
-          `PRO (${tierCounts.PRO})`,
-          quotaPoolSummary.byPlan.PRO,
-          quotaPoolLabels.hourly,
-          quotaPoolLabels.weekly,
-        ),
-      },
-      {
-        value: "TEAM",
-        label: formatQuotaPoolLabel(
-          `TEAM (${tierCounts.TEAM})`,
-          quotaPoolSummary.byPlan.TEAM,
-          quotaPoolLabels.hourly,
-          quotaPoolLabels.weekly,
-        ),
-      },
-      {
-        value: "ENTERPRISE",
-        label: formatQuotaPoolLabel(
-          `ENTERPRISE (${tierCounts.ENTERPRISE})`,
-          quotaPoolSummary.byPlan.ENTERPRISE,
-          quotaPoolLabels.hourly,
-          quotaPoolLabels.weekly,
-        ),
-      },
-      { value: "ERROR", label: `ERROR (${tierCounts.ERROR})` },
-      buildValidAccountsFilterOption(t, tierCounts.VALID),
-    ],
+    () =>
+      buildCodexPlanFilterOptions(tierCounts, {
+        includeValid: true,
+        pendingLabel: t("codex.pendingAuth.badge", "待授权"),
+        validOption: buildValidAccountsFilterOption(t, tierCounts.VALID),
+      }).map((option) => {
+        const pool = quotaPoolByPlan[option.value];
+        if (!pool) return option;
+        return {
+          ...option,
+          label: formatQuotaPoolLabel(
+            option.label,
+            pool,
+            quotaPoolLabels.hourly,
+            quotaPoolLabels.weekly,
+          ),
+        };
+      }),
     [
       quotaPoolLabels.hourly,
       quotaPoolLabels.weekly,
-      quotaPoolSummary.byPlan,
+      quotaPoolByPlan,
       t,
       tierCounts,
     ],
@@ -1192,29 +1166,22 @@ export function CodexLocalAccessModal({
   );
 
   const customRoutingTierCounts = useMemo(() => {
-    const counts = {
-      all: customRoutingAccounts.length,
-      VALID: 0,
-      FREE: 0,
-      PLUS: 0,
-      PRO: 0,
-      TEAM: 0,
-      ENTERPRISE: 0,
-      ERROR: 0,
-    };
+    const counts = createCodexPlanFilterCounts(customRoutingAccounts.length);
     customRoutingAccounts.forEach((account) => {
       if (!isBlockingCodexQuotaError(account.quota_error)) {
         counts.VALID += 1;
       }
       const tier = getCodexPlanFilterKey(account);
-      if (tier in counts) {
-        counts[tier as keyof typeof counts] += 1;
-      }
+      incrementCodexPlanFilterCount(counts, tier);
       if (isBlockingCodexQuotaError(account.quota_error)) {
         counts.ERROR += 1;
       }
     });
     return counts;
+  }, [customRoutingAccounts]);
+
+  const customRoutingQuotaPoolByPlan = useMemo(() => {
+    return summarizeQuotaPoolsByPlan(customRoutingAccounts);
   }, [customRoutingAccounts]);
 
   const customRoutingAllTierFilterLabel = useMemo(
@@ -1235,57 +1202,29 @@ export function CodexLocalAccessModal({
   );
 
   const customRoutingTierFilterOptions = useMemo<MultiSelectFilterOption[]>(
-    () => [
-      {
-        value: "FREE",
-        label: formatQuotaPoolLabel(
-          `FREE (${customRoutingTierCounts.FREE})`,
-          customRoutingQuotaPoolSummary.byPlan.FREE,
-          quotaPoolLabels.hourly,
-          quotaPoolLabels.weekly,
+    () =>
+      buildCodexPlanFilterOptions(customRoutingTierCounts, {
+        includeValid: true,
+        pendingLabel: t("codex.pendingAuth.badge", "待授权"),
+        validOption: buildValidAccountsFilterOption(
+          t,
+          customRoutingTierCounts.VALID,
         ),
-      },
-      {
-        value: "PLUS",
-        label: formatQuotaPoolLabel(
-          `PLUS (${customRoutingTierCounts.PLUS})`,
-          customRoutingQuotaPoolSummary.byPlan.PLUS,
-          quotaPoolLabels.hourly,
-          quotaPoolLabels.weekly,
-        ),
-      },
-      {
-        value: "PRO",
-        label: formatQuotaPoolLabel(
-          `PRO (${customRoutingTierCounts.PRO})`,
-          customRoutingQuotaPoolSummary.byPlan.PRO,
-          quotaPoolLabels.hourly,
-          quotaPoolLabels.weekly,
-        ),
-      },
-      {
-        value: "TEAM",
-        label: formatQuotaPoolLabel(
-          `TEAM (${customRoutingTierCounts.TEAM})`,
-          customRoutingQuotaPoolSummary.byPlan.TEAM,
-          quotaPoolLabels.hourly,
-          quotaPoolLabels.weekly,
-        ),
-      },
-      {
-        value: "ENTERPRISE",
-        label: formatQuotaPoolLabel(
-          `ENTERPRISE (${customRoutingTierCounts.ENTERPRISE})`,
-          customRoutingQuotaPoolSummary.byPlan.ENTERPRISE,
-          quotaPoolLabels.hourly,
-          quotaPoolLabels.weekly,
-        ),
-      },
-      { value: "ERROR", label: `ERROR (${customRoutingTierCounts.ERROR})` },
-      buildValidAccountsFilterOption(t, customRoutingTierCounts.VALID),
-    ],
+      }).map((option) => {
+        const pool = customRoutingQuotaPoolByPlan[option.value];
+        if (!pool) return option;
+        return {
+          ...option,
+          label: formatQuotaPoolLabel(
+            option.label,
+            pool,
+            quotaPoolLabels.hourly,
+            quotaPoolLabels.weekly,
+          ),
+        };
+      }),
     [
-      customRoutingQuotaPoolSummary.byPlan,
+      customRoutingQuotaPoolByPlan,
       customRoutingTierCounts,
       quotaPoolLabels.hourly,
       quotaPoolLabels.weekly,
