@@ -137,9 +137,10 @@ html[data-reduced-motion="true"] body {
   background: var(--bg-primary) !important;
 }
 
-html[data-reduced-motion="true"] *:not(.loading-spinner):not(.spin):not(.icon-spin):not(.floating-card-spin),
-html[data-reduced-motion="true"] *:not(.loading-spinner):not(.spin):not(.icon-spin):not(.floating-card-spin)::before,
-html[data-reduced-motion="true"] *:not(.loading-spinner):not(.spin):not(.icon-spin):not(.floating-card-spin)::after {
+/* Keep essential loading spinners; disable decorative motion/glass. */
+html[data-reduced-motion="true"] *:not(.loading-spinner):not(.spin):not(.icon-spin):not(.floating-card-spin):not(.animate-spin),
+html[data-reduced-motion="true"] *:not(.loading-spinner):not(.spin):not(.icon-spin):not(.floating-card-spin):not(.animate-spin)::before,
+html[data-reduced-motion="true"] *:not(.loading-spinner):not(.spin):not(.icon-spin):not(.floating-card-spin):not(.animate-spin)::after {
   animation: none !important;
   transition: none !important;
   backdrop-filter: none !important;

@@ -343,7 +343,6 @@ pub fn run() {
                     modules::windsurf_oauth::restore_pending_oauth_listener();
                     modules::kiro_oauth::restore_pending_oauth_listener();
                     modules::trae_oauth::restore_pending_oauth_listener();
-                    modules::gemini_oauth::restore_pending_oauth_state();
                     modules::zed_oauth::restore_pending_oauth_listener();
                 });
             }
@@ -604,6 +603,7 @@ pub fn run() {
             commands::system::get_general_config,
             commands::system::get_available_terminals,
             commands::system::patch_general_config,
+            commands::system::scan_auto_local_import,
             commands::system::save_refresh_interval_config,
             commands::system::save_tray_platform_layout,
             commands::system::set_app_path,
@@ -1057,23 +1057,6 @@ pub fn run() {
             commands::cursor::cursor_oauth_login_complete,
             commands::cursor::cursor_oauth_login_cancel,
             commands::cursor::inject_cursor_account,
-            // Gemini Commands
-            commands::gemini::list_gemini_accounts,
-            commands::gemini::delete_gemini_account,
-            commands::gemini::delete_gemini_accounts,
-            commands::gemini::import_gemini_from_json,
-            commands::gemini::import_gemini_from_local,
-            commands::gemini::export_gemini_accounts,
-            commands::gemini::refresh_gemini_token,
-            commands::gemini::refresh_all_gemini_tokens,
-            commands::gemini::gemini_oauth_login_start,
-            commands::gemini::gemini_oauth_login_complete,
-            commands::gemini::gemini_oauth_submit_callback_url,
-            commands::gemini::gemini_oauth_login_cancel,
-            commands::gemini::add_gemini_account_with_token,
-            commands::gemini::update_gemini_account_tags,
-            commands::gemini::get_gemini_accounts_index_path,
-            commands::gemini::inject_gemini_account,
             // Grok Commands
             commands::grok::grok_get_cli_status,
             commands::grok::grok_execute_cli_install_command,
@@ -1108,18 +1091,6 @@ pub fn run() {
             commands::grok_instance::grok_open_instance_window,
             commands::grok_instance::grok_get_instance_launch_command,
             commands::grok_instance::grok_execute_instance_launch_command,
-            // Gemini Instance Commands
-            commands::gemini_instance::gemini_get_instance_defaults,
-            commands::gemini_instance::gemini_list_instances,
-            commands::gemini_instance::gemini_create_instance,
-            commands::gemini_instance::gemini_update_instance,
-            commands::gemini_instance::gemini_delete_instance,
-            commands::gemini_instance::gemini_start_instance,
-            commands::gemini_instance::gemini_stop_instance,
-            commands::gemini_instance::gemini_open_instance_window,
-            commands::gemini_instance::gemini_close_all_instances,
-            commands::gemini_instance::gemini_get_instance_launch_command,
-            commands::gemini_instance::gemini_execute_instance_launch_command,
             // Cursor Instance Commands
             commands::cursor_instance::cursor_get_instance_defaults,
             commands::cursor_instance::cursor_list_instances,

@@ -35,7 +35,6 @@ import { useGitHubCopilotAccountStore } from './stores/useGitHubCopilotAccountSt
 import { useWindsurfAccountStore } from './stores/useWindsurfAccountStore';
 import { useKiroAccountStore } from './stores/useKiroAccountStore';
 import { useCursorAccountStore } from './stores/useCursorAccountStore';
-import { useGeminiAccountStore } from './stores/useGeminiAccountStore';
 import { useGrokAccountStore } from './stores/useGrokAccountStore';
 import { useCodebuddyAccountStore } from './stores/useCodebuddyAccountStore';
 import { useCodebuddyCnAccountStore } from './stores/useCodebuddyCnAccountStore';
@@ -105,9 +104,6 @@ const KiroAccountsPage = lazy(() =>
 );
 const CursorAccountsPage = lazy(() =>
   import('./pages/CursorAccountsPage').then((module) => ({ default: module.CursorAccountsPage })),
-);
-const GeminiAccountsPage = lazy(() =>
-  import('./pages/GeminiAccountsPage').then((module) => ({ default: module.GeminiAccountsPage })),
 );
 const GrokAccountsPage = lazy(() =>
   import('./pages/GrokAccountsPage').then((module) => ({ default: module.GrokAccountsPage })),
@@ -190,7 +186,6 @@ const RENDERABLE_PAGE_VALUES: readonly Page[] = [
   'windsurf',
   'kiro',
   'cursor',
-  'gemini',
   'grok',
   'codebuddy',
   'codebuddy-cn',
@@ -227,7 +222,6 @@ const TOP_PROMO_PAGE_PLATFORM_TARGETS: Partial<Record<Page, readonly string[]>> 
   windsurf: ['windsurf'],
   kiro: ['kiro'],
   cursor: ['cursor'],
-  gemini: ['gemini'],
   grok: ['grok'],
   codebuddy: ['codebuddy'],
   'codebuddy-cn': ['codebuddy-cn'],
@@ -316,7 +310,6 @@ function normalizeStoredActivePage(value: string | null): Page | null {
   }
   return RENDERABLE_PAGE_SET.has(normalized) ? (normalized as Page) : null;
 }
-
 
 interface GeneralConfigTheme {
   theme: string;
@@ -474,7 +467,6 @@ type QuotaAlertPlatform =
   | 'windsurf'
   | 'kiro'
   | 'cursor'
-  | 'gemini'
   | 'grok'
   | 'codebuddy'
   | 'codebuddy_cn'
@@ -575,8 +567,6 @@ function normalizeQuotaAlertPlatform(platform: string | undefined): QuotaAlertPl
       return 'kiro';
     case 'cursor':
       return 'cursor';
-    case 'gemini':
-      return 'gemini';
     case 'grok':
       return 'grok';
     case 'codebuddy':
@@ -617,8 +607,6 @@ function getQuotaAlertPlatformLabel(
       return 'Kiro';
     case 'cursor':
       return 'Cursor';
-    case 'gemini':
-      return 'Gemini Cli';
     case 'grok':
       return 'Grok CLI';
     case 'codebuddy':
@@ -650,8 +638,6 @@ function getQuotaAlertTargetPage(platform: QuotaAlertPlatform): Page {
       return 'kiro';
     case 'cursor':
       return 'cursor';
-    case 'gemini':
-      return 'gemini';
     case 'grok':
       return 'grok';
     case 'codebuddy':
@@ -685,8 +671,6 @@ function getQuotaAlertQuickSettingsType(platform: QuotaAlertPlatform): QuickSett
       return 'kiro';
     case 'cursor':
       return 'cursor';
-    case 'gemini':
-      return 'gemini';
     case 'grok':
       return 'grok';
     case 'codebuddy':
@@ -2729,9 +2713,6 @@ function MainApp() {
                     } else if (platform === 'cursor') {
                       await useCursorAccountStore.getState().switchAccount(targetAccountId);
                       setPage('cursor');
-                    } else if (platform === 'gemini') {
-                      await useGeminiAccountStore.getState().switchAccount(targetAccountId);
-                      setPage('gemini');
                     } else if (platform === 'grok') {
                       await useGrokAccountStore.getState().switchAccount(targetAccountId);
                       setPage('grok');
@@ -2952,10 +2933,6 @@ function MainApp() {
       {
         command: 'refresh_all_cursor_tokens',
         errorMessage: 'Failed to refresh Cursor:',
-      },
-      {
-        command: 'refresh_all_gemini_tokens',
-        errorMessage: 'Failed to refresh Gemini:',
       },
       {
         command: 'refresh_all_grok_accounts',
@@ -3417,7 +3394,6 @@ function MainApp() {
             case 'windsurf':
             case 'kiro':
             case 'cursor':
-            case 'gemini':
             case 'grok':
             case 'codebuddy':
             case 'codebuddy-cn':
@@ -3948,7 +3924,6 @@ function MainApp() {
           {page === 'windsurf' && <WindsurfAccountsPage />}
           {page === 'kiro' && <KiroAccountsPage />}
           {page === 'cursor' && <CursorAccountsPage />}
-          {page === 'gemini' && <GeminiAccountsPage />}
           {page === 'grok' && <GrokAccountsPage />}
           {page === 'codebuddy' && <CodebuddyAccountsPage />}
           {page === 'codebuddy-cn' && <CodebuddyCnAccountsPage />}

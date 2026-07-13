@@ -250,7 +250,6 @@
       "restart": "Restartovat",
       "installing": "Instalace"
     },
-    "gemini": "Gemini Cli​",
     "codebuddy": "CodeBuddy​",
     "qoder": "Qoder​",
     "trae": "Trae​",
@@ -754,7 +753,7 @@
       "codexAutoSwitchAccountScope": "Rozsah automatického přepínání účtů Codex",
       "codexAutoSwitchAccountScopeDesc": "Aktuální stav automatického přepínání Codex: {{status}}. Zohledněny budou pouze účty v tomto rozsahu.",
       "defaultTerminal": "Výchozí terminál",
-      "defaultTerminalDesc": "Terminál použitý při otevírání Gemini CLI",
+      "defaultTerminalDesc": "Terminál použitý při otevírání CLI",
       "terminalSystem": "Systémový výchozí",
       "currentAccountRefreshRequiresAutoRefresh": "Pro nastavení obnovení aktuálního účtu nejprve zapněte „Automatické obnovení kvóty“.",
       "codebuddyCnAppPath": "Cesta k aplikaci CodeBuddy CN",
@@ -807,7 +806,17 @@
       "platformAutoRefresh": "Automatické obnovení kvóty {{platform}}",
       "traeSoloAppPath": "Spouštěcí cesta TRAE SOLO",
       "traeCnAppPath": "Spouštěcí cesta Trae CN",
-      "traeSoloCnAppPath": "Spouštěcí cesta TRAE SOLO CN"
+      "traeSoloCnAppPath": "Spouštěcí cesta TRAE SOLO CN",
+      "reducedMotion": "Méně animací",
+      "reducedMotionDesc": "Sníží mizení, přechody modalů, stíny, rozostření a plynulé rolování; ponechá jen nezbytnou zpětnou vazbu načítání",
+      "autoImportFromLocal": "Automatický import místních účtů",
+      "autoImportFromLocalDesc": "Po zapnutí hned naskenuje a importuje místní přihlášení; poté při změně v oficiálním klientu. Může požádat o klíčěnku.",
+      "autoImportFromLocalScanning": "Skenuji místní účty… lze kdykoli vypnout",
+      "autoImportFromLocalScanDone": "Hotovo: {{scanned}} nalezeno, {{imported}} importováno",
+      "autoImportFromLocalScanEmpty": "Hotovo: žádná importovatelná přihlášení",
+      "autoImportFromLocalScanPartial": "Hotovo: částečné chyby",
+      "autoImportFromLocalScanFailed": "Skenování selhalo: {{error}}",
+      "autoImportFromLocalScanCancelled": "Vypnuto; probíhající sken se ignoruje"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API​",
@@ -1963,7 +1972,7 @@
       },
       "customRoutingEdit": "Upravit vlastní směrování",
       "customRoutingTitle": "Vlastní směrování",
-      "customRoutingDesc": "Nastavte prioritu a váhu pro každý účet, abyste řídili pořadí výběru a rozdělení zátěže ve stejné prioritě.",
+      "customRoutingDesc": "Nastavte prioritu a váhu pro pořadí výběru účtů a rozložení zátěže.",
       "customRoutingBackupTitle": "Záložní účet",
       "customRoutingBackupDesc": "Použije se jen tehdy, když nejsou dostupné žádné běžné účty. Po obnovení běžného účtu se nové požadavky automaticky přepnou zpět.",
       "customRoutingBackupShort": "Záložní",
@@ -3156,22 +3165,40 @@
         "rulesSaved": "Pravidla modelů uložena",
         "pricingAction": "Ceny",
         "pricingTitle": "Ceny modelů",
-        "pricingDesc": "USD / 1M tokenů, pouze pro místní statistiku hodnoty.",
+        "pricingDesc": "USD / 1M tokenů, pouze pro místní statistiky.",
         "pricingModel": "Název",
         "pricingInput": "Vstup",
         "pricingCache": "Cache vstup",
         "pricingOutput": "Výstup",
         "pricingSource": "Zdroj",
         "pricingActions": "Akce",
-        "pricingCachePlaceholder": "Jako vstup",
+        "pricingCachePlaceholder": "-",
         "pricingCustom": "Vlastní",
         "pricingPreset": "Předvolba",
         "pricingUnset": "Nenast.",
         "pricingReset": "Obnovit",
         "pricingSaved": "Ceny uloženy",
-        "pricingInvalid": "Ceny musí být čísla větší nebo rovna 0",
+        "pricingInvalid": "Ceny musí být ≥ 0 a práh tokenů kladné celé číslo",
         "pricingReprice": "Přepočítat historii",
-        "pricingRepriced": "Historie byla přepočítána podle aktuálních cen"
+        "pricingRepriced": "Historie byla přepočítána podle aktuálních cen",
+        "pricingLongThreshold": "Práh dlouhého kontextu (tokens)",
+        "pricingStandard": "Běžný",
+        "pricingStandardLong": "Standard (dlouhý)",
+        "pricingPriority": "Priorita",
+        "pricingOfficialMissing": "-",
+        "pricingStandardLongInput": "Vstup standard (dlouhý)",
+        "pricingStandardLongCache": "Cache vstup standard (dlouhý)",
+        "pricingStandardLongOutput": "Výstup standard (dlouhý)",
+        "pricingPriorityInput": "Vstup priorita",
+        "pricingPriorityCache": "Cache vstup priorita",
+        "pricingPriorityOutput": "Výstup priorita",
+        "pricingRepriceDone": "Historické odhady aktualizovány; změněno {{updated}}",
+        "pricingRepriceFailedWithMessage": "Aktualizace odhadů selhala: {{message}}",
+        "pricingRepriceFailed": "Aktualizace odhadů selhala",
+        "pricingRepriceSuperseded": "Přijaty nové ceny; přepínám na nejnovější přepočet",
+        "pricingRepriceRunning": "Aktualizace odhadů {{processed}} / {{total}}; aktualizováno {{updated}}",
+        "pricingRepriceCompleted": "Historické odhady aktualizovány",
+        "pricingRepriceSaveBlocked": "Probíhá přepočet; uložte po dokončení"
       },
       "keys": {
         "policyTitle": "Zásady modelů",
@@ -3609,13 +3636,6 @@
       "appPath": "Cesta k Cursor"
     },
     "cursorRefreshInterval": "Automatická obnova kvóty",
-    "gemini": {
-      "title": "Nastavení Gemini Cli",
-      "appPath": "Cesta k Gemini Cli",
-      "syncWsl": "Synchronizovat konfiguraci WSL",
-      "syncWslDesc": "Při přepnutí účtu automaticky přepsat konfiguraci .gemini ve WSL"
-    },
-    "geminiRefreshInterval": "Automatická obnova kvóty",
     "grok": {
       "title": "Nastavení Grok CLI",
       "appPath": "Cesta ke Grok CLI",
@@ -4203,99 +4223,6 @@
       },
       "summary": "Tato sekce vysvětluje, jak používat Wakeup úlohy a ověření v běžném workflow.",
       "title": "Wakeup úlohy a ověření"
-    }
-  },
-  "gemini": {
-    "injectToGemini": "Přepnout na Gemini Cli",
-    "updated": {
-      "label": "Aktualizováno před {{relative}}"
-    },
-    "quota": {
-      "pro": "PRO",
-      "flash": "FLASH",
-      "left": "{{value}} % zbývá",
-      "resetsIn": "Obnoví se za {{relative}}",
-      "resetsSoon": "Brzy se obnoví",
-      "resetsUnknown": "Čas obnovení není znám",
-      "onDemand": "Na vyžádání",
-      "gemini5h": "5h",
-      "geminiWeekly": "Weekly",
-      "claude5h": "5h",
-      "claudeWeekly": "Weekly"
-    },
-    "title": "Správa účtů Gemini Cli",
-    "instances": {
-      "unsupported": "Správa více instancí Gemini Cli zatím není podporována.",
-      "unsupportedDescPlatform": "Více instancí Gemini Cli je podporováno pouze na macOS, Windows a Linuxu.",
-      "launchDialogTitle": "Spustit instanci",
-      "launchHint": "Zkopírujte příkaz a spusťte jej ručně, nebo jej spusťte přímo v terminálu.",
-      "runInTerminal": "Spustit v terminálu",
-      "workingDir": "Pracovní adresář",
-      "workingDirPlaceholder": "Výchozí aktuální cesta",
-      "workingDirDesc": "Při spuštění se nejprve přepne do tohoto adresáře",
-      "pickWorkingDir": "Vybrat pracovní adresář"
-    },
-    "switch": {
-      "success": "Účet byl úspěšně přepnut"
-    },
-    "empty": {
-      "description": "Klikněte na „Přidat účet“ a začněte spravovat své účty Gemini Cli"
-    },
-    "addModal": {
-      "title": "Přidat účet Gemini Cli"
-    },
-    "oauth": {
-      "desc": "Klikněte na tlačítko níže a dokončete autorizaci Gemini Cli v prohlížeči."
-    },
-    "token": {
-      "desc": "Vložte svůj přístupový token Gemini Cli (JWT) nebo exportovaná JSON data.",
-      "formatHint": "Povinná pole a příklady (klikněte pro rozbalení)",
-      "formatRequired": "Jeden token: vložte JWT přímo; hromadný import: použijte formát JSON pole",
-      "singleExample": "Příklad jednoho tokenu (JWT)",
-      "batchExample": "Příklad hromadného importu (JSON)"
-    },
-    "import": {
-      "localDesc": "Importujte data účtu z místního klienta Gemini Cli nebo souboru JSON.",
-      "localClient": "Import z místního Gemini Cli"
-    },
-    "flowNotice": {
-      "title": "Průvodce účtem Gemini Cli (klikněte pro rozbalení/sbalení)",
-      "desc": "Spravujte účty Gemini Cli importem z místní instalace Gemini Cli nebo vložením tokenů JWT. Data jsou zpracovávána pouze lokálně.",
-      "reason": "Rozsah oprávnění: čtení a zápis oauth_creds.json, google_accounts.json a settings.json v výchozím ~/.gemini nebo v cestě instance (GEMINI_CLI_HOME/.gemini) pro import účtů a lokální injekci přihlašovacích údajů (přepnutí účtu).",
-      "storage": "Síťový rozsah: OAuth a obnovení kvóty volají oficiální API Google/Gemini (např. oauth2.googleapis.com a googleapis.com). Odesílají se jen nutná pole pro autentizaci/kvótu; lokální soubory se na servery třetích stran nenahrávají."
-    },
-    "projectConfig": {
-      "button": "Nastavit projekt GCP",
-      "title": "Nastavit projekt GCP",
-      "selectLabel": "Vyberte projekt",
-      "loading": "Načítání seznamu projektů...",
-      "auto": "Automatický výběr (bez ručního zadání)",
-      "empty": "Nebyly nalezeny dostupné projekty. Ověřte, že tento účet má přístup k projektům GCP.",
-      "hint": "Po uložení bude tento projekt upřednostněn pro dotazy na kvóty a při spuštění se nastaví GOOGLE_CLOUD_PROJECT.",
-      "current": "Projekt: {{projectId}}",
-      "saved": "Projekt uložen: {{projectId}}",
-      "cleared": "Obnoveno automatické zjišťování projektu",
-      "savedWithRefreshError": "Projekt byl uložen, ale obnovení kvóty selhalo: {{error}}"
-    },
-    "identity": {
-      "authMethod": "Způsob přihlášení",
-      "tier": "Tarif",
-      "signedInWithGoogle": "Přihlášeno přes Google",
-      "signedInWithGoogleEmail": "Přihlášeno přes Google ({{email}})"
-    },
-    "quotaTable": {
-      "model": "Název modelu",
-      "leftOfTotal": "Zbývá / Celkem",
-      "usage": "Využito",
-      "usageResets": "Reset využití",
-      "usedPercent": "{{value}}%​",
-      "remainingOfTotal": "{{remaining}} / {{total}}​",
-      "resetAtWithRelative": "{{absolute}} ({{relative}})​"
-    },
-    "tierText": {
-      "pro": "Gemini Code Assist v Google One AI Pro",
-      "ultra": "Gemini Code Assist v Google AI Ultra",
-      "free": "Gemini Code Assist zdarma"
     }
   },
   "codebuddy": {

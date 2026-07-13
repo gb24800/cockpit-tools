@@ -128,7 +128,7 @@ const DAY_WINDOW_MS: i64 = 24 * 60 * 60 * 1000;
 const WEEK_WINDOW_MS: i64 = 7 * DAY_WINDOW_MS;
 const MONTH_WINDOW_MS: i64 = 30 * DAY_WINDOW_MS;
 const STATE_RECENT_USAGE_EVENT_LIMIT: usize = 100;
-const DEFAULT_MODEL_PRICING_VERSION: u64 = 1;
+const DEFAULT_MODEL_PRICING_VERSION: u64 = 2;
 const MODEL_PRICING_REPRICE_BATCH_SIZE: i64 = 50_000;
 const MODEL_PRICING_REPRICE_PARALLEL_MIN_ROWS: usize = 2_000;
 const LOCAL_ACCESS_LOGS_DB_BUSY_TIMEOUT: Duration = Duration::from_secs(5);
@@ -177,6 +177,12 @@ const CODEX_AUTO_REVIEW_MODEL_ID: &str = "codex-auto-review";
 const DEFAULT_IMAGES_MAIN_MODEL: &str = "gpt-5.4-mini";
 const MAX_MODEL_PRICE_USD_PER_MILLION: f64 = 1_000_000.0;
 const CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS: u64 = 272_000;
+/// Long-context input multiplier (OpenAI above-272k rates).
+const CODEX_LOCAL_ACCESS_LONG_CONTEXT_INPUT_MULTIPLIER: f64 = 2.0;
+/// Long-context cached-input multiplier (OpenAI above-272k cache rates).
+const CODEX_LOCAL_ACCESS_LONG_CONTEXT_CACHE_MULTIPLIER: f64 = 2.0;
+/// Long-context output multiplier (OpenAI above-272k rates).
+const CODEX_LOCAL_ACCESS_LONG_CONTEXT_OUTPUT_MULTIPLIER: f64 = 1.5;
 const CHAT_COMPLETIONS_PATH: &str = "/v1/chat/completions";
 const RESPONSES_PATH: &str = "/v1/responses";
 const RESPONSES_COMPACT_PATH: &str = "/v1/responses/compact";
@@ -3439,14 +3445,28 @@ fn build_responses_body_from_chat_completions(
 }
 
 fn normalize_proxy_service_tier(value: &str) -> Option<&'static str> {
+        // priority/fast -> priority, flex -> flex, standard/default -> standard.
     match value.trim().to_ascii_lowercase().as_str() {
-        "priority" => Some("priority"),
+        "priority" | "fast" => Some("priority"),
+        "flex" => Some("flex"),
+        "standard" | "default" => Some("standard"),
+        _ => None,
+    }
+}
+
+/// Values safe to inject into upstream / sidecar payloads as an explicit default.
+/// Omits standard/default so we do not force a service_tier field when the app
+/// is running at normal speed (matches previous inject behavior).
+fn normalize_upstream_inject_service_tier(value: &str) -> Option<&'static str> {
+    match normalize_proxy_service_tier(value) {
+        Some("priority") => Some("priority"),
+        Some("flex") => Some("flex"),
         _ => None,
     }
 }
 
 fn apply_default_service_tier_if_missing(body_value: &mut Value, service_tier: Option<&str>) {
-    let Some(service_tier) = service_tier.and_then(normalize_proxy_service_tier) else {
+    let Some(service_tier) = service_tier.and_then(normalize_upstream_inject_service_tier) else {
         return;
     };
     let Some(body_obj) = body_value.as_object_mut() else {
@@ -3484,7 +3504,7 @@ fn api_service_default_service_tier() -> Result<Option<&'static str>, String> {
 }
 
 fn sidecar_payload_default_service_tier(default_service_tier: Option<&str>) -> Option<Value> {
-    let service_tier = default_service_tier.and_then(normalize_proxy_service_tier)?;
+    let service_tier = default_service_tier.and_then(normalize_upstream_inject_service_tier)?;
     let models = SIDECAR_SERVICE_TIER_SUPPORTED_PAYLOAD_FORMATS
         .iter()
         .map(|payload_format| {
@@ -5010,16 +5030,12 @@ fn model_pricing(
     }
 }
 
+/// Billing service_tier for cost estimation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum CodexPricingServiceTier {
+enum CodexBillingServiceTier {
     Standard,
     Priority,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum CodexPricingContextBand {
-    Short,
-    Long,
+    Flex,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -5032,12 +5048,10 @@ struct CodexLocalAccessPrice {
 #[derive(Debug, Clone, Copy)]
 struct CodexLocalAccessPriceBookEntry {
     model_id: &'static str,
-    max_context_tokens: u64,
-    long_context_threshold_tokens: u64,
+    /// When true, apply session long-context multipliers above the threshold.
+    session_long_context: bool,
     standard: CodexLocalAccessPrice,
-    standard_long: Option<CodexLocalAccessPrice>,
     priority: Option<CodexLocalAccessPrice>,
-    priority_long: Option<CodexLocalAccessPrice>,
 }
 
 #[derive(Debug, Clone)]
@@ -5062,203 +5076,391 @@ const fn codex_price(
     }
 }
 
+/// Default Codex/OpenAI price book for local cost estimation (USD / 1M tokens).
+/// Bump `DEFAULT_MODEL_PRICING_VERSION` when defaults change so saved overrides
+/// reseal and historical estimates reprice.
 const CODEX_LOCAL_ACCESS_PRICE_BOOK: &[CodexLocalAccessPriceBookEntry] = &[
+    // Keep in sync with supported Codex models and public OpenAI rates.
     CodexLocalAccessPriceBookEntry {
         model_id: "gpt-5.6-sol",
-        max_context_tokens: 1_050_000,
-        long_context_threshold_tokens: CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS,
+        session_long_context: true,
         standard: codex_price(5.0, 0.5, 30.0),
-        standard_long: Some(codex_price(10.0, 1.0, 45.0)),
         priority: Some(codex_price(10.0, 1.0, 60.0)),
-        priority_long: None,
+    },
+    CodexLocalAccessPriceBookEntry {
+        // Bare gpt-5.6 uses sol-tier rates.
+        model_id: "gpt-5.6",
+        session_long_context: true,
+        standard: codex_price(5.0, 0.5, 30.0),
+        priority: Some(codex_price(10.0, 1.0, 60.0)),
     },
     CodexLocalAccessPriceBookEntry {
         model_id: "gpt-5.6-terra",
-        max_context_tokens: 1_050_000,
-        long_context_threshold_tokens: CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS,
+        session_long_context: true,
         standard: codex_price(2.5, 0.25, 15.0),
-        standard_long: Some(codex_price(5.0, 0.5, 22.5)),
         priority: Some(codex_price(5.0, 0.5, 30.0)),
-        priority_long: None,
     },
     CodexLocalAccessPriceBookEntry {
         model_id: "gpt-5.6-luna",
-        max_context_tokens: 1_050_000,
-        long_context_threshold_tokens: CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS,
+        session_long_context: true,
         standard: codex_price(1.0, 0.1, 6.0),
-        standard_long: Some(codex_price(2.0, 0.2, 9.0)),
         priority: Some(codex_price(2.0, 0.2, 12.0)),
-        priority_long: None,
     },
     CodexLocalAccessPriceBookEntry {
         model_id: "gpt-5.5",
-        max_context_tokens: 1_050_000,
-        long_context_threshold_tokens: CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS,
+        session_long_context: true,
         standard: codex_price(5.0, 0.5, 30.0),
-        standard_long: Some(codex_price(10.0, 1.0, 45.0)),
-        priority: Some(codex_price(12.5, 1.25, 75.0)),
-        priority_long: None,
+        priority: Some(codex_price(10.0, 1.0, 60.0)),
+    },
+    CodexLocalAccessPriceBookEntry {
+        model_id: "codex-auto-review",
+        session_long_context: true,
+        standard: codex_price(5.0, 0.5, 30.0),
+        priority: Some(codex_price(10.0, 1.0, 60.0)),
     },
     CodexLocalAccessPriceBookEntry {
         model_id: "gpt-5.4",
-        max_context_tokens: 1_050_000,
-        long_context_threshold_tokens: CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS,
+        session_long_context: true,
         standard: codex_price(2.5, 0.25, 15.0),
-        standard_long: Some(codex_price(5.0, 0.5, 22.5)),
         priority: Some(codex_price(5.0, 0.5, 30.0)),
-        priority_long: None,
     },
     CodexLocalAccessPriceBookEntry {
         model_id: "gpt-5.4-mini",
-        max_context_tokens: 400_000,
-        long_context_threshold_tokens: CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS,
+        session_long_context: false,
         standard: codex_price(0.75, 0.075, 4.5),
-        standard_long: None,
         priority: Some(codex_price(1.5, 0.15, 9.0)),
-        priority_long: None,
+    },
+    CodexLocalAccessPriceBookEntry {
+        model_id: "gpt-5.4-nano",
+        session_long_context: false,
+        standard: codex_price(0.2, 0.02, 1.25),
+        priority: None,
     },
     CodexLocalAccessPriceBookEntry {
         model_id: "gpt-5.3-codex",
-        max_context_tokens: 400_000,
-        long_context_threshold_tokens: CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS,
+        session_long_context: false,
         standard: codex_price(1.75, 0.175, 14.0),
-        standard_long: None,
         priority: Some(codex_price(3.5, 0.35, 28.0)),
-        priority_long: None,
     },
     CodexLocalAccessPriceBookEntry {
         model_id: "gpt-5.3-codex-spark",
-        max_context_tokens: 128_000,
-        long_context_threshold_tokens: CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS,
+        session_long_context: false,
         standard: codex_price(1.75, 0.175, 14.0),
-        standard_long: None,
-        priority: None,
-        priority_long: None,
+        priority: Some(codex_price(3.5, 0.35, 28.0)),
     },
     CodexLocalAccessPriceBookEntry {
         model_id: "gpt-5.2",
-        max_context_tokens: 400_000,
-        long_context_threshold_tokens: CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS,
+        session_long_context: false,
         standard: codex_price(1.75, 0.175, 14.0),
-        standard_long: None,
         priority: Some(codex_price(3.5, 0.35, 28.0)),
-        priority_long: None,
     },
     CodexLocalAccessPriceBookEntry {
         model_id: "gpt-5.2-codex",
-        max_context_tokens: 400_000,
-        long_context_threshold_tokens: CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS,
+        session_long_context: false,
         standard: codex_price(1.75, 0.175, 14.0),
-        standard_long: None,
         priority: Some(codex_price(3.5, 0.35, 28.0)),
-        priority_long: None,
+    },
+    CodexLocalAccessPriceBookEntry {
+        model_id: "gpt-5.1-codex",
+        session_long_context: false,
+        standard: codex_price(1.25, 0.125, 10.0),
+        priority: Some(codex_price(2.5, 0.25, 20.0)),
     },
     CodexLocalAccessPriceBookEntry {
         model_id: "gpt-5.1-codex-max",
-        max_context_tokens: 400_000,
-        long_context_threshold_tokens: CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS,
+        session_long_context: false,
         standard: codex_price(1.25, 0.125, 10.0),
-        standard_long: None,
-        priority: Some(codex_price(2.5, 0.25, 20.0)),
-        priority_long: None,
+        // No explicit priority rates -> fall back to x2 at billing time.
+        priority: None,
     },
     CodexLocalAccessPriceBookEntry {
         model_id: "gpt-5.1-codex-mini",
-        max_context_tokens: 400_000,
-        long_context_threshold_tokens: CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS,
+        session_long_context: false,
         standard: codex_price(0.25, 0.025, 2.0),
-        standard_long: None,
-        priority: None,
-        priority_long: None,
+        priority: Some(codex_price(0.45, 0.045, 3.6)),
     },
     CodexLocalAccessPriceBookEntry {
         model_id: "gpt-5-codex",
-        max_context_tokens: 400_000,
-        long_context_threshold_tokens: CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS,
+        session_long_context: false,
         standard: codex_price(1.25, 0.125, 10.0),
-        standard_long: None,
-        priority: Some(codex_price(2.5, 0.25, 20.0)),
-        priority_long: None,
+        priority: None,
     },
 ];
+
+fn derived_standard_long_price(standard: CodexLocalAccessPrice) -> CodexLocalAccessPrice {
+    // OpenAI above-272k: input x2, cache x2, output x1.5.
+    codex_price(
+        standard.input_usd_per_million * CODEX_LOCAL_ACCESS_LONG_CONTEXT_INPUT_MULTIPLIER,
+        standard.cached_input_usd_per_million * CODEX_LOCAL_ACCESS_LONG_CONTEXT_CACHE_MULTIPLIER,
+        standard.output_usd_per_million * CODEX_LOCAL_ACCESS_LONG_CONTEXT_OUTPUT_MULTIPLIER,
+    )
+}
 
 fn price_book_entry_to_model_pricing(
     entry: &CodexLocalAccessPriceBookEntry,
 ) -> CodexLocalAccessModelPricing {
+    let long_threshold = if entry.session_long_context {
+        Some(CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS)
+    } else {
+        None
+    };
+    let standard_long = if entry.session_long_context {
+        Some(derived_standard_long_price(entry.standard))
+    } else {
+        None
+    };
     model_pricing(
         entry.model_id,
-        Some(entry.long_context_threshold_tokens),
+        long_threshold,
         entry.standard,
-        entry.standard_long,
+        standard_long,
         entry.priority,
-        entry.priority_long,
+        None,
     )
 }
 
+/// Canonicalize OpenAI/Codex model id aliases for pricing lookup.
+fn canonicalize_openai_model_alias_spelling(model: &str) -> String {
+    let mut normalized = model.trim().to_ascii_lowercase();
+    if let Some((_, tail)) = normalized.rsplit_once('/') {
+        normalized = tail.trim().to_string();
+    } else {
+        normalized = normalized.trim().to_string();
+    }
+    if normalized.is_empty() {
+        return String::new();
+    }
+    normalized = normalized.replace('_', "-");
+    while normalized.contains("--") {
+        normalized = normalized.replace("--", "-");
+    }
+    if let Some(rest) = normalized.strip_prefix("gpt5") {
+        normalized = format!("gpt-5{rest}");
+    }
+    if !normalized.starts_with("gpt-") && !normalized.contains("codex") {
+        return String::new();
+    }
+    let replacements = [
+        ("gpt-5.4mini", "gpt-5.4-mini"),
+        ("gpt-5.4nano", "gpt-5.4-nano"),
+        ("gpt-5.3-codexspark", "gpt-5.3-codex-spark"),
+        ("gpt-5.3codexspark", "gpt-5.3-codex-spark"),
+        ("gpt-5.3codex", "gpt-5.3-codex"),
+    ];
+    for (from, to) in replacements {
+        normalized = normalized.replace(from, to);
+    }
+    normalized
+}
+
+fn normalize_known_openai_codex_model(model: &str) -> Option<String> {
+    let mut normalized = canonicalize_openai_model_alias_spelling(model);
+    if normalized.is_empty() {
+        return None;
+    }
+    if let Some(stripped) = normalized.strip_suffix("-openai-compact") {
+        if let Some(mapped) = normalize_known_openai_codex_model(stripped) {
+            return Some(mapped);
+        }
+    }
+    // Drop dated snapshot suffixes like -2026-03-05 for family matching.
+    // Dated snapshot suffixes like -YYYYMMDD / -YYYY-MM-DD are stripped below.
+    if normalized.len() > 11 {
+        let tail = &normalized[normalized.len() - 11..];
+        if tail.as_bytes().first() == Some(&b'-')
+            && tail.as_bytes().get(5) == Some(&b'-')
+            && tail.as_bytes().get(8) == Some(&b'-')
+            && tail.bytes().enumerate().all(|(i, b)| matches!(i, 0 | 5 | 8) || b.is_ascii_digit())
+        {
+            normalized = normalized[..normalized.len() - 11].to_string();
+        }
+    }
+
+    if normalized.contains("gpt-5.6-sol") {
+        return Some("gpt-5.6-sol".to_string());
+    }
+    if normalized.contains("gpt-5.6-terra") {
+        return Some("gpt-5.6-terra".to_string());
+    }
+    if normalized.contains("gpt-5.6-luna") {
+        return Some("gpt-5.6-luna".to_string());
+    }
+    if normalized.contains("gpt-5.6") {
+        // Bare gpt-5.6 uses sol-tier rates.
+        return Some("gpt-5.6".to_string());
+    }
+    if normalized.contains("gpt-5.5") {
+        return Some("gpt-5.5".to_string());
+    }
+    if normalized.contains("gpt-5.4-mini") {
+        return Some("gpt-5.4-mini".to_string());
+    }
+    if normalized.contains("gpt-5.4-nano") {
+        return Some("gpt-5.4-nano".to_string());
+    }
+    if normalized.contains("gpt-5.4") {
+        return Some("gpt-5.4".to_string());
+    }
+    if normalized.contains("gpt-5.2") {
+        // Prefer codex variant when present.
+        if normalized.contains("codex") {
+            return Some("gpt-5.2-codex".to_string());
+        }
+        return Some("gpt-5.2".to_string());
+    }
+    if normalized.contains("gpt-5.3-codex-spark") {
+        return Some("gpt-5.3-codex-spark".to_string());
+    }
+    if normalized.contains("gpt-5.3-codex") || normalized.contains("gpt-5.3") {
+        return Some("gpt-5.3-codex".to_string());
+    }
+    if normalized.contains("gpt-5.1-codex-mini") {
+        return Some("gpt-5.1-codex-mini".to_string());
+    }
+    if normalized.contains("gpt-5.1-codex-max") {
+        return Some("gpt-5.1-codex-max".to_string());
+    }
+    if normalized.contains("gpt-5.1-codex") {
+        return Some("gpt-5.1-codex".to_string());
+    }
+    if normalized.contains("gpt-5-codex") || normalized == "gpt-5-codex" {
+        return Some("gpt-5-codex".to_string());
+    }
+    if normalized.contains("codex") {
+        return Some("gpt-5.3-codex".to_string());
+    }
+    if normalized.contains("gpt-5") {
+        return Some("gpt-5.4".to_string());
+    }
+    None
+}
+
 fn price_book_entry_for_model(model_id: &str) -> Option<&'static CodexLocalAccessPriceBookEntry> {
+    let trimmed = model_id.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if let Some(entry) = CODEX_LOCAL_ACCESS_PRICE_BOOK
+        .iter()
+        .find(|item| item.model_id.eq_ignore_ascii_case(trimmed))
+    {
+        return Some(entry);
+    }
+    let normalized = normalize_known_openai_codex_model(trimmed)?;
     CODEX_LOCAL_ACCESS_PRICE_BOOK
         .iter()
-        .find(|item| item.model_id.eq_ignore_ascii_case(model_id.trim()))
+        .find(|item| item.model_id == normalized.as_str())
 }
 
-fn context_band_for_usage(
-    usage: Option<&UsageCapture>,
-    long_context_threshold_tokens: Option<u64>,
-) -> CodexPricingContextBand {
-    let threshold =
-        long_context_threshold_tokens.unwrap_or(CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS);
-    match usage.map(|item| item.input_tokens).unwrap_or_default() {
-        value if value > threshold => CodexPricingContextBand::Long,
-        _ => CodexPricingContextBand::Short,
-    }
-}
-
-fn service_tier_for_pricing(service_tier: Option<&str>) -> CodexPricingServiceTier {
+fn parse_billing_service_tier(service_tier: Option<&str>) -> CodexBillingServiceTier {
     match service_tier.and_then(normalize_proxy_service_tier) {
-        Some("priority") => CodexPricingServiceTier::Priority,
-        _ => CodexPricingServiceTier::Standard,
+        Some("priority") => CodexBillingServiceTier::Priority,
+        Some("flex") => CodexBillingServiceTier::Flex,
+        _ => CodexBillingServiceTier::Standard,
     }
 }
 
-fn resolve_price_book_price(
+fn is_openai_session_long_context_model(model_id: &str) -> bool {
+    let normalized = normalize_known_openai_codex_model(model_id)
+        .unwrap_or_else(|| model_id.trim().to_ascii_lowercase());
+    matches!(
+        normalized.as_str(),
+        "gpt-5.4"
+            | "gpt-5.5"
+            | "gpt-5.6"
+            | "gpt-5.6-sol"
+            | "gpt-5.6-terra"
+            | "gpt-5.6-luna"
+            | "codex-auto-review"
+    ) || normalized.starts_with("gpt-5.6-")
+}
+
+fn should_apply_session_long_context(
+    model_id: &str,
     pricing: &CodexLocalAccessModelPricing,
-    service_tier: CodexPricingServiceTier,
-    context_band: CodexPricingContextBand,
-) -> CodexLocalAccessPrice {
-    let standard = CodexLocalAccessPrice {
-        input_usd_per_million: pricing.input_usd_per_million,
-        cached_input_usd_per_million: pricing
-            .cached_input_usd_per_million
-            .unwrap_or(pricing.input_usd_per_million),
-        output_usd_per_million: pricing.output_usd_per_million,
+    usage: Option<&UsageCapture>,
+) -> bool {
+    let threshold = pricing
+        .long_context_threshold_tokens
+        .filter(|value| *value > 0)
+        .or_else(|| {
+            is_openai_session_long_context_model(model_id)
+                .then_some(CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS)
+        });
+    let Some(threshold) = threshold else {
+        return false;
     };
-    let standard_long = CodexLocalAccessPrice {
-        input_usd_per_million: pricing
-            .standard_long_input_usd_per_million
-            .unwrap_or(standard.input_usd_per_million),
-        cached_input_usd_per_million: pricing
-            .standard_long_cached_input_usd_per_million
-            .unwrap_or(standard.cached_input_usd_per_million),
-        output_usd_per_million: pricing
-            .standard_long_output_usd_per_million
-            .unwrap_or(standard.output_usd_per_million),
-    };
-    let priority = CodexLocalAccessPrice {
-        input_usd_per_million: pricing
-            .priority_input_usd_per_million
-            .unwrap_or(standard.input_usd_per_million),
-        cached_input_usd_per_million: pricing
-            .priority_cached_input_usd_per_million
-            .unwrap_or(standard.cached_input_usd_per_million),
-        output_usd_per_million: pricing
+    // OpenAI total prompt tokens include cached tokens.
+    usage.map(|item| item.input_tokens).unwrap_or(0) > threshold
+}
+
+fn pricing_has_explicit_priority_rates(pricing: &CodexLocalAccessModelPricing) -> bool {
+    pricing
+        .priority_input_usd_per_million
+        .is_some_and(|value| value > 0.0)
+        || pricing
             .priority_output_usd_per_million
-            .unwrap_or(standard.output_usd_per_million),
-    };
-    match (service_tier, context_band) {
-        (CodexPricingServiceTier::Priority, CodexPricingContextBand::Long) => priority,
-        (CodexPricingServiceTier::Priority, CodexPricingContextBand::Short) => priority,
-        (CodexPricingServiceTier::Standard, CodexPricingContextBand::Long) => standard_long,
-        (CodexPricingServiceTier::Standard, CodexPricingContextBand::Short) => standard,
+            .is_some_and(|value| value > 0.0)
+        || pricing
+            .priority_cached_input_usd_per_million
+            .is_some_and(|value| value > 0.0)
+}
+
+/// Resolve unit prices after service_tier + long-context policy
+/// (absolute priority rates, else x2/x0.5; long multiplies input/cache/output).
+fn compute_effective_unit_prices(
+    pricing: &CodexLocalAccessModelPricing,
+    model_id: &str,
+    usage: Option<&UsageCapture>,
+    service_tier: Option<&str>,
+) -> CodexLocalAccessPrice {
+    let mut input_price = pricing.input_usd_per_million;
+    let mut output_price = pricing.output_usd_per_million;
+    let mut cache_price = pricing
+        .cached_input_usd_per_million
+        .unwrap_or(pricing.input_usd_per_million);
+    let mut tier_multiplier = 1.0_f64;
+
+    match parse_billing_service_tier(service_tier) {
+        CodexBillingServiceTier::Priority if pricing_has_explicit_priority_rates(pricing) => {
+            if let Some(value) = pricing
+                .priority_input_usd_per_million
+                .filter(|value| *value > 0.0)
+            {
+                input_price = value;
+            }
+            if let Some(value) = pricing
+                .priority_output_usd_per_million
+                .filter(|value| *value > 0.0)
+            {
+                output_price = value;
+            }
+            if let Some(value) = pricing
+                .priority_cached_input_usd_per_million
+                .filter(|value| *value > 0.0)
+            {
+                cache_price = value;
+            }
+        }
+        CodexBillingServiceTier::Priority => {
+            tier_multiplier = 2.0;
+        }
+        CodexBillingServiceTier::Flex => {
+            tier_multiplier = 0.5;
+        }
+        CodexBillingServiceTier::Standard => {}
+    }
+
+    if should_apply_session_long_context(model_id, pricing, usage) {
+        input_price *= CODEX_LOCAL_ACCESS_LONG_CONTEXT_INPUT_MULTIPLIER;
+        cache_price *= CODEX_LOCAL_ACCESS_LONG_CONTEXT_CACHE_MULTIPLIER;
+        output_price *= CODEX_LOCAL_ACCESS_LONG_CONTEXT_OUTPUT_MULTIPLIER;
+    }
+
+    CodexLocalAccessPrice {
+        input_usd_per_million: input_price * tier_multiplier,
+        cached_input_usd_per_million: cache_price * tier_multiplier,
+        output_usd_per_million: output_price * tier_multiplier,
     }
 }
 
@@ -5320,23 +5522,36 @@ fn normalize_model_pricings(
             continue;
         }
         let preset = price_book_entry_for_model(&model_id);
-        let has_tier_pricing = pricing.long_context_threshold_tokens.is_some()
-            || pricing.standard_long_input_usd_per_million.is_some()
-            || pricing.standard_long_cached_input_usd_per_million.is_some()
-            || pricing.standard_long_output_usd_per_million.is_some()
+        let has_custom_rates = pricing.long_context_threshold_tokens.is_some()
             || pricing.priority_input_usd_per_million.is_some()
             || pricing.priority_cached_input_usd_per_million.is_some()
             || pricing.priority_output_usd_per_million.is_some()
-            || pricing.priority_long_input_usd_per_million.is_some()
-            || pricing.priority_long_cached_input_usd_per_million.is_some()
-            || pricing.priority_long_output_usd_per_million.is_some();
-        if preset.is_some() && !has_tier_pricing {
+            || (pricing.input_usd_per_million > 0.0 || pricing.output_usd_per_million > 0.0);
+        // Drop empty overrides that only restate defaults without custom fields.
+        if preset.is_some()
+            && !has_custom_rates
+            && pricing.cached_input_usd_per_million.is_none()
+        {
             continue;
         }
-        let long_context_threshold_tokens =
-            normalize_positive_tokens(pricing.long_context_threshold_tokens)
-                .or_else(|| preset.map(|item| item.long_context_threshold_tokens))
-                .unwrap_or(CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS);
+
+        let session_long = is_openai_session_long_context_model(&model_id)
+            || preset.map(|item| item.session_long_context).unwrap_or(false);
+        let long_context_threshold_tokens = if session_long {
+            Some(
+                normalize_positive_tokens(pricing.long_context_threshold_tokens)
+                    .or_else(|| {
+                        preset.and_then(|item| {
+                            item.session_long_context
+                                .then_some(CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS)
+                        })
+                    })
+                    .unwrap_or(CODEX_LOCAL_ACCESS_LONG_CONTEXT_THRESHOLD_TOKENS),
+            )
+        } else {
+            None
+        };
+
         let standard = price_from_base_triple(
             normalize_price_value(pricing.input_usd_per_million),
             pricing
@@ -5344,21 +5559,22 @@ fn normalize_model_pricings(
                 .map(normalize_price_value),
             normalize_price_value(pricing.output_usd_per_million),
         );
+        // standard_long absolute fields are display-only / legacy; billing uses
+        // multipliers. Persist derived display values for session-long models.
+        let standard_long = session_long.then(|| derived_standard_long_price(standard));
+
         normalized.push(CodexLocalAccessModelPricing {
             model_id,
-            long_context_threshold_tokens: Some(long_context_threshold_tokens),
+            long_context_threshold_tokens,
             input_usd_per_million: standard.input_usd_per_million,
             output_usd_per_million: standard.output_usd_per_million,
             cached_input_usd_per_million: Some(standard.cached_input_usd_per_million),
-            standard_long_input_usd_per_million: pricing
-                .standard_long_input_usd_per_million
-                .map(normalize_price_value),
-            standard_long_output_usd_per_million: pricing
-                .standard_long_output_usd_per_million
-                .map(normalize_price_value),
-            standard_long_cached_input_usd_per_million: pricing
-                .standard_long_cached_input_usd_per_million
-                .map(normalize_price_value),
+            standard_long_input_usd_per_million: standard_long
+                .map(|price| price.input_usd_per_million),
+            standard_long_output_usd_per_million: standard_long
+                .map(|price| price.output_usd_per_million),
+            standard_long_cached_input_usd_per_million: standard_long
+                .map(|price| price.cached_input_usd_per_million),
             priority_input_usd_per_million: pricing
                 .priority_input_usd_per_million
                 .map(normalize_price_value),
@@ -5469,52 +5685,53 @@ fn normalize_reprice_model_ids(model_ids: Vec<String>) -> Vec<String> {
     normalized
 }
 
+fn find_custom_model_pricing<'a>(
+    collection: &'a CodexLocalAccessCollection,
+    model_id: &str,
+) -> Option<&'a CodexLocalAccessModelPricing> {
+    let trimmed = model_id.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if let Some(exact) = collection
+        .model_pricings
+        .iter()
+        .find(|item| item.model_id.eq_ignore_ascii_case(trimmed))
+    {
+        return Some(exact);
+    }
+    let normalized = normalize_known_openai_codex_model(trimmed)?;
+    collection.model_pricings.iter().find(|item| {
+        item.model_id.eq_ignore_ascii_case(normalized.as_str())
+            || normalize_known_openai_codex_model(&item.model_id).as_deref()
+                == Some(normalized.as_str())
+    })
+}
+
+fn resolve_base_model_pricing(
+    collection: Option<&CodexLocalAccessCollection>,
+    model_id: &str,
+) -> Option<CodexLocalAccessModelPricing> {
+    if let Some(collection) = collection {
+        if let Some(custom) = find_custom_model_pricing(collection, model_id) {
+            return Some(custom.clone());
+        }
+    }
+    price_book_entry_for_model(model_id).map(price_book_entry_to_model_pricing)
+}
+
 fn resolve_effective_model_pricing(
     collection: Option<&CodexLocalAccessCollection>,
     model_id: Option<&str>,
     usage: Option<&UsageCapture>,
     service_tier: Option<&str>,
 ) -> Option<CodexLocalAccessModelPricing> {
-    let requested_tier = service_tier_for_pricing(service_tier);
     let Some(model_id) = model_id.map(str::trim).filter(|value| !value.is_empty()) else {
         return None;
     };
-
-    if let Some(custom) = collection.and_then(|collection| {
-        collection
-            .model_pricings
-            .iter()
-            .find(|item| item.model_id.eq_ignore_ascii_case(model_id))
-            .cloned()
-    }) {
-        if let Some(entry) = price_book_entry_for_model(model_id) {
-            if usage
-                .map(|item| item.input_tokens > entry.max_context_tokens)
-                .unwrap_or(false)
-            {
-                return None;
-            }
-        }
-        let context_band = context_band_for_usage(usage, custom.long_context_threshold_tokens);
-        let selected_price = resolve_price_book_price(&custom, requested_tier, context_band);
-        return Some(selected_model_pricing(&custom, selected_price));
-    }
-
-    let Some(entry) = price_book_entry_for_model(model_id) else {
-        return None;
-    };
-
-    if usage
-        .map(|item| item.input_tokens > entry.max_context_tokens)
-        .unwrap_or(false)
-    {
-        return None;
-    }
-
-    let entry_pricing = price_book_entry_to_model_pricing(entry);
-    let context_band = context_band_for_usage(usage, Some(entry.long_context_threshold_tokens));
-    let price = resolve_price_book_price(&entry_pricing, requested_tier, context_band);
-    Some(selected_model_pricing(&entry_pricing, price))
+    let base = resolve_base_model_pricing(collection, model_id)?;
+    let selected_price = compute_effective_unit_prices(&base, model_id, usage, service_tier);
+    Some(selected_model_pricing(&base, selected_price))
 }
 
 fn calculate_usage_cost_usd(
@@ -11911,7 +12128,9 @@ fn sanitize_collection_with_accounts(
         changed = true;
     }
     collection.model_pricings = normalized_model_pricings;
+    // Re-seed defaults when the price book version advances (clear saved overrides).
     if collection.model_pricing_version < DEFAULT_MODEL_PRICING_VERSION {
+        collection.model_pricings = Vec::new();
         collection.model_pricing_version = DEFAULT_MODEL_PRICING_VERSION;
         changed = true;
     }
@@ -12003,14 +12222,39 @@ async fn ensure_runtime_loaded_without_start_with_profile_restore(
         persist_after_load = true;
     }
 
+    let mut pricing_book_resealed = false;
     if let Some(collection) = next_collection.as_mut() {
+        let previous_pricing_version = collection.model_pricing_version;
         let (changed, _) = sanitize_collection(collection)?;
+        pricing_book_resealed = previous_pricing_version < DEFAULT_MODEL_PRICING_VERSION;
         persist_after_load = persist_after_load || changed;
     }
 
     if persist_after_load {
         if let Some(collection) = next_collection.as_ref() {
             save_collection_to_disk(collection)?;
+        }
+    }
+
+    // After price-book reseeds, rewrite historical estimate costs with the new defaults.
+    if pricing_book_resealed {
+        if let Some(collection) = next_collection.as_ref() {
+            match open_local_access_logs_db_for_write().and_then(|(_write_guard, mut conn)| {
+                reprice_request_logs_for_collection(&mut conn, collection)
+            }) {
+                Ok(updated) => {
+                    logger::log_codex_api_info(&format!(
+                        "Codex API 服务默认价格表已升级，历史估算已重算: updated_rows={}",
+                        updated
+                    ));
+                }
+                Err(err) => {
+                    logger::log_codex_api_warn(&format!(
+                        "Codex API 服务默认价格表已升级，但历史估算重算失败: {}",
+                        err
+                    ));
+                }
+            }
         }
     }
 
@@ -15936,9 +16180,51 @@ fn append_eligible_local_access_account_ids(
     )
 }
 
+fn apply_backup_account_ids(
+    collection: &mut CodexLocalAccessCollection,
+    backup_account_ids: &[String],
+) {
+    let account_set: HashSet<&str> = collection
+        .account_ids
+        .iter()
+        .map(String::as_str)
+        .collect();
+    let backup_set: HashSet<&str> = backup_account_ids
+        .iter()
+        .map(|id| id.trim())
+        .filter(|id| !id.is_empty() && account_set.contains(*id))
+        .collect();
+
+    let mut seen = HashSet::new();
+    for rule in &mut collection.custom_routing_rules {
+        if !account_set.contains(rule.account_id.as_str()) {
+            continue;
+        }
+        rule.is_backup = backup_set.contains(rule.account_id.as_str());
+        seen.insert(rule.account_id.clone());
+    }
+
+    for account_id in &collection.account_ids {
+        if !backup_set.contains(account_id.as_str()) || seen.contains(account_id) {
+            continue;
+        }
+        collection.custom_routing_rules.push(CodexLocalAccessCustomRoutingRule {
+            account_id: account_id.clone(),
+            priority: CUSTOM_ROUTING_PRIORITY_MIN,
+            weight: CUSTOM_ROUTING_WEIGHT_MIN,
+            is_backup: true,
+        });
+        seen.insert(account_id.clone());
+    }
+
+    collection.custom_routing_rules =
+        normalize_custom_routing_rules(collection.custom_routing_rules.clone(), &collection.account_ids);
+}
+
 pub async fn save_local_access_accounts(
     account_ids: Vec<String>,
     restrict_free_accounts: bool,
+    backup_account_ids: Option<Vec<String>>,
 ) -> Result<CodexLocalAccessState, String> {
     ensure_runtime_loaded_without_start().await?;
 
@@ -15971,7 +16257,14 @@ pub async fn save_local_access_accounts(
     collection.restrict_free_accounts = restrict_free_accounts;
     collection.account_ids = next_account_ids;
     collection.updated_at = now_ms();
-    let (changed, _) = sanitize_collection_with_accounts(&mut collection, &accounts)?;
+    let (mut changed, _) = sanitize_collection_with_accounts(&mut collection, &accounts)?;
+    if let Some(backup_ids) = backup_account_ids {
+        let before = collection.custom_routing_rules.clone();
+        apply_backup_account_ids(&mut collection, &backup_ids);
+        if collection.custom_routing_rules != before {
+            changed = true;
+        }
+    }
     if changed {
         collection.updated_at = now_ms();
     }
@@ -21912,8 +22205,22 @@ mod tests {
     #[test]
     fn sidecar_payload_default_service_tier_skips_none_and_unsupported_values() {
         assert!(sidecar_payload_default_service_tier(None).is_none());
-        assert!(sidecar_payload_default_service_tier(Some("fast")).is_none());
+        // "fast" normalizes to priority and is injectable as a default.
+        let fast = sidecar_payload_default_service_tier(Some("fast")).expect("fast -> priority");
+        let rules = fast
+            .get("default")
+            .and_then(Value::as_array)
+            .expect("default rules");
+        assert_eq!(
+            rules[0]
+                .get("params")
+                .and_then(|params| params.get("service_tier"))
+                .and_then(Value::as_str),
+            Some("priority")
+        );
+        // standard/default should not force an explicit upstream field.
         assert!(sidecar_payload_default_service_tier(Some("standard")).is_none());
+        assert!(sidecar_payload_default_service_tier(Some("default")).is_none());
     }
 
     #[test]
@@ -23632,12 +23939,16 @@ wire_api = "responses"
                 .expect("gpt-5.5 standard short pricing");
         assert_eq!(short.input_usd_per_million, 5.0);
         assert_eq!(short.output_usd_per_million, 30.0);
+        assert_eq!(short.cached_input_usd_per_million, Some(0.5));
 
+        // session long-context (above-272k): input x2, cache x2, output x1.5
         let long = resolve_effective_model_pricing(None, Some("gpt-5.5"), Some(&long_usage), None)
             .expect("gpt-5.5 standard long pricing");
         assert_eq!(long.input_usd_per_million, 10.0);
         assert_eq!(long.output_usd_per_million, 45.0);
+        assert_eq!(long.cached_input_usd_per_million, Some(1.0));
 
+        // priority absolute rates then long multipliers (10*2 / 1*2 / 60*1.5)
         let priority = resolve_effective_model_pricing(
             None,
             Some("gpt-5.5"),
@@ -23645,14 +23956,86 @@ wire_api = "responses"
             Some("priority"),
         )
         .expect("gpt-5.5 priority long pricing");
-        assert_eq!(priority.input_usd_per_million, 12.5);
-        assert_eq!(priority.output_usd_per_million, 75.0);
+        assert_eq!(priority.input_usd_per_million, 20.0);
+        assert_eq!(priority.output_usd_per_million, 90.0);
+        assert_eq!(priority.cached_input_usd_per_million, Some(2.0));
 
+        // non-5.4/5.5 models do not apply long-context multipliers
         let mini_long =
             resolve_effective_model_pricing(None, Some("gpt-5.4-mini"), Some(&long_usage), None)
                 .expect("gpt-5.4-mini standard long pricing");
         assert_eq!(mini_long.input_usd_per_million, 0.75);
         assert_eq!(mini_long.output_usd_per_million, 4.5);
+
+        // Available 5.6 models keep default book prices.
+        let sol =
+            resolve_effective_model_pricing(None, Some("gpt-5.6-sol"), Some(&short_usage), None)
+                .expect("gpt-5.6-sol pricing");
+        assert_eq!(sol.input_usd_per_million, 5.0);
+        assert_eq!(sol.output_usd_per_million, 30.0);
+        let terra =
+            resolve_effective_model_pricing(None, Some("gpt-5.6-terra"), Some(&short_usage), None)
+                .expect("gpt-5.6-terra pricing");
+        assert_eq!(terra.input_usd_per_million, 2.5);
+        let luna =
+            resolve_effective_model_pricing(None, Some("gpt-5.6-luna"), Some(&short_usage), None)
+                .expect("gpt-5.6-luna pricing");
+        assert_eq!(luna.input_usd_per_million, 1.0);
+    }
+
+    #[test]
+    fn resolves_pricing_service_tier_flex_and_priority_fallback() {
+        let usage = UsageCapture {
+            input_tokens: 100,
+            output_tokens: 50,
+            total_tokens: 150,
+            cached_tokens: 20,
+            reasoning_tokens: 0,
+        };
+
+        let flex = resolve_effective_model_pricing(None, Some("gpt-5.4"), Some(&usage), Some("flex"))
+            .expect("flex pricing");
+        assert!((flex.input_usd_per_million - 1.25).abs() < 1e-9);
+        assert!((flex.output_usd_per_million - 7.5).abs() < 1e-9);
+        assert_eq!(flex.cached_input_usd_per_million, Some(0.125));
+
+        let nano_priority = resolve_effective_model_pricing(
+            None,
+            Some("gpt-5.4-nano"),
+            Some(&usage),
+            Some("priority"),
+        )
+        .expect("nano priority falls back to x2");
+        assert!((nano_priority.input_usd_per_million - 0.4).abs() < 1e-9);
+        assert!((nano_priority.output_usd_per_million - 2.5).abs() < 1e-9);
+
+        let aliased = resolve_effective_model_pricing(
+            None,
+            Some("openai/gpt-5.4-2026-03-05"),
+            Some(&usage),
+            None,
+        )
+        .expect("date suffix alias");
+        assert_eq!(aliased.input_usd_per_million, 2.5);
+        assert_eq!(aliased.output_usd_per_million, 15.0);
+    }
+
+    #[test]
+    fn calculates_usage_cost_for_long_context_session() {
+        // gpt-5.4 long-context session multipliers
+        let usage = UsageCapture {
+            input_tokens: 300_000,
+            output_tokens: 4_000,
+            total_tokens: 304_000,
+            cached_tokens: 0,
+            reasoning_tokens: 0,
+        };
+        let pricing = resolve_effective_model_pricing(None, Some("gpt-5.4"), Some(&usage), None)
+            .expect("pricing");
+        let cost = calculate_usage_cost_usd(Some(&usage), Some(&pricing));
+        let expected_input = 300_000.0 * 2.5 * 2.0 / 1_000_000.0;
+        let expected_output = 4_000.0 * 15.0 * 1.5 / 1_000_000.0;
+        assert!((cost - (expected_input + expected_output)).abs() < 1e-10);
     }
 
     #[test]

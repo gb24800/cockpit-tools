@@ -34,7 +34,6 @@ const PROVIDER_PAGE_PLATFORM_MAP: Record<string, PlatformId> = {
   windsurf: 'windsurf',
   kiro: 'kiro',
   cursor: 'cursor',
-  gemini: 'gemini',
   grok: 'grok',
   codebuddy: 'codebuddy',
   codebuddycn: 'codebuddy_cn',

@@ -250,7 +250,6 @@
       "restart": "Reiniciar",
       "installing": "Instalando"
     },
-    "gemini": "Gemini Cli​",
     "codebuddy": "CodeBuddy​",
     "qoder": "Qoder​",
     "trae": "Trae​",
@@ -587,7 +586,7 @@
       "uiScale": "Escala da interface",
       "uiScaleDesc": "Ajuste a escala da interface",
       "defaultTerminal": "Terminal Padrão",
-      "defaultTerminalDesc": "O terminal usado ao abrir o Gemini CLI",
+      "defaultTerminalDesc": "O terminal usado ao abrir o CLI",
       "terminalSystem": "Padrão do Sistema",
       "accountManagement": "Gerenciamento de Contas",
       "autoRefresh": "Atualização automática da cota Antigravity IDE",
@@ -807,7 +806,17 @@
       "platformAutoRefresh": "Atualização automática de cota do {{platform}}",
       "traeSoloAppPath": "Caminho de inicialização do TRAE SOLO",
       "traeCnAppPath": "Caminho de inicialização do Trae CN",
-      "traeSoloCnAppPath": "Caminho de inicialização do TRAE SOLO CN"
+      "traeSoloCnAppPath": "Caminho de inicialização do TRAE SOLO CN",
+      "reducedMotion": "Reduzir animação",
+      "reducedMotionDesc": "Reduz fades, transições de modal, sombras, desfoque e rolagem suave; mantém só o feedback de carregamento essencial",
+      "autoImportFromLocal": "Importar contas locais auto",
+      "autoImportFromLocalDesc": "Ao ativar, varre e importa logins locais; depois, ao trocar no cliente oficial. Pode pedir permissão do chaveiro.",
+      "autoImportFromLocalScanning": "Varrendo contas locais… pode desligar a qualquer momento",
+      "autoImportFromLocalScanDone": "Concluído: {{scanned}} achadas, {{imported}} importadas",
+      "autoImportFromLocalScanEmpty": "Concluído: nenhum login importável",
+      "autoImportFromLocalScanPartial": "Concluído: falhas parciais",
+      "autoImportFromLocalScanFailed": "Falha na varredura: {{error}}",
+      "autoImportFromLocalScanCancelled": "Desligado; a varredura em andamento será ignorada"
     },
     "network": {
       "apiTitle": "API de cockpit antigravidade",
@@ -1963,7 +1972,7 @@
       },
       "customRoutingEdit": "Editar roteamento personalizado",
       "customRoutingTitle": "Roteamento personalizado",
-      "customRoutingDesc": "Defina prioridade e peso por conta para controlar a ordem de seleção e a distribuição de carga no mesmo nível.",
+      "customRoutingDesc": "Defina prioridade e peso para controlar a ordem de seleção e a distribuição de carga.",
       "customRoutingBackupTitle": "Conta reserva",
       "customRoutingBackupDesc": "Usada somente quando todas as contas normais estão indisponíveis. Novas solicitações voltam automaticamente quando uma conta normal se recupera.",
       "customRoutingBackupShort": "Reserva",
@@ -3156,22 +3165,40 @@
         "rulesSaved": "Regras de modelos salvas",
         "pricingAction": "Preços",
         "pricingTitle": "Preços dos modelos",
-        "pricingDesc": "USD / 1M tokens, usado apenas para estatísticas locais de valor.",
+        "pricingDesc": "USD / 1M tokens, apenas para estatísticas locais.",
         "pricingModel": "Modelo",
         "pricingInput": "Entrada",
         "pricingCache": "Entrada cache",
         "pricingOutput": "Saída",
         "pricingSource": "Origem",
         "pricingActions": "Ação",
-        "pricingCachePlaceholder": "Igual entrada",
+        "pricingCachePlaceholder": "-",
         "pricingCustom": "Personal.",
         "pricingPreset": "Predef.",
         "pricingUnset": "Não definido",
         "pricingReset": "Redefinir",
         "pricingSaved": "Preços salvos",
-        "pricingInvalid": "Os preços devem ser números maiores ou iguais a 0",
+        "pricingInvalid": "Preços devem ser números ≥ 0 e o limite de tokens um inteiro positivo",
         "pricingReprice": "Recalcular histórico",
-        "pricingRepriced": "As estimativas históricas foram recalculadas com os preços atuais"
+        "pricingRepriced": "As estimativas históricas foram recalculadas com os preços atuais",
+        "pricingLongThreshold": "Limite de contexto longo (tokens)",
+        "pricingStandard": "Padrão",
+        "pricingStandardLong": "Padrão (longo)",
+        "pricingPriority": "Prioridade",
+        "pricingOfficialMissing": "-",
+        "pricingStandardLongInput": "Entrada padrão (longo)",
+        "pricingStandardLongCache": "Entrada em cache padrão (longo)",
+        "pricingStandardLongOutput": "Saída padrão (longo)",
+        "pricingPriorityInput": "Entrada prioritária",
+        "pricingPriorityCache": "Entrada em cache prioritária",
+        "pricingPriorityOutput": "Saída prioritária",
+        "pricingRepriceDone": "Estimativas históricas atualizadas; {{updated}} linhas alteradas",
+        "pricingRepriceFailedWithMessage": "Falha ao atualizar estimativas: {{message}}",
+        "pricingRepriceFailed": "Falha ao atualizar estimativas",
+        "pricingRepriceSuperseded": "Novos preços recebidos; mudando para o recálculo mais recente",
+        "pricingRepriceRunning": "Atualizando estimativas {{processed}} / {{total}}; {{updated}} atualizadas",
+        "pricingRepriceCompleted": "Estimativas históricas atualizadas",
+        "pricingRepriceSaveBlocked": "Recálculo em andamento; salve após concluir"
       },
       "keys": {
         "policyTitle": "Política de modelos",
@@ -3609,13 +3636,6 @@
       "appPath": "Caminho do Cursor"
     },
     "cursorRefreshInterval": "Atualização automática de cota",
-    "gemini": {
-      "title": "Configurações do Gemini Cli",
-      "appPath": "Caminho do Gemini Cli",
-      "syncWsl": "Sincronizar configuração do WSL",
-      "syncWslDesc": "Sobrescreve automaticamente a configuração .gemini no WSL ao trocar de conta"
-    },
-    "geminiRefreshInterval": "Atualização automática de cota",
     "grok": {
       "title": "Configurações do Grok CLI",
       "appPath": "Caminho do Grok CLI",
@@ -4203,99 +4223,6 @@
       },
       "summary": "Esta seção explica como usar Tarefas wakeup e verificação no fluxo diário.",
       "title": "Tarefas wakeup e verificação"
-    }
-  },
-  "gemini": {
-    "injectToGemini": "Mudar para Gemini Cli",
-    "updated": {
-      "label": "Atualizado {{relative}} atrás"
-    },
-    "quota": {
-      "pro": "PRO",
-      "flash": "FLASH",
-      "left": "{{value}}% restantes",
-      "resetsIn": "Reinicia em {{relative}}",
-      "resetsSoon": "Reinicia em breve",
-      "resetsUnknown": "Hora de redefinição desconhecida",
-      "onDemand": "Sob demanda",
-      "gemini5h": "5h",
-      "geminiWeekly": "Weekly",
-      "claude5h": "5h",
-      "claudeWeekly": "Weekly"
-    },
-    "title": "Gerenciamento de contas Gemini Cli",
-    "instances": {
-      "unsupported": "O gerenciamento de múltiplas instâncias do Gemini Cli ainda não é compatível.",
-      "unsupportedDescPlatform": "A multiinstância Gemini Cli é compatível apenas com macOS, Windows e Linux.",
-      "launchDialogTitle": "Iniciar instância",
-      "launchHint": "Copie o comando e execute-o manualmente ou execute-o diretamente no terminal.",
-      "runInTerminal": "Execute no Terminal",
-      "workingDir": "Diretório de Trabalho",
-      "workingDirPlaceholder": "Padrão para o caminho atual",
-      "workingDirDesc": "Mudará para este diretório primeiro ao iniciar",
-      "pickWorkingDir": "Selecionar Diretório de Trabalho"
-    },
-    "switch": {
-      "success": "Conta trocada com sucesso"
-    },
-    "empty": {
-      "description": "Clique em \"Adicionar conta\" para começar a gerenciar suas contas Gemini Cli"
-    },
-    "addModal": {
-      "title": "Adicionar conta Gemini Cli"
-    },
-    "oauth": {
-      "desc": "Clique no botão abaixo e preencha a autorização Gemini Cli OAuth em seu navegador."
-    },
-    "token": {
-      "desc": "Cole seu token de acesso Gemini Cli (JWT) ou dados JSON exportados.",
-      "formatHint": "Campos obrigatórios e exemplos (clique para expandir)",
-      "formatRequired": "Token único: cole o JWT diretamente; importação em lote: use o formato de matriz JSON",
-      "singleExample": "Exemplo único (JWT)",
-      "batchExample": "Exemplo de lote (JSON)"
-    },
-    "import": {
-      "localDesc": "Importe dados da conta Gemini Cli do diretório de configuração local do Gemini Cli (~/.gemini) ou de um arquivo JSON.",
-      "localClient": "Importar do Gemini Cli local"
-    },
-    "flowNotice": {
-      "title": "Guia da conta Gemini Cli (clique para expandir/recolher)",
-      "desc": "Gerencie contas Gemini Cli importando da configuração local do Gemini Cli, colando um token JWT ou fazendo login via OAuth.",
-      "reason": "Escopo de permissão: ler e gravar oauth_creds.json, google_accounts.json e settings.json no padrão ~/.gemini ou caminho de instância (GEMINI_CLI_HOME/.gemini) para importação de conta e injeção de credenciais locais (troca de conta).",
-      "storage": "Escopo da rede: OAuth e atualização chamam APIs oficiais do Google/Gemini (como oauth2.googleapis.com e googleapis.com). Apenas os campos de autenticação/cota obrigatórios são enviados; os arquivos da conta local não são carregados em servidores de terceiros."
-    },
-    "projectConfig": {
-      "button": "Definir projeto do GCP",
-      "title": "Definir projeto do GCP",
-      "selectLabel": "Selecionar projeto",
-      "loading": "Carregando lista de projetos...",
-      "auto": "Seleção automática (sem definir manualmente)",
-      "empty": "Nenhum projeto disponível encontrado. Verifique se esta conta tem acesso a projetos do GCP.",
-      "hint": "Após salvar, este projeto terá prioridade nas requisições de cota e será injetado como GOOGLE_CLOUD_PROJECT ao iniciar.",
-      "current": "Projeto: {{projectId}}",
-      "saved": "Projeto salvo: {{projectId}}",
-      "cleared": "Voltou para resolução automática de projeto",
-      "savedWithRefreshError": "Projeto salvo, mas a atualização de cota falhou: {{error}}"
-    },
-    "identity": {
-      "authMethod": "Método de autenticação",
-      "tier": "Plano",
-      "signedInWithGoogle": "Conectado com Google",
-      "signedInWithGoogleEmail": "Conectado com Google ({{email}})"
-    },
-    "quotaTable": {
-      "model": "Modelo",
-      "leftOfTotal": "Restante / Total",
-      "usage": "Usado",
-      "usageResets": "Redefinição de uso",
-      "usedPercent": "{{value}}%​",
-      "remainingOfTotal": "{{remaining}} / {{total}}​",
-      "resetAtWithRelative": "{{absolute}} ({{relative}})​"
-    },
-    "tierText": {
-      "pro": "Gemini Code Assist no Google One AI Pro",
-      "ultra": "Gemini Code Assist no Google AI Ultra",
-      "free": "Gemini Code Assist grátis"
     }
   },
   "codebuddy": {

@@ -92,14 +92,10 @@ pub struct GeneralConfig {
     pub kiro_auto_refresh_minutes: i32,
     /// Cursor 自动刷新间隔（分钟），-1 表示禁用
     pub cursor_auto_refresh_minutes: i32,
-    /// Gemini 自动刷新间隔（分钟），-1 表示禁用
-    pub gemini_auto_refresh_minutes: i32,
     /// Grok CLI 自动刷新间隔（分钟），-1 表示禁用
     pub grok_auto_refresh_minutes: i32,
     /// Claude 自动刷新间隔（分钟），-1 表示禁用
     pub claude_auto_refresh_minutes: i32,
-    /// Gemini 切号时是否同步覆盖 WSL 配置 (Windows Only)
-    pub gemini_sync_wsl: bool,
     /// CodeBuddy 自动刷新间隔（分钟），-1 表示禁用
     pub codebuddy_auto_refresh_minutes: i32,
     /// CodeBuddy CN 自动刷新间隔（分钟），-1 表示禁用
@@ -269,10 +265,6 @@ pub struct GeneralConfig {
     pub cursor_quota_alert_enabled: bool,
     /// Cursor 配额预警阈值（百分比）
     pub cursor_quota_alert_threshold: i32,
-    /// 是否启用 Gemini 配额预警通知
-    pub gemini_quota_alert_enabled: bool,
-    /// Gemini 配额预警阈值（百分比）
-    pub gemini_quota_alert_threshold: i32,
     /// 是否启用 Grok CLI 配额预警通知
     pub grok_quota_alert_enabled: bool,
     /// Grok CLI 配额预警阈值（百分比）
@@ -1022,10 +1014,8 @@ fn is_general_config_patch_field(key: &str) -> bool {
             | "windsurf_auto_refresh_minutes"
             | "kiro_auto_refresh_minutes"
             | "cursor_auto_refresh_minutes"
-            | "gemini_auto_refresh_minutes"
             | "grok_auto_refresh_minutes"
             | "claude_auto_refresh_minutes"
-            | "gemini_sync_wsl"
             | "codebuddy_auto_refresh_minutes"
             | "codebuddy_cn_auto_refresh_minutes"
             | "workbuddy_auto_refresh_minutes"
@@ -1115,8 +1105,6 @@ fn is_general_config_patch_field(key: &str) -> bool {
             | "kiro_quota_alert_threshold"
             | "cursor_quota_alert_enabled"
             | "cursor_quota_alert_threshold"
-            | "gemini_quota_alert_enabled"
-            | "gemini_quota_alert_threshold"
             | "grok_quota_alert_enabled"
             | "grok_quota_alert_threshold"
             | "claude_quota_alert_enabled"
@@ -2457,10 +2445,8 @@ pub fn get_general_config(app: tauri::AppHandle) -> Result<GeneralConfig, String
         windsurf_auto_refresh_minutes: user_config.windsurf_auto_refresh_minutes,
         kiro_auto_refresh_minutes: user_config.kiro_auto_refresh_minutes,
         cursor_auto_refresh_minutes: user_config.cursor_auto_refresh_minutes,
-        gemini_auto_refresh_minutes: user_config.gemini_auto_refresh_minutes,
         grok_auto_refresh_minutes: user_config.grok_auto_refresh_minutes,
         claude_auto_refresh_minutes: user_config.claude_auto_refresh_minutes,
-        gemini_sync_wsl: user_config.gemini_sync_wsl,
         codebuddy_auto_refresh_minutes: user_config.codebuddy_auto_refresh_minutes,
         codebuddy_cn_auto_refresh_minutes: user_config.codebuddy_cn_auto_refresh_minutes,
         workbuddy_auto_refresh_minutes: user_config.workbuddy_auto_refresh_minutes,
@@ -2555,8 +2541,6 @@ pub fn get_general_config(app: tauri::AppHandle) -> Result<GeneralConfig, String
         kiro_quota_alert_threshold: user_config.kiro_quota_alert_threshold,
         cursor_quota_alert_enabled: user_config.cursor_quota_alert_enabled,
         cursor_quota_alert_threshold: user_config.cursor_quota_alert_threshold,
-        gemini_quota_alert_enabled: user_config.gemini_quota_alert_enabled,
-        gemini_quota_alert_threshold: user_config.gemini_quota_alert_threshold,
         grok_quota_alert_enabled: user_config.grok_quota_alert_enabled,
         grok_quota_alert_threshold: user_config.grok_quota_alert_threshold,
         claude_quota_alert_enabled: user_config.claude_quota_alert_enabled,
@@ -2580,7 +2564,7 @@ pub fn get_general_config(app: tauri::AppHandle) -> Result<GeneralConfig, String
     };
 
     modules::logger::log_info(&format!(
-        "[StartupPerf][SystemCommand] get_general_config completed in {}ms: auto_refresh={}, codex={}, zed={}, ghcp={}, windsurf={}, kiro={}, cursor={}, gemini={}, codebuddy={}, codebuddy_cn={}, workbuddy={}, qoder={}, zcode={}, trae={}, auto_switch={}",
+        "[StartupPerf][SystemCommand] get_general_config completed in {}ms: auto_refresh={}, codex={}, zed={}, ghcp={}, windsurf={}, kiro={}, cursor={}, codebuddy={}, codebuddy_cn={}, workbuddy={}, qoder={}, zcode={}, trae={}, auto_switch={}",
         started.elapsed().as_millis(),
         result.auto_refresh_minutes,
         result.codex_auto_refresh_minutes,
@@ -2589,7 +2573,6 @@ pub fn get_general_config(app: tauri::AppHandle) -> Result<GeneralConfig, String
         result.windsurf_auto_refresh_minutes,
         result.kiro_auto_refresh_minutes,
         result.cursor_auto_refresh_minutes,
-        result.gemini_auto_refresh_minutes,
         result.codebuddy_auto_refresh_minutes,
         result.codebuddy_cn_auto_refresh_minutes,
         result.workbuddy_auto_refresh_minutes,
@@ -2738,6 +2721,14 @@ pub fn patch_general_config(
     Ok(())
 }
 
+/// 立即扫描并导入本机当前登录账号（开启「本机账号自动导入」后调用）。
+#[tauri::command]
+pub async fn scan_auto_local_import(
+    app: tauri::AppHandle,
+) -> Result<modules::auto_local_import::AutoLocalImportScanResult, String> {
+    modules::auto_local_import::scan_now(app).await
+}
+
 /// 保存完整通用设置配置（兼容旧前端调用）。
 #[tauri::command]
 pub fn save_general_config(
@@ -2755,10 +2746,8 @@ pub fn save_general_config(
     windsurf_auto_refresh_minutes: Option<i32>,
     kiro_auto_refresh_minutes: Option<i32>,
     cursor_auto_refresh_minutes: Option<i32>,
-    gemini_auto_refresh_minutes: Option<i32>,
     grok_auto_refresh_minutes: Option<i32>,
     claude_auto_refresh_minutes: Option<i32>,
-    gemini_sync_wsl: Option<bool>,
     codebuddy_auto_refresh_minutes: Option<i32>,
     codebuddy_cn_auto_refresh_minutes: Option<i32>,
     workbuddy_auto_refresh_minutes: Option<i32>,
@@ -2848,8 +2837,6 @@ pub fn save_general_config(
     kiro_quota_alert_threshold: Option<i32>,
     cursor_quota_alert_enabled: Option<bool>,
     cursor_quota_alert_threshold: Option<i32>,
-    gemini_quota_alert_enabled: Option<bool>,
-    gemini_quota_alert_threshold: Option<i32>,
     grok_quota_alert_enabled: Option<bool>,
     grok_quota_alert_threshold: Option<i32>,
     claude_quota_alert_enabled: Option<bool>,
@@ -2975,17 +2962,11 @@ pub fn save_general_config(
         if let Some(value) = cursor_auto_refresh_minutes {
             current.cursor_auto_refresh_minutes = value;
         }
-        if let Some(value) = gemini_auto_refresh_minutes {
-            current.gemini_auto_refresh_minutes = value;
-        }
         if let Some(value) = grok_auto_refresh_minutes {
             current.grok_auto_refresh_minutes = value;
         }
         if let Some(value) = claude_auto_refresh_minutes {
             current.claude_auto_refresh_minutes = value;
-        }
-        if let Some(value) = gemini_sync_wsl {
-            current.gemini_sync_wsl = value;
         }
         if let Some(value) = codebuddy_auto_refresh_minutes {
             current.codebuddy_auto_refresh_minutes = value;
@@ -3258,12 +3239,6 @@ pub fn save_general_config(
         }
         if let Some(value) = cursor_quota_alert_threshold {
             current.cursor_quota_alert_threshold = value;
-        }
-        if let Some(value) = gemini_quota_alert_enabled {
-            current.gemini_quota_alert_enabled = value;
-        }
-        if let Some(value) = gemini_quota_alert_threshold {
-            current.gemini_quota_alert_threshold = value;
         }
         if let Some(value) = grok_quota_alert_enabled {
             current.grok_quota_alert_enabled = value;

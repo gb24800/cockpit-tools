@@ -250,7 +250,6 @@
       "restart": "Перезапустить",
       "installing": "Установка"
     },
-    "gemini": "Gemini Cli​",
     "codebuddy": "CodeBuddy​",
     "qoder": "Qoder​",
     "trae": "Trae​",
@@ -587,7 +586,7 @@
       "uiScale": "Масштаб интерфейса",
       "uiScaleDesc": "Настройте масштаб интерфейса",
       "defaultTerminal": "Терминал по умолчанию",
-      "defaultTerminalDesc": "Терминал, используемый при открытии Gemini CLI",
+      "defaultTerminalDesc": "Терминал, используемый при открытии CLI",
       "terminalSystem": "Системный по умолчанию",
       "accountManagement": "Управление аккаунтами",
       "autoRefresh": "Автообновление квоты Antigravity IDE",
@@ -807,7 +806,17 @@
       "platformAutoRefresh": "Автообновление квоты {{platform}}",
       "traeSoloAppPath": "Путь запуска TRAE SOLO",
       "traeCnAppPath": "Путь запуска Trae CN",
-      "traeSoloCnAppPath": "Путь запуска TRAE SOLO CN"
+      "traeSoloCnAppPath": "Путь запуска TRAE SOLO CN",
+      "reducedMotion": "Меньше анимации",
+      "reducedMotionDesc": "Уменьшает затухания, переходы модалок, тени, размытие и плавную прокрутку; оставляет только нужную индикацию загрузки",
+      "autoImportFromLocal": "Автоимпорт локальных аккаунтов",
+      "autoImportFromLocalDesc": "При включении сразу сканирует и импортирует локальные входы; далее при смене аккаунта в официальном клиенте. Может запросить доступ к связке ключей.",
+      "autoImportFromLocalScanning": "Сканирование локальных аккаунтов… можно выключить",
+      "autoImportFromLocalScanDone": "Готово: найдено {{scanned}}, импортировано {{imported}}",
+      "autoImportFromLocalScanEmpty": "Готово: нет локальных входов",
+      "autoImportFromLocalScanPartial": "Готово: частичные ошибки",
+      "autoImportFromLocalScanFailed": "Ошибка сканирования: {{error}}",
+      "autoImportFromLocalScanCancelled": "Выключено; текущий скан будет проигнорирован"
     },
     "network": {
       "apiTitle": "API антигравитационной кабины",
@@ -1963,7 +1972,7 @@
       },
       "customRoutingEdit": "Изменить настраиваемую маршрутизацию",
       "customRoutingTitle": "Настраиваемая маршрутизация",
-      "customRoutingDesc": "Задайте приоритет и вес для каждой учетной записи, чтобы управлять порядком выбора и распределением нагрузки на одном уровне.",
+      "customRoutingDesc": "Задайте приоритет и вес, чтобы управлять порядком выбора и распределением нагрузки.",
       "customRoutingBackupTitle": "Резервный аккаунт",
       "customRoutingBackupDesc": "Используется только тогда, когда все обычные аккаунты недоступны. Новые запросы автоматически возвращаются после восстановления обычного аккаунта.",
       "customRoutingBackupShort": "Резерв",
@@ -3156,22 +3165,40 @@
         "rulesSaved": "Правила моделей сохранены",
         "pricingAction": "Цены",
         "pricingTitle": "Цены моделей",
-        "pricingDesc": "USD / 1M токенов, только для локальной статистики стоимости.",
+        "pricingDesc": "USD / 1M tokens, только для локальной статистики.",
         "pricingModel": "Модель",
         "pricingInput": "Вход",
         "pricingCache": "Кэш-вход",
         "pricingOutput": "Выход",
         "pricingSource": "Источник",
         "pricingActions": "Действие",
-        "pricingCachePlaceholder": "Как вход",
+        "pricingCachePlaceholder": "-",
         "pricingCustom": "Своя",
         "pricingPreset": "Шаблон",
         "pricingUnset": "Не задано",
         "pricingReset": "Сброс",
         "pricingSaved": "Цены сохранены",
-        "pricingInvalid": "Цены должны быть числами больше или равны 0",
+        "pricingInvalid": "Цены должны быть ≥ 0, порог токенов — положительное целое",
         "pricingReprice": "Пересчитать историю",
-        "pricingRepriced": "Исторические оценки пересчитаны по текущим ценам"
+        "pricingRepriced": "Исторические оценки пересчитаны по текущим ценам",
+        "pricingLongThreshold": "Порог длинного контекста (tokens)",
+        "pricingStandard": "Стандарт",
+        "pricingStandardLong": "Стандарт (длинный)",
+        "pricingPriority": "Приоритет",
+        "pricingOfficialMissing": "-",
+        "pricingStandardLongInput": "Вход стандарт (длинный)",
+        "pricingStandardLongCache": "Кэш-вход стандарт (длинный)",
+        "pricingStandardLongOutput": "Выход стандарт (длинный)",
+        "pricingPriorityInput": "Вход приоритет",
+        "pricingPriorityCache": "Кэш-вход приоритет",
+        "pricingPriorityOutput": "Выход приоритет",
+        "pricingRepriceDone": "Исторические оценки обновлены; изменено {{updated}}",
+        "pricingRepriceFailedWithMessage": "Не удалось обновить оценки: {{message}}",
+        "pricingRepriceFailed": "Не удалось обновить исторические оценки",
+        "pricingRepriceSuperseded": "Получены новые цены; переключаемся на последний пересчёт",
+        "pricingRepriceRunning": "Обновление оценок {{processed}} / {{total}}; обновлено {{updated}}",
+        "pricingRepriceCompleted": "Исторические оценки обновлены",
+        "pricingRepriceSaveBlocked": "Идёт пересчёт; сохраните после завершения"
       },
       "keys": {
         "policyTitle": "Политика моделей",
@@ -3609,13 +3636,6 @@
       "appPath": "Путь к Cursor"
     },
     "cursorRefreshInterval": "Автообновление квоты",
-    "gemini": {
-      "title": "Настройки Gemini Cli",
-      "appPath": "Путь Gemini Cli",
-      "syncWsl": "Синхронизировать конфигурацию WSL",
-      "syncWslDesc": "Автоматически перезаписывать конфигурацию .gemini в WSL при переключении аккаунта"
-    },
-    "geminiRefreshInterval": "Автоматическое обновление квоты",
     "grok": {
       "title": "Настройки Grok CLI",
       "appPath": "Путь к Grok CLI",
@@ -4203,99 +4223,6 @@
       },
       "summary": "Этот раздел объясняет использование Wakeup-задачи и проверка в повседневном процессе.",
       "title": "Wakeup-задачи и проверка"
-    }
-  },
-  "gemini": {
-    "injectToGemini": "Переключиться на Gemini Cli",
-    "title": "Управление аккаунтами Gemini Cli",
-    "empty": {
-      "description": "Нажмите «Добавить учетную запись», чтобы начать управлять своими учетными записями Gemini Cli."
-    },
-    "addModal": {
-      "title": "Добавить учетную запись Gemini Cli"
-    },
-    "oauth": {
-      "desc": "Нажмите кнопку ниже и завершите авторизацию Gemini Cli OAuth в своем браузере."
-    },
-    "token": {
-      "desc": "Вставьте свой токен доступа Gemini Cli (JWT) или экспортированные данные JSON.",
-      "formatHint": "Обязательные поля и примеры (нажмите, чтобы развернуть)",
-      "formatRequired": "Один токен: вставьте JWT напрямую; пакетный импорт: используйте формат массива JSON",
-      "singleExample": "Одиночный пример (JWT)",
-      "batchExample": "Пример пакетной обработки (JSON)"
-    },
-    "import": {
-      "localDesc": "Импортируйте данные учетной записи Gemini Cli из локального каталога конфигурации Gemini Cli (~/.gemini) или файла JSON.",
-      "localClient": "Импорт из локального Gemini Cli"
-    },
-    "flowNotice": {
-      "title": "Руководство по учетной записи Gemini Cli (нажмите, чтобы развернуть/свернуть)",
-      "desc": "Управляйте учетными записями Gemini Cli, импортируя их из локальной конфигурации Gemini Cli, вставляя токен JWT или входя в систему через OAuth.",
-      "reason": "Область разрешений: чтение и запись oauth_creds.json, google_accounts.json и settings.json по умолчанию ~/.gemini или пути экземпляра (GEMINI_CLI_HOME/.gemini) для импорта учетной записи и локального внедрения учетных данных (переключение учетной записи).",
-      "storage": "Область сети: OAuth и обновление вызывают официальные API Google/Gemini (например, oauth2.googleapis.com и googleapis.com). Отправляются только обязательные поля аутентификации/квоты; файлы локальной учетной записи не загружаются на сторонние серверы."
-    },
-    "updated": {
-      "label": "Обновлено {{relative}} назад"
-    },
-    "quota": {
-      "pro": "PRO",
-      "flash": "FLASH",
-      "left": "Осталось {{value}}%",
-      "resetsIn": "Сбрасывается в {{relative}}",
-      "resetsSoon": "Скоро сброс",
-      "resetsUnknown": "Время сброса неизвестно",
-      "onDemand": "По требованию",
-      "gemini5h": "5h",
-      "geminiWeekly": "Weekly",
-      "claude5h": "5h",
-      "claudeWeekly": "Weekly"
-    },
-    "instances": {
-      "unsupported": "Управление несколькими экземплярами Gemini Cli пока не поддерживается.",
-      "unsupportedDescPlatform": "Мультиэкземпляр Gemini Cli поддерживается только в macOS, Windows и Linux.",
-      "launchDialogTitle": "Запустить экземпляр",
-      "launchHint": "Скопируйте команду и запустите вручную или выполните ее непосредственно в терминале.",
-      "runInTerminal": "Запустить в терминале",
-      "workingDir": "Рабочий каталог",
-      "workingDirPlaceholder": "По умолчанию текущий путь",
-      "workingDirDesc": "Сначала переключится на этот каталог при запуске",
-      "pickWorkingDir": "Выбрать рабочий каталог"
-    },
-    "switch": {
-      "success": "Аккаунт успешно переключен"
-    },
-    "projectConfig": {
-      "button": "Настроить проект GCP",
-      "title": "Настроить проект GCP",
-      "selectLabel": "Выберите проект",
-      "loading": "Загрузка списка проектов...",
-      "auto": "Автовыбор (без ручного указания)",
-      "empty": "Доступные проекты не найдены. Убедитесь, что у этой учетной записи есть доступ к проектам GCP.",
-      "hint": "После сохранения этот проект будет приоритетным для запросов квоты и будет подставляться как GOOGLE_CLOUD_PROJECT при запуске.",
-      "current": "Проект: {{projectId}}",
-      "saved": "Проект сохранен: {{projectId}}",
-      "cleared": "Возврат к автоматическому определению проекта",
-      "savedWithRefreshError": "Проект сохранен, но обновление квоты не удалось: {{error}}"
-    },
-    "identity": {
-      "authMethod": "Способ входа",
-      "tier": "Тариф",
-      "signedInWithGoogle": "Вход через Google",
-      "signedInWithGoogleEmail": "Вход через Google ({{email}})"
-    },
-    "quotaTable": {
-      "model": "Модель",
-      "leftOfTotal": "Осталось / Всего",
-      "usage": "Использовано",
-      "usageResets": "Сброс использования",
-      "usedPercent": "{{value}}%​",
-      "remainingOfTotal": "{{remaining}} / {{total}}​",
-      "resetAtWithRelative": "{{absolute}} ({{relative}})​"
-    },
-    "tierText": {
-      "pro": "Gemini Code Assist в Google One AI Pro",
-      "ultra": "Gemini Code Assist в Google AI Ultra",
-      "free": "Бесплатный Gemini Code Assist"
     }
   },
   "codebuddy": {

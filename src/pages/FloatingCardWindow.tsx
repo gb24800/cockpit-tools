@@ -12,7 +12,6 @@ import {
   buildCodebuddyAccountPresentation,
   buildCodexAccountPresentation,
   buildCursorAccountPresentation,
-  buildGeminiAccountPresentation,
   buildGrokAccountPresentation,
   buildGitHubCopilotAccountPresentation,
   buildKiroAccountPresentation,
@@ -45,7 +44,6 @@ import { useCodebuddyAccountStore } from '../stores/useCodebuddyAccountStore';
 import { useCodebuddyCnAccountStore } from '../stores/useCodebuddyCnAccountStore';
 import { useCodexAccountStore } from '../stores/useCodexAccountStore';
 import { useCursorAccountStore } from '../stores/useCursorAccountStore';
-import { useGeminiAccountStore } from '../stores/useGeminiAccountStore';
 import { useGrokAccountStore } from '../stores/useGrokAccountStore';
 import { useGitHubCopilotAccountStore } from '../stores/useGitHubCopilotAccountStore';
 import { useKiroAccountStore } from '../stores/useKiroAccountStore';
@@ -64,7 +62,6 @@ import { useClaudeInstanceStore } from '../stores/useClaudeInstanceStore';
 import { useCodebuddyInstanceStore } from '../stores/useCodebuddyInstanceStore';
 import { useCodexInstanceStore } from '../stores/useCodexInstanceStore';
 import { useCursorInstanceStore } from '../stores/useCursorInstanceStore';
-import { useGeminiInstanceStore } from '../stores/useGeminiInstanceStore';
 import { useGrokInstanceStore } from '../stores/useGrokInstanceStore';
 import { useGitHubCopilotInstanceStore } from '../stores/useGitHubCopilotInstanceStore';
 import type { InstanceStoreState } from '../stores/createInstanceStore';
@@ -91,7 +88,6 @@ import {
   getRecommendedCodebuddyCnAccount,
   getRecommendedCodexAccount,
   getRecommendedCursorAccount,
-  getRecommendedGeminiAccount,
   getRecommendedGrokAccount,
   getRecommendedGitHubCopilotAccount,
   getRecommendedKiroAccount,
@@ -141,7 +137,6 @@ type FloatingCardAccount =
   | ReturnType<typeof useWindsurfAccountStore.getState>['accounts'][number]
   | ReturnType<typeof useKiroAccountStore.getState>['accounts'][number]
   | ReturnType<typeof useCursorAccountStore.getState>['accounts'][number]
-  | ReturnType<typeof useGeminiAccountStore.getState>['accounts'][number]
   | ReturnType<typeof useGrokAccountStore.getState>['accounts'][number]
   | ReturnType<typeof useCodebuddyAccountStore.getState>['accounts'][number]
   | ReturnType<typeof useCodebuddyCnAccountStore.getState>['accounts'][number]
@@ -210,8 +205,6 @@ function resolveInstanceStoreApi(platformId: PlatformId): FloatingCardInstanceSt
       return useKiroInstanceStore.getState();
     case 'cursor':
       return useCursorInstanceStore.getState();
-    case 'gemini':
-      return useGeminiInstanceStore.getState();
     case 'grok':
       return useGrokInstanceStore.getState();
     case 'codebuddy':
@@ -273,10 +266,6 @@ export function FloatingCardWindow() {
     accounts: cursorAccounts,
     currentAccountId: cursorCurrentId,
   } = useCursorAccountStore();
-  const {
-    accounts: geminiAccounts,
-    currentAccountId: geminiCurrentId,
-  } = useGeminiAccountStore();
   const {
     accounts: grokAccounts,
     currentAccountId: grokCurrentId,
@@ -492,9 +481,6 @@ export function FloatingCardWindow() {
           break;
         case 'cursor':
           await useCursorAccountStore.getState().fetchAccounts();
-          break;
-        case 'gemini':
-          await useGeminiAccountStore.getState().fetchAccounts();
           break;
         case 'grok':
           await useGrokAccountStore.getState().fetchAccounts();
@@ -787,10 +773,6 @@ export function FloatingCardWindow() {
     () => resolveCurrentAccountById(cursorAccounts, cursorCurrentId),
     [cursorAccounts, cursorCurrentId],
   );
-  const geminiCurrent = useMemo(
-    () => resolveCurrentAccountById(geminiAccounts, geminiCurrentId),
-    [geminiAccounts, geminiCurrentId],
-  );
   const grokCurrent = useMemo(
     () => resolveCurrentAccountById(grokAccounts, grokCurrentId),
     [grokAccounts, grokCurrentId],
@@ -862,11 +844,6 @@ export function FloatingCardWindow() {
           accounts: cursorAccounts,
           actualCurrentAccount: cursorCurrent,
         };
-      case 'gemini':
-        return {
-          accounts: geminiAccounts,
-          actualCurrentAccount: geminiCurrent,
-        };
       case 'grok':
         return {
           accounts: grokAccounts,
@@ -924,8 +901,7 @@ export function FloatingCardWindow() {
     codexCurrent,
     cursorAccounts,
     cursorCurrent,
-    geminiAccounts,
-    geminiCurrent,
+
     grokAccounts,
     grokCurrent,
     githubCopilotAccounts,
@@ -975,8 +951,6 @@ export function FloatingCardWindow() {
         return getRecommendedKiroAccount(kiroAccounts, effectiveCurrentId);
       case 'cursor':
         return getRecommendedCursorAccount(cursorAccounts, effectiveCurrentId);
-      case 'gemini':
-        return getRecommendedGeminiAccount(geminiAccounts, effectiveCurrentId);
       case 'grok':
         return getRecommendedGrokAccount(grokAccounts, effectiveCurrentId);
       case 'codebuddy':
@@ -1005,7 +979,7 @@ export function FloatingCardWindow() {
     codexAccounts,
     currentAccount?.id,
     cursorAccounts,
-    geminiAccounts,
+
     grokAccounts,
     githubCopilotAccounts,
     kiroAccounts,
@@ -1072,8 +1046,6 @@ export function FloatingCardWindow() {
         return buildKiroAccountPresentation(viewedAccount as typeof kiroAccounts[number], t);
       case 'cursor':
         return buildCursorAccountPresentation(viewedAccount as typeof cursorAccounts[number], t);
-      case 'gemini':
-        return buildGeminiAccountPresentation(viewedAccount as typeof geminiAccounts[number], t);
       case 'grok':
         return buildGrokAccountPresentation(viewedAccount as typeof grokAccounts[number], t);
       case 'codebuddy':
@@ -1102,7 +1074,7 @@ export function FloatingCardWindow() {
     codexAccounts,
     cursorAccounts,
     displayGroups,
-    geminiAccounts,
+
     grokAccounts,
     githubCopilotAccounts,
     kiroAccounts,
@@ -1173,9 +1145,6 @@ export function FloatingCardWindow() {
             break;
           case 'cursor':
             await useCursorAccountStore.getState().refreshToken(viewedAccount.id);
-            break;
-          case 'gemini':
-            await useGeminiAccountStore.getState().refreshToken(viewedAccount.id);
             break;
           case 'grok':
             await useGrokAccountStore.getState().refreshToken(viewedAccount.id);
@@ -1306,9 +1275,6 @@ export function FloatingCardWindow() {
             break;
           case 'cursor':
             await useCursorAccountStore.getState().switchAccount(viewedAccount.id);
-            break;
-          case 'gemini':
-            await useGeminiAccountStore.getState().switchAccount(viewedAccount.id);
             break;
           case 'grok':
             await useGrokAccountStore.getState().switchAccount(viewedAccount.id);

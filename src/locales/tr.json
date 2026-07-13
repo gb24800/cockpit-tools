@@ -250,7 +250,6 @@
       "restart": "Yeniden başlat",
       "installing": "Yükleniyor"
     },
-    "gemini": "Gemini Cli​",
     "codebuddy": "CodeBuddy​",
     "qoder": "Qoder​",
     "trae": "Trae​",
@@ -582,7 +581,7 @@
       "theme": "Tema",
       "themeDesc": "Koyu ve açık mod arasında geçiş yapın",
       "defaultTerminal": "Varsayılan Terminal",
-      "defaultTerminalDesc": "Gemini CLI açılırken kullanılan terminal",
+      "defaultTerminalDesc": "CLI açılırken kullanılan terminal",
       "terminalSystem": "Sistem Varsayılanı",
       "themeLight": "Açık",
       "themeDark": "Koyu",
@@ -807,7 +806,17 @@
       "platformAutoRefresh": "{{platform}} kota otomatik yenileme",
       "traeSoloAppPath": "TRAE SOLO başlatma yolu",
       "traeCnAppPath": "Trae CN başlatma yolu",
-      "traeSoloCnAppPath": "TRAE SOLO CN başlatma yolu"
+      "traeSoloCnAppPath": "TRAE SOLO CN başlatma yolu",
+      "reducedMotion": "Hareketi azalt",
+      "reducedMotionDesc": "Solmalar, modal geçişleri, gölgeler, bulanıklık ve yumuşak kaydırmayı azaltır; yalnızca gerekli yükleme geribildirimini bırakır",
+      "autoImportFromLocal": "Yerel hesap otomatik içe aktarma",
+      "autoImportFromLocalDesc": "Açılınca yerel oturumları tarayıp içe aktarır; sonra resmi istemcide hesap değişince otomatik aktarır. Anahtar zinciri izni istenebilir.",
+      "autoImportFromLocalScanning": "Yerel hesaplar taranıyor… istediğiniz zaman kapatabilirsiniz",
+      "autoImportFromLocalScanDone": "Bitti: {{scanned}} bulundu, {{imported}} aktarıldı",
+      "autoImportFromLocalScanEmpty": "Bitti: aktarılabilir oturum yok",
+      "autoImportFromLocalScanPartial": "Bitti: kısmi hatalar",
+      "autoImportFromLocalScanFailed": "Tarama başarısız: {{error}}",
+      "autoImportFromLocalScanCancelled": "Kapatıldı; süren tarama yok sayılacak"
     },
     "network": {
       "apiTitle": "Yerçekimine Karşı Kokpit API'si",
@@ -1963,7 +1972,7 @@
       },
       "customRoutingEdit": "Özel yönlendirmeyi düzenle",
       "customRoutingTitle": "Özel yönlendirme",
-      "customRoutingDesc": "Hesap seçme sırasını ve aynı öncelikteki yük dağılımını yönetmek için her hesaba öncelik ve ağırlık verin.",
+      "customRoutingDesc": "Hesap seçim sırasını ve yük dağılımını kontrol etmek için öncelik ve ağırlık ayarlayın.",
       "customRoutingBackupTitle": "Yedek hesap",
       "customRoutingBackupDesc": "Yalnızca tüm normal hesaplar kullanılamadığında devreye girer. Normal bir hesap düzeldiğinde yeni istekler otomatik olarak geri döner.",
       "customRoutingBackupShort": "Yedek",
@@ -3156,22 +3165,40 @@
         "rulesSaved": "Model kuralları kaydedildi",
         "pricingAction": "Fiyatlar",
         "pricingTitle": "Model fiyatları",
-        "pricingDesc": "USD / 1M token, yalnızca yerel değer istatistikleri için.",
+        "pricingDesc": "USD / 1M token, yalnızca yerel istatistik için.",
         "pricingModel": "Model adı",
         "pricingInput": "Girdi",
         "pricingCache": "Önbellek girdi",
         "pricingOutput": "Çıktı",
         "pricingSource": "Kaynak",
         "pricingActions": "İşlem",
-        "pricingCachePlaceholder": "Girdi ile aynı",
+        "pricingCachePlaceholder": "-",
         "pricingCustom": "Özel",
         "pricingPreset": "Ön ayar",
         "pricingUnset": "Ayarsız",
         "pricingReset": "Sıfırla",
         "pricingSaved": "Fiyatlar kaydedildi",
-        "pricingInvalid": "Fiyatlar 0 veya daha büyük sayılar olmalıdır",
+        "pricingInvalid": "Fiyatlar ≥ 0 olmalı; token eşiği pozitif tam sayı olmalı",
         "pricingReprice": "Geçmişi yeniden hesapla",
-        "pricingRepriced": "Geçmiş tahminler güncel fiyatlarla yeniden hesaplandı"
+        "pricingRepriced": "Geçmiş tahminler güncel fiyatlarla yeniden hesaplandı",
+        "pricingLongThreshold": "Uzun bağlam eşiği (tokens)",
+        "pricingStandard": "Standart",
+        "pricingStandardLong": "Standart (uzun)",
+        "pricingPriority": "Öncelik",
+        "pricingOfficialMissing": "-",
+        "pricingStandardLongInput": "Standart (uzun) girdi",
+        "pricingStandardLongCache": "Standart (uzun) önbellek girdi",
+        "pricingStandardLongOutput": "Standart (uzun) çıktı",
+        "pricingPriorityInput": "Öncelik girdi",
+        "pricingPriorityCache": "Öncelik önbellek girdi",
+        "pricingPriorityOutput": "Öncelik çıktı",
+        "pricingRepriceDone": "Geçmiş tahminler güncellendi; {{updated}} satır değişti",
+        "pricingRepriceFailedWithMessage": "Tahmin güncellemesi başarısız: {{message}}",
+        "pricingRepriceFailed": "Tahmin güncellemesi başarısız",
+        "pricingRepriceSuperseded": "Yeni fiyatlar alındı; en son yeniden hesaplamaya geçiliyor",
+        "pricingRepriceRunning": "Tahminler güncelleniyor {{processed}} / {{total}}; {{updated}} güncellendi",
+        "pricingRepriceCompleted": "Geçmiş tahminler güncellendi",
+        "pricingRepriceSaveBlocked": "Yeniden hesaplama sürüyor; bittikten sonra kaydedin"
       },
       "keys": {
         "policyTitle": "Model ilkesi",
@@ -3609,13 +3636,6 @@
       "appPath": "Cursor Yolu"
     },
     "cursorRefreshInterval": "Kota otomatik yenileme",
-    "gemini": {
-      "title": "Gemini Cli Ayarları",
-      "appPath": "Gemini Cli Yolu",
-      "syncWsl": "WSL Yapılandırmasını Eşitle",
-      "syncWslDesc": "Hesap değiştirirken WSL içindeki .gemini yapılandırmasını otomatik olarak üzerine yaz"
-    },
-    "geminiRefreshInterval": "Kota Otomatik Yenileme",
     "grok": {
       "title": "Grok CLI Ayarları",
       "appPath": "Grok CLI Yolu",
@@ -4203,99 +4223,6 @@
       },
       "summary": "Bu bölüm, günlük akışta Wakeup görevleri ve doğrulama kullanımını açıklar.",
       "title": "Wakeup görevleri ve doğrulama"
-    }
-  },
-  "gemini": {
-    "injectToGemini": "Gemini Cli'ye geç",
-    "title": "Gemini Cli Hesap Yönetimi",
-    "empty": {
-      "description": "Gemini Cli hesaplarınızı yönetmeye başlamak için \"Hesap Ekle\"ye tıklayın"
-    },
-    "addModal": {
-      "title": "Gemini Cli Hesabı Ekle"
-    },
-    "oauth": {
-      "desc": "Aşağıdaki düğmeye tıklayın ve tarayıcınızda Gemini Cli OAuth yetkilendirmesini tamamlayın."
-    },
-    "token": {
-      "desc": "Gemini Cli Erişim Simgenizi (JWT) veya dışa aktarılan JSON verilerinizi yapıştırın.",
-      "formatHint": "Zorunlu alanlar ve örnekler (genişletmek için tıklayın)",
-      "formatRequired": "Tek jeton: JWT'yi doğrudan yapıştırın; toplu içe aktarma: JSON dizi biçimini kullanın",
-      "singleExample": "Tek örnek (JWT)",
-      "batchExample": "Toplu örnek (JSON)"
-    },
-    "import": {
-      "localDesc": "Gemini Cli hesap verilerini yerel Gemini Cli yapılandırma dizininden (~/.gemini) veya bir JSON dosyasından içe aktarın.",
-      "localClient": "Yerel Gemini Cli'den içe aktar"
-    },
-    "flowNotice": {
-      "title": "Gemini Cli hesap kılavuzu (genişletmek/daraltmak için tıklayın)",
-      "desc": "Yerel Gemini Cli yapılandırmasından içe aktararak, bir JWT jetonu yapıştırarak veya OAuth aracılığıyla oturum açarak Gemini Cli hesaplarını yönetin.",
-      "reason": "İzin kapsamı: hesap içe aktarma ve yerel kimlik bilgileri ekleme (hesap değiştirme) için varsayılan ~/.gemini veya örnek yolu (GEMINI_CLI_HOME/.gemini) altında oauth_creds.json, google_accounts.json ve settings.json okuyun ve yazın.",
-      "storage": "Ağ kapsamı: OAuth ve yenileme, resmi Google/Gemini API'lerini (oauth2.googleapis.com ve googleapis.com gibi) çağırır. Yalnızca gerekli kimlik doğrulama/kota alanları gönderilir; yerel hesap dosyaları üçüncü taraf sunuculara yüklenmez."
-    },
-    "updated": {
-      "label": "{{relative}} önce güncellendi"
-    },
-    "quota": {
-      "pro": "PRO",
-      "flash": "FLASH",
-      "left": "{{value}}% kaldı",
-      "resetsIn": "{{relative}}'da sıfırlanır",
-      "resetsSoon": "Yakında sıfırlanacak",
-      "resetsUnknown": "Sıfırlama zamanı bilinmiyor",
-      "onDemand": "Talep üzerine",
-      "gemini5h": "5h",
-      "geminiWeekly": "Weekly",
-      "claude5h": "5h",
-      "claudeWeekly": "Weekly"
-    },
-    "instances": {
-      "unsupported": "Gemini Cli çoklu örnek yönetimi henüz desteklenmiyor.",
-      "unsupportedDescPlatform": "Gemini Cli çoklu örneği yalnızca macOS, Windows ve Linux'ta desteklenir.",
-      "launchDialogTitle": "Örneği Başlat",
-      "launchHint": "Komutu kopyalayın ve manuel olarak çalıştırın veya doğrudan terminalde çalıştırın.",
-      "runInTerminal": "Terminalde Çalıştır",
-      "workingDir": "Çalışma Dizini",
-      "workingDirPlaceholder": "Geçerli yol varsayılan",
-      "workingDirDesc": "Başlatıldığında önce bu dizine geçiş yapacaktır",
-      "pickWorkingDir": "Çalışma Dizini Seç"
-    },
-    "switch": {
-      "success": "Hesap başarıyla değiştirildi"
-    },
-    "projectConfig": {
-      "button": "GCP projesini ayarla",
-      "title": "GCP projesini ayarla",
-      "selectLabel": "Proje seç",
-      "loading": "Proje listesi yükleniyor...",
-      "auto": "Otomatik seç (elle belirtme)",
-      "empty": "Kullanılabilir proje bulunamadı. Bu hesabın GCP projelerine erişimi olduğundan emin olun.",
-      "hint": "Kaydettikten sonra bu proje kota isteklerinde öncelikli olur ve başlatma komutunda GOOGLE_CLOUD_PROJECT olarak eklenir.",
-      "current": "Proje: {{projectId}}",
-      "saved": "Proje kaydedildi: {{projectId}}",
-      "cleared": "Otomatik proje çözümlemeye geri dönüldü",
-      "savedWithRefreshError": "Proje kaydedildi ancak kota yenileme başarısız oldu: {{error}}"
-    },
-    "identity": {
-      "authMethod": "Kimlik doğrulama yöntemi",
-      "tier": "Paket",
-      "signedInWithGoogle": "Google ile oturum açıldı",
-      "signedInWithGoogleEmail": "Google ile oturum açıldı ({{email}})"
-    },
-    "quotaTable": {
-      "model": "Model adı",
-      "leftOfTotal": "Kalan / Toplam",
-      "usage": "Kullanılan",
-      "usageResets": "Kullanım sıfırlanır",
-      "usedPercent": "{{value}}%​",
-      "remainingOfTotal": "{{remaining}} / {{total}}​",
-      "resetAtWithRelative": "{{absolute}} ({{relative}})​"
-    },
-    "tierText": {
-      "pro": "Google One AI Pro içindeki Gemini Code Assist",
-      "ultra": "Google AI Ultra içindeki Gemini Code Assist",
-      "free": "Ücretsiz Gemini Code Assist"
     }
   },
   "codebuddy": {

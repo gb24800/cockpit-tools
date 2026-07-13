@@ -297,7 +297,6 @@
       "restart": "إعادة التشغيل",
       "installing": "جارٍ التثبيت"
     },
-    "gemini": "Gemini Cli​",
     "codebuddy": "CodeBuddy​",
     "qoder": "Qoder​",
     "trae": "Trae​",
@@ -801,7 +800,7 @@
       "codexAutoSwitchAccountScope": "نطاق التبديل التلقائي لحسابات Codex",
       "codexAutoSwitchAccountScopeDesc": "حالة التبديل التلقائي الحالية لـ Codex: {{status}}. سيتم النظر فقط في الحسابات ضمن هذا النطاق.",
       "defaultTerminal": "المحطة الافتراضية",
-      "defaultTerminalDesc": "المحطة المستخدمة عند فتح Gemini CLI",
+      "defaultTerminalDesc": "المحطة المستخدمة عند فتح CLI",
       "terminalSystem": "افتراضي النظام",
       "currentAccountRefreshRequiresAutoRefresh": "فعّل أولاً \"التحديث التلقائي للحصة\" حتى تتمكن من إعداد تحديث الحساب الحالي.",
       "codebuddyCnAppPath": "مسار تطبيق CodeBuddy CN",
@@ -854,7 +853,17 @@
       "platformAutoRefresh": "تحديث حصة {{platform}} تلقائيًا",
       "traeSoloAppPath": "مسار تشغيل TRAE SOLO",
       "traeCnAppPath": "مسار تشغيل Trae CN",
-      "traeSoloCnAppPath": "مسار تشغيل TRAE SOLO CN"
+      "traeSoloCnAppPath": "مسار تشغيل TRAE SOLO CN",
+      "reducedMotion": "تقليل الحركة",
+      "reducedMotionDesc": "يقلل التلاشي وانتقالات النوافذ والظلال والضبابية والتمرير السلس، ويبقي فقط ملاحظات التحميل الضرورية",
+      "autoImportFromLocal": "استيراد الحسابات المحلية تلقائياً",
+      "autoImportFromLocalDesc": "عند التفعيل يُمسح ويُستورد تسجيل الدخول المحلي فوراً، ثم عند تبديل الحساب في العميل الرسمي. قد يُطلب إذن سلسلة المفاتيح.",
+      "autoImportFromLocalScanning": "جارٍ فحص الحسابات المحلية… يمكن الإيقاف في أي وقت",
+      "autoImportFromLocalScanDone": "اكتمل: عُثر على {{scanned}}، استُورد {{imported}}",
+      "autoImportFromLocalScanEmpty": "اكتمل: لا يوجد تسجيل دخول للاستيراد",
+      "autoImportFromLocalScanPartial": "اكتمل: فشل جزئي؛ يمكن الاستيراد يدوياً",
+      "autoImportFromLocalScanFailed": "فشل الفحص: {{error}}",
+      "autoImportFromLocalScanCancelled": "تم الإيقاف؛ سيتم تجاهل الفحص الجاري"
     },
     "network": {
       "apiTitle": "واجهة برمجة تطبيقات قمرة القيادة المضادة للجاذبية",
@@ -2010,7 +2019,7 @@
       },
       "customRoutingEdit": "تعديل التوجيه المخصص",
       "customRoutingTitle": "التوجيه المخصص",
-      "customRoutingDesc": "عيّن الأولوية والوزن لكل حساب للتحكم في ترتيب اختيار الحسابات وتوزيع الحمل داخل الأولوية نفسها.",
+      "customRoutingDesc": "اضبط الأولوية والوزن للتحكم في ترتيب اختيار الحساب وتوزيع الحمل.",
       "customRoutingBackupTitle": "حساب احتياطي",
       "customRoutingBackupDesc": "يُستخدم فقط عند عدم توفر جميع الحسابات العادية؛ وتعود الطلبات الجديدة تلقائيًا عند استعادة حساب عادي.",
       "customRoutingBackupShort": "احتياطي",
@@ -3203,22 +3212,40 @@
         "rulesSaved": "تم حفظ قواعد النماذج",
         "pricingAction": "التسعير",
         "pricingTitle": "تسعير النماذج",
-        "pricingDesc": "USD / 1M tokens، لاستخدام إحصاءات القيمة محليًا فقط.",
+        "pricingDesc": "بالدولار لكل مليون توكن، للإحصاءات المحلية فقط.",
         "pricingModel": "النموذج",
         "pricingInput": "الإدخال",
         "pricingCache": "إدخال مخزن",
         "pricingOutput": "الإخراج",
         "pricingSource": "المصدر",
         "pricingActions": "إجراء",
-        "pricingCachePlaceholder": "مثل الإدخال",
+        "pricingCachePlaceholder": "-",
         "pricingCustom": "مخصص",
         "pricingPreset": "مسبق",
         "pricingUnset": "غير معين",
         "pricingReset": "إعادة ضبط",
         "pricingSaved": "تم حفظ التسعير",
-        "pricingInvalid": "يجب أن تكون الأسعار أرقامًا أكبر من أو تساوي 0",
+        "pricingInvalid": "يجب أن تكون الأسعار ≥ 0 وعتبة الرموز عددًا صحيحًا موجبًا",
         "pricingReprice": "إعادة تقييم السجل",
-        "pricingRepriced": "أعيد تقييم السجل بالأسعار الحالية"
+        "pricingRepriced": "أعيد تقييم السجل بالأسعار الحالية",
+        "pricingLongThreshold": "عتبة السياق الطويل (tokens)",
+        "pricingStandard": "قياسي",
+        "pricingStandardLong": "قياسي (طويل)",
+        "pricingPriority": "أولوية",
+        "pricingOfficialMissing": "-",
+        "pricingStandardLongInput": "إدخال قياسي (طويل)",
+        "pricingStandardLongCache": "إدخال مخزّن قياسي (طويل)",
+        "pricingStandardLongOutput": "إخراج قياسي (طويل)",
+        "pricingPriorityInput": "إدخال أولوية",
+        "pricingPriorityCache": "إدخال مخزّن أولوية",
+        "pricingPriorityOutput": "إخراج أولوية",
+        "pricingRepriceDone": "تم تحديث التقديرات التاريخية؛ تغيّر {{updated}} صفًا",
+        "pricingRepriceFailedWithMessage": "فشل تحديث التقديرات: {{message}}",
+        "pricingRepriceFailed": "فشل تحديث التقديرات التاريخية",
+        "pricingRepriceSuperseded": "تم استلام أسعار جديدة؛ التبديل إلى أحدث مهمة إعادة حساب",
+        "pricingRepriceRunning": "جارٍ تحديث التقديرات {{processed}} / {{total}}؛ تم تحديث {{updated}}",
+        "pricingRepriceCompleted": "تم تحديث التقديرات التاريخية",
+        "pricingRepriceSaveBlocked": "إعادة الحساب جارية؛ احفظ بعد الانتهاء"
       },
       "keys": {
         "policyTitle": "سياسة النماذج",
@@ -3656,13 +3683,6 @@
       "appPath": "مسار Cursor"
     },
     "cursorRefreshInterval": "تحديث الحصة تلقائيًا",
-    "gemini": {
-      "title": "إعدادات Gemini Cli",
-      "appPath": "مسار Gemini Cli",
-      "syncWsl": "مزامنة إعدادات WSL",
-      "syncWslDesc": "استبدال إعدادات ‎.gemini‎ داخل WSL تلقائيًا عند تبديل الحساب"
-    },
-    "geminiRefreshInterval": "تحديث الحصة تلقائيًا",
     "grok": {
       "title": "إعدادات Grok CLI",
       "appPath": "مسار Grok CLI",
@@ -4250,99 +4270,6 @@
       },
       "summary": "يوضح هذا القسم كيفية استخدام مهام الإيقاظ والتحقق ضمن سير العمل اليومي.",
       "title": "مهام الإيقاظ والتحقق"
-    }
-  },
-  "gemini": {
-    "injectToGemini": "التبديل إلى Gemini Cli",
-    "updated": {
-      "label": "تم التحديث قبل {{relative}}"
-    },
-    "quota": {
-      "pro": "PRO",
-      "flash": "FLASH",
-      "left": "متبقٍ {{value}}%",
-      "resetsIn": "إعادة التعيين خلال {{relative}}",
-      "resetsSoon": "إعادة التعيين قريبًا",
-      "resetsUnknown": "وقت إعادة التعيين غير معروف",
-      "onDemand": "عند الطلب",
-      "gemini5h": "5h",
-      "geminiWeekly": "Weekly",
-      "claude5h": "5h",
-      "claudeWeekly": "Weekly"
-    },
-    "title": "إدارة حسابات Gemini Cli",
-    "instances": {
-      "unsupported": "إدارة تعدد مثيلات Gemini Cli غير مدعومة حاليًا.",
-      "unsupportedDescPlatform": "تعدد مثيلات Gemini Cli مدعوم فقط على macOS وWindows وLinux.",
-      "launchDialogTitle": "تشغيل المثيل",
-      "launchHint": "انسخ الأمر وشغّله يدويًا، أو نفّذه مباشرة في الطرفية.",
-      "runInTerminal": "تشغيل في الطرفية",
-      "workingDir": "دليل العمل",
-      "workingDirPlaceholder": "الافتراضي المسار الحالي",
-      "workingDirDesc": "سوف ينتقل إلى هذا الدليل أولاً عند البدء",
-      "pickWorkingDir": "اختر دليل العمل"
-    },
-    "switch": {
-      "success": "تم تبديل الحساب بنجاح"
-    },
-    "empty": {
-      "description": "انقر على \"إضافة حساب\" لبدء إدارة حسابات Gemini Cli الخاصة بك"
-    },
-    "addModal": {
-      "title": "إضافة حساب Gemini Cli"
-    },
-    "oauth": {
-      "desc": "انقر الزر أدناه لإكمال تفويض Gemini Cli في المتصفح."
-    },
-    "token": {
-      "desc": "الصق رمز الوصول الخاص بك من Gemini Cli (JWT) أو بيانات JSON المصدّرة.",
-      "formatHint": "الحقول المطلوبة والأمثلة (انقر للتوسيع)",
-      "formatRequired": "رمز مفرد: الصق JWT مباشرة؛ استيراد دفعي: استخدم تنسيق مصفوفة JSON",
-      "singleExample": "مثال مفرد (JWT)",
-      "batchExample": "مثال دفعي (JSON)"
-    },
-    "import": {
-      "localDesc": "استيراد بيانات الحساب من عميل Gemini Cli المحلي أو ملف JSON.",
-      "localClient": "الاستيراد من Gemini Cli المحلي"
-    },
-    "flowNotice": {
-      "title": "دليل حساب Gemini Cli (انقر للتوسيع/الطي)",
-      "desc": "إدارة حسابات Gemini Cli عن طريق الاستيراد من تثبيت Gemini Cli المحلي أو لصق رموز JWT. تتم معالجة البيانات محليًا فقط.",
-      "reason": "نطاق الأذونات: قراءة وكتابة oauth_creds.json وgoogle_accounts.json وsettings.json ضمن ~/.gemini الافتراضي أو مسار المثيل (GEMINI_CLI_HOME/.gemini) لاستيراد الحسابات وحقن بيانات الاعتماد محليًا (تبديل الحساب).",
-      "storage": "نطاق الشبكة: عمليات OAuth وتحديث الحصة تستدعي واجهات Google/Gemini الرسمية (مثل oauth2.googleapis.com وgoogleapis.com). يتم إرسال حقول المصادقة/الحصة الضرورية فقط؛ ولا تُرفع الملفات المحلية إلى خوادم طرف ثالث."
-    },
-    "projectConfig": {
-      "button": "تعيين مشروع GCP",
-      "title": "تعيين مشروع GCP",
-      "selectLabel": "اختر المشروع",
-      "loading": "جارٍ تحميل قائمة المشاريع...",
-      "auto": "اختيار تلقائي (بدون تحديد يدوي)",
-      "empty": "لم يتم العثور على مشاريع متاحة. تأكد من أن هذا الحساب لديه صلاحية الوصول إلى مشاريع GCP.",
-      "hint": "بعد الحفظ، سيتم تفضيل هذا المشروع في طلبات الحصة وسيتم حقنه كمتغير GOOGLE_CLOUD_PROJECT عند التشغيل.",
-      "current": "المشروع: {{projectId}}",
-      "saved": "تم حفظ المشروع: {{projectId}}",
-      "cleared": "تمت العودة إلى اكتشاف المشروع تلقائيًا",
-      "savedWithRefreshError": "تم حفظ المشروع، لكن فشل تحديث الحصة: {{error}}"
-    },
-    "identity": {
-      "authMethod": "طريقة المصادقة",
-      "tier": "الخطة",
-      "signedInWithGoogle": "تم تسجيل الدخول عبر Google",
-      "signedInWithGoogleEmail": "تم تسجيل الدخول عبر Google ({{email}})"
-    },
-    "quotaTable": {
-      "model": "النموذج",
-      "leftOfTotal": "المتبقي / الإجمالي",
-      "usage": "المستخدم",
-      "usageResets": "إعادة تعيين الاستخدام",
-      "usedPercent": "{{value}}%​",
-      "remainingOfTotal": "{{remaining}} / {{total}}​",
-      "resetAtWithRelative": "{{absolute}} ({{relative}})​"
-    },
-    "tierText": {
-      "pro": "Gemini Code Assist ضمن Google One AI Pro",
-      "ultra": "Gemini Code Assist ضمن Google AI Ultra",
-      "free": "Gemini Code Assist المجاني"
     }
   },
   "codebuddy": {

@@ -250,7 +250,6 @@
       "restart": "Reiniciar",
       "installing": "Instalando"
     },
-    "gemini": "Gemini Cli​",
     "codebuddy": "CodeBuddy​",
     "qoder": "Qoder​",
     "trae": "Trae​",
@@ -754,7 +753,7 @@
       "codexAutoSwitchAccountScope": "Alcance de cambio automático de cuentas de Codex",
       "codexAutoSwitchAccountScopeDesc": "Estado actual de cambio automático de Codex: {{status}}. Solo se considerarán cuentas dentro de este alcance.",
       "defaultTerminal": "Terminal predeterminado",
-      "defaultTerminalDesc": "La terminal utilizada al abrir Gemini CLI",
+      "defaultTerminalDesc": "La terminal utilizada al abrir CLI",
       "terminalSystem": "Predeterminado del sistema",
       "currentAccountRefreshRequiresAutoRefresh": "Activa primero «Actualización automática de cuota» para configurar la actualización de la cuenta actual.",
       "codebuddyCnAppPath": "Ruta de la aplicación CodeBuddy CN",
@@ -807,7 +806,17 @@
       "platformAutoRefresh": "Actualización automática de cuota de {{platform}}",
       "traeSoloAppPath": "Ruta de inicio de TRAE SOLO",
       "traeCnAppPath": "Ruta de inicio de Trae CN",
-      "traeSoloCnAppPath": "Ruta de inicio de TRAE SOLO CN"
+      "traeSoloCnAppPath": "Ruta de inicio de TRAE SOLO CN",
+      "reducedMotion": "Reducir animación",
+      "reducedMotionDesc": "Reduce fundidos, transiciones de modal, sombras, desenfoque y desplazamiento suave; solo deja la carga esencial",
+      "autoImportFromLocal": "Importar cuentas locales auto",
+      "autoImportFromLocalDesc": "Al activar, escanea e importa inicios locales; luego al cambiar de cuenta en el cliente oficial. Puede pedir permiso del llavero.",
+      "autoImportFromLocalScanning": "Escaneando cuentas locales… puedes desactivar cuando quieras",
+      "autoImportFromLocalScanDone": "Listo: {{scanned}} halladas, {{imported}} importadas",
+      "autoImportFromLocalScanEmpty": "Listo: sin inicios importables",
+      "autoImportFromLocalScanPartial": "Listo: fallos parciales",
+      "autoImportFromLocalScanFailed": "Error de escaneo: {{error}}",
+      "autoImportFromLocalScanCancelled": "Desactivado; se ignorará el escaneo en curso"
     },
     "network": {
       "apiTitle": "API de cabina antigravedad",
@@ -1963,7 +1972,7 @@
       },
       "customRoutingEdit": "Editar enrutamiento personalizado",
       "customRoutingTitle": "Enrutamiento personalizado",
-      "customRoutingDesc": "Define prioridad y peso por cuenta para controlar el orden de selección y el reparto de carga dentro del mismo nivel.",
+      "customRoutingDesc": "Define prioridad y peso para controlar el orden de selección y el reparto de carga.",
       "customRoutingBackupTitle": "Cuenta de reserva",
       "customRoutingBackupDesc": "Solo se usa cuando todas las cuentas normales no están disponibles. Las solicitudes nuevas vuelven automáticamente cuando se recupera una cuenta normal.",
       "customRoutingBackupShort": "Reserva",
@@ -3156,22 +3165,40 @@
         "rulesSaved": "Reglas de modelos guardadas",
         "pricingAction": "Precios",
         "pricingTitle": "Precios de modelos",
-        "pricingDesc": "USD / 1M tokens, solo para estadísticas locales de valor.",
+        "pricingDesc": "USD / 1M tokens, solo para estadísticas locales.",
         "pricingModel": "Modelo",
         "pricingInput": "Entrada",
         "pricingCache": "Entrada caché",
         "pricingOutput": "Salida",
         "pricingSource": "Origen",
         "pricingActions": "Acción",
-        "pricingCachePlaceholder": "Igual que entrada",
+        "pricingCachePlaceholder": "-",
         "pricingCustom": "Personalizado",
         "pricingPreset": "Predef.",
         "pricingUnset": "Sin ajustar",
         "pricingReset": "Restablecer",
         "pricingSaved": "Precios guardados",
-        "pricingInvalid": "Los precios deben ser números mayores o iguales que 0",
+        "pricingInvalid": "Los precios deben ser números ≥ 0 y el umbral de tokens un entero positivo",
         "pricingReprice": "Recalcular historial",
-        "pricingRepriced": "El historial se recalculó con los precios actuales"
+        "pricingRepriced": "El historial se recalculó con los precios actuales",
+        "pricingLongThreshold": "Umbral de contexto largo (tokens)",
+        "pricingStandard": "Estándar",
+        "pricingStandardLong": "Estándar (largo)",
+        "pricingPriority": "Prioridad",
+        "pricingOfficialMissing": "-",
+        "pricingStandardLongInput": "Entrada estándar (largo)",
+        "pricingStandardLongCache": "Entrada en caché estándar (largo)",
+        "pricingStandardLongOutput": "Salida estándar (largo)",
+        "pricingPriorityInput": "Entrada prioritaria",
+        "pricingPriorityCache": "Entrada en caché prioritaria",
+        "pricingPriorityOutput": "Salida prioritaria",
+        "pricingRepriceDone": "Estimaciones históricas actualizadas; {{updated}} filas cambiadas",
+        "pricingRepriceFailedWithMessage": "Error al actualizar estimaciones: {{message}}",
+        "pricingRepriceFailed": "Error al actualizar estimaciones",
+        "pricingRepriceSuperseded": "Nuevos precios recibidos; cambiando al recálculo más reciente",
+        "pricingRepriceRunning": "Actualizando estimaciones {{processed}} / {{total}}; {{updated}} actualizadas",
+        "pricingRepriceCompleted": "Estimaciones históricas actualizadas",
+        "pricingRepriceSaveBlocked": "Recálculo en curso; guarde al terminar"
       },
       "keys": {
         "policyTitle": "Política de modelos",
@@ -3609,13 +3636,6 @@
       "appPath": "Ruta de Cursor"
     },
     "cursorRefreshInterval": "Actualización automática de cuota",
-    "gemini": {
-      "title": "Ajustes de Gemini Cli",
-      "appPath": "Ruta de Gemini Cli",
-      "syncWsl": "Sincronizar configuración de WSL",
-      "syncWslDesc": "Sobrescribir automáticamente la configuración de .gemini en WSL al cambiar de cuenta"
-    },
-    "geminiRefreshInterval": "Actualización automática de cuota",
     "grok": {
       "title": "Ajustes de Grok CLI",
       "appPath": "Ruta de Grok CLI",
@@ -4203,99 +4223,6 @@
       },
       "summary": "Esta sección explica cómo usar Tareas wakeup y verificación en el flujo diario.",
       "title": "Tareas wakeup y verificación"
-    }
-  },
-  "gemini": {
-    "injectToGemini": "Cambiar a Gemini Cli",
-    "updated": {
-      "label": "Actualizado hace {{relative}}"
-    },
-    "quota": {
-      "pro": "PRO",
-      "flash": "FLASH",
-      "left": "{{value}}% restante",
-      "resetsIn": "Se restablece en {{relative}}",
-      "resetsSoon": "Se restablece pronto",
-      "resetsUnknown": "Hora de restablecimiento desconocida",
-      "onDemand": "Bajo demanda",
-      "gemini5h": "5h",
-      "geminiWeekly": "Weekly",
-      "claude5h": "5h",
-      "claudeWeekly": "Weekly"
-    },
-    "title": "Gestión de cuentas de Gemini Cli",
-    "instances": {
-      "unsupported": "La gestión de múltiples instancias de Gemini Cli aún no es compatible.",
-      "unsupportedDescPlatform": "La función de múltiples instancias de Gemini Cli solo es compatible con macOS, Windows y Linux.",
-      "launchDialogTitle": "Iniciar instancia",
-      "launchHint": "Copia el comando y ejecútalo manualmente, o ejecútalo directamente en la terminal.",
-      "runInTerminal": "Ejecutar en terminal",
-      "workingDir": "Directorio de trabajo",
-      "workingDirPlaceholder": "Predeterminado a la ruta actual",
-      "workingDirDesc": "Cambiará a este directorio primero al iniciar",
-      "pickWorkingDir": "Seleccionar directorio de trabajo"
-    },
-    "switch": {
-      "success": "Cuenta cambiada correctamente"
-    },
-    "empty": {
-      "description": "Haz clic en \"Añadir cuenta\" para comenzar a gestionar tus cuentas de Gemini Cli"
-    },
-    "addModal": {
-      "title": "Añadir cuenta de Gemini Cli"
-    },
-    "oauth": {
-      "desc": "Haz clic en el botón de abajo y completa la autorización de Gemini Cli en el navegador."
-    },
-    "token": {
-      "desc": "Pega tu token de acceso de Gemini Cli (JWT) o datos JSON exportados.",
-      "formatHint": "Campos obligatorios y ejemplos (clic para expandir)",
-      "formatRequired": "Token individual: pega el JWT directamente; importación masiva: usa formato de array JSON",
-      "singleExample": "Ejemplo individual (JWT)",
-      "batchExample": "Ejemplo masivo (JSON)"
-    },
-    "import": {
-      "localDesc": "Importar datos de cuenta desde el cliente local de Gemini Cli o un archivo JSON.",
-      "localClient": "Importar desde Gemini Cli local"
-    },
-    "flowNotice": {
-      "title": "Guía de cuenta de Gemini Cli (clic para expandir/contraer)",
-      "desc": "Gestiona cuentas de Gemini Cli importando desde la instalación local de Gemini Cli o pegando tokens JWT. Los datos se procesan solo localmente.",
-      "reason": "Alcance de permisos: leer y escribir oauth_creds.json, google_accounts.json y settings.json en ~/.gemini predeterminado o en la ruta de instancia (GEMINI_CLI_HOME/.gemini) para importar cuentas e inyectar credenciales locales (cambio de cuenta).",
-      "storage": "Alcance de red: OAuth y la actualización de cuota llaman a las API oficiales de Google/Gemini (como oauth2.googleapis.com y googleapis.com). Solo se envían campos necesarios de autenticación/cuota; los archivos locales no se suben a servidores de terceros."
-    },
-    "projectConfig": {
-      "button": "Configurar proyecto de GCP",
-      "title": "Configurar proyecto de GCP",
-      "selectLabel": "Seleccionar proyecto",
-      "loading": "Cargando lista de proyectos...",
-      "auto": "Selección automática (sin especificar manualmente)",
-      "empty": "No se encontraron proyectos disponibles. Asegúrate de que esta cuenta tenga acceso a proyectos de GCP.",
-      "hint": "Después de guardar, este proyecto tendrá prioridad para las solicitudes de cuota y se inyectará como GOOGLE_CLOUD_PROJECT al iniciar.",
-      "current": "Proyecto: {{projectId}}",
-      "saved": "Proyecto guardado: {{projectId}}",
-      "cleared": "Se volvió a la resolución automática del proyecto",
-      "savedWithRefreshError": "Proyecto guardado, pero falló la actualización de cuota: {{error}}"
-    },
-    "identity": {
-      "authMethod": "Método de autenticación",
-      "tier": "Plan",
-      "signedInWithGoogle": "Sesión iniciada con Google",
-      "signedInWithGoogleEmail": "Sesión iniciada con Google ({{email}})"
-    },
-    "quotaTable": {
-      "model": "Modelo",
-      "leftOfTotal": "Restante / Total",
-      "usage": "Usado",
-      "usageResets": "Reinicio de uso",
-      "usedPercent": "{{value}}%​",
-      "remainingOfTotal": "{{remaining}} / {{total}}​",
-      "resetAtWithRelative": "{{absolute}} ({{relative}})​"
-    },
-    "tierText": {
-      "pro": "Gemini Code Assist en Google One AI Pro",
-      "ultra": "Gemini Code Assist en Google AI Ultra",
-      "free": "Gemini Code Assist gratis"
     }
   },
   "codebuddy": {

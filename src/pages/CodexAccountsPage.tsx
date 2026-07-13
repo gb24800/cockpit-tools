@@ -7883,7 +7883,10 @@ export function CodexAccountsPage() {
   const handleSaveLocalAccessAccounts = useCallback(
     async (
       accountIds: string[],
-      options?: { restrictFreeAccounts?: boolean },
+      options?: {
+        restrictFreeAccounts?: boolean;
+        backupAccountIds?: string[];
+      },
     ) => {
       setLocalAccessSaving(true);
       try {
@@ -7904,10 +7907,15 @@ export function CodexAccountsPage() {
             ),
           );
         }
+        const filteredAccountIdSet = new Set(filteredAccountIds);
+        const backupAccountIds = (options?.backupAccountIds ?? []).filter((id) =>
+          filteredAccountIdSet.has(id),
+        );
         const nextState =
           await codexLocalAccessService.saveCodexLocalAccessAccounts(
             filteredAccountIds,
             restrictFreeAccounts,
+            backupAccountIds,
           );
         setLocalAccessState(nextState);
         setMessage({
@@ -16939,15 +16947,12 @@ export function CodexAccountsPage() {
                     filterTypes,
                     tagFilter,
                     groupFilter,
-                    sortBy,
-                    sortDirection,
                     tierFilterOptions,
                     tierFilterAllLabel: t("common.shared.filter.all", {
                       count: tierCounts.all,
                     }),
                     availableTags,
                     groupFilterOptions: codexOverviewGroupFilterOptions,
-                    sortOptions: codexAccountSortOptions,
                     onSearchQueryChange: setSearchQuery,
                     onToggleFilterType: toggleFilterTypeValue,
                     onClearFilterTypes: clearFilterTypes,
@@ -16955,11 +16960,6 @@ export function CodexAccountsPage() {
                     onClearTagFilter: clearTagFilter,
                     onToggleGroupFilter: toggleGroupFilterValue,
                     onClearGroupFilter: clearGroupFilter,
-                    onSortByChange: setSortBy,
-                    onToggleSortDirection: () =>
-                      setSortDirection((current) =>
-                        current === "desc" ? "asc" : "desc",
-                      ),
                   }
                 : undefined
             }
@@ -16967,9 +16967,14 @@ export function CodexAccountsPage() {
             maskAccountText={maskAccountText}
             onClose={() => setShowLocalAccessModal(false)}
             onOpenFullPage={openCodexApiServicePage}
-            onSaveAccounts={({ accountIds, restrictFreeAccounts }) =>
+            onSaveAccounts={({
+              accountIds,
+              restrictFreeAccounts,
+              backupAccountIds,
+            }) =>
               handleSaveLocalAccessAccounts(accountIds, {
                 restrictFreeAccounts,
+                backupAccountIds,
               })
             }
             onClearStats={handleClearLocalAccessStats}

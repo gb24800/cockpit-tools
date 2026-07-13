@@ -250,7 +250,6 @@
       "restart": "再起動",
       "installing": "インストール中"
     },
-    "gemini": "Gemini Cli​",
     "codebuddy": "CodeBuddy​",
     "qoder": "Qoder​",
     "trae": "Trae​",
@@ -582,7 +581,7 @@
       "theme": "テーマ",
       "themeDesc": "ダークモードとライトモードを切り替えます",
       "defaultTerminal": "デフォルトのターミナル",
-      "defaultTerminalDesc": "Gemini CLIを開くときに使用されるターミナル",
+      "defaultTerminalDesc": "CLIを開くときに使用されるターミナル",
       "terminalSystem": "システムデフォルト",
       "themeLight": "ライト",
       "themeDark": "ダーク",
@@ -807,7 +806,17 @@
       "platformAutoRefresh": "{{platform}} クォータ自動更新",
       "traeSoloAppPath": "TRAE SOLO 起動パス",
       "traeCnAppPath": "Trae CN 起動パス",
-      "traeSoloCnAppPath": "TRAE SOLO CN 起動パス"
+      "traeSoloCnAppPath": "TRAE SOLO CN 起動パス",
+      "reducedMotion": "アニメ軽減",
+      "reducedMotionDesc": "フェード・モーダル遷移・影・ぼかし・スムーズスクロールを抑え、必要な読み込み表示のみ残します",
+      "autoImportFromLocal": "ローカルアカウント自動取り込み",
+      "autoImportFromLocalDesc": "有効にすると本機クライアントのログインを即時取り込み、以降は公式クライアントのログイン変更時に自動取り込みます。初回はキーチェーン許可が必要な場合があります。",
+      "autoImportFromLocalScanning": "ローカルアカウントをスキャン中…いつでもオフにできます",
+      "autoImportFromLocalScanDone": "完了：{{scanned}} 件検出、{{imported}} 件取り込み",
+      "autoImportFromLocalScanEmpty": "完了：取り込めるログインがありません",
+      "autoImportFromLocalScanPartial": "完了：一部失敗。アカウントページから手動取り込みできます",
+      "autoImportFromLocalScanFailed": "スキャン失敗：{{error}}",
+      "autoImportFromLocalScanCancelled": "オフにしました。進行中のスキャン結果は無視されます"
     },
     "network": {
       "apiTitle": "反重力コックピット API",
@@ -1963,7 +1972,7 @@
       },
       "customRoutingEdit": "カスタムルーティングを編集",
       "customRoutingTitle": "カスタムルーティング",
-      "customRoutingDesc": "アカウントごとに優先度と重みを設定し、選択順と同じ優先度内の負荷配分を制御します。",
+      "customRoutingDesc": "優先度と重みを設定し、アカウント選択順と負荷分散を制御します。",
       "customRoutingBackupTitle": "予備アカウント",
       "customRoutingBackupDesc": "通常アカウントがすべて利用できない場合のみ使用します。通常アカウントが復旧すると、新しいリクエストは自動的に切り戻されます。",
       "customRoutingBackupShort": "予備",
@@ -3156,22 +3165,40 @@
         "rulesSaved": "モデルルールを保存しました",
         "pricingAction": "価格設定",
         "pricingTitle": "モデル価格設定",
-        "pricingDesc": "USD / 100万 tokens。ローカルの価値統計にのみ使用します。",
+        "pricingDesc": "単位は USD / 1M tokens。ローカル統計のみ。",
         "pricingModel": "モデル",
         "pricingInput": "入力",
         "pricingCache": "キャッシュ入力",
         "pricingOutput": "出力",
         "pricingSource": "ソース",
         "pricingActions": "操作",
-        "pricingCachePlaceholder": "入力と同じ",
+        "pricingCachePlaceholder": "-",
         "pricingCustom": "カスタム",
         "pricingPreset": "プリセット",
         "pricingUnset": "未設定",
         "pricingReset": "リセット",
         "pricingSaved": "価格設定を保存しました",
-        "pricingInvalid": "価格は 0 以上の数値で入力してください",
+        "pricingInvalid": "価格は 0 以上の数値、トークンしきい値は正の整数である必要があります",
         "pricingReprice": "履歴を再計算",
-        "pricingRepriced": "履歴の見積もりを現在の価格で再計算しました"
+        "pricingRepriced": "履歴の見積もりを現在の価格で再計算しました",
+        "pricingLongThreshold": "長文脈しきい値（tokens）",
+        "pricingStandard": "標準",
+        "pricingStandardLong": "標準（長文脈）",
+        "pricingPriority": "優先",
+        "pricingOfficialMissing": "-",
+        "pricingStandardLongInput": "標準（長文脈）入力",
+        "pricingStandardLongCache": "標準（長文脈）キャッシュ入力",
+        "pricingStandardLongOutput": "標準（長文脈）出力",
+        "pricingPriorityInput": "優先入力",
+        "pricingPriorityCache": "優先キャッシュ入力",
+        "pricingPriorityOutput": "優先出力",
+        "pricingRepriceDone": "履歴見積もりを更新しました（変更 {{updated}} 件）",
+        "pricingRepriceFailedWithMessage": "履歴見積もりの更新に失敗: {{message}}",
+        "pricingRepriceFailed": "履歴見積もりの更新に失敗しました",
+        "pricingRepriceSuperseded": "新しい料金設定を受信。最新の再計算ジョブに切り替えます",
+        "pricingRepriceRunning": "履歴見積もり更新中 {{processed}} / {{total}}（更新 {{updated}} 件）",
+        "pricingRepriceCompleted": "履歴見積もりを更新しました",
+        "pricingRepriceSaveBlocked": "履歴見積もり更新中です。完了後に保存してください"
       },
       "keys": {
         "policyTitle": "モデルポリシー",
@@ -3609,13 +3636,6 @@
       "appPath": "Cursor パス"
     },
     "cursorRefreshInterval": "クォータ自動更新",
-    "gemini": {
-      "title": "Gemini Cli 設定",
-      "appPath": "Gemini Cli パス",
-      "syncWsl": "WSL 設定を同期",
-      "syncWslDesc": "アカウント切り替え時に WSL 内の .gemini 設定を自動で上書きします"
-    },
-    "geminiRefreshInterval": "クォータ自動更新",
     "grok": {
       "title": "Grok CLI 設定",
       "appPath": "Grok CLI のパス",
@@ -4203,99 +4223,6 @@
       },
       "summary": "このセクションでは 起動タスクと検証 の使い方を説明します。",
       "title": "起動タスクと検証"
-    }
-  },
-  "gemini": {
-    "injectToGemini": "Gemini Cli に切り替え",
-    "updated": {
-      "label": "{{relative}}前に更新"
-    },
-    "quota": {
-      "pro": "PRO",
-      "flash": "FLASH",
-      "left": "{{value}}% 残り",
-      "resetsIn": "{{relative}}後にリセット",
-      "resetsSoon": "まもなくリセット",
-      "resetsUnknown": "リセット時刻不明",
-      "onDemand": "オンデマンド",
-      "gemini5h": "5h",
-      "geminiWeekly": "Weekly",
-      "claude5h": "5h",
-      "claudeWeekly": "Weekly"
-    },
-    "title": "Gemini Cli アカウント管理",
-    "instances": {
-      "unsupported": "Gemini Cli のマルチインスタンス管理は現在未対応です。",
-      "unsupportedDescPlatform": "Gemini Cli のマルチインスタンスは macOS、Windows、Linux のみ対応しています。",
-      "launchDialogTitle": "インスタンスを起動",
-      "launchHint": "コマンドをコピーして手動で実行するか、直接ターミナルで実行してください。",
-      "runInTerminal": "ターミナルで実行",
-      "workingDir": "作業ディレクトリ",
-      "workingDirPlaceholder": "デフォルトは現在のパス",
-      "workingDirDesc": "起動時にまずこのディレクトリに切り替えます",
-      "pickWorkingDir": "作業ディレクトリを選択"
-    },
-    "switch": {
-      "success": "アカウントの切り替えに成功しました"
-    },
-    "empty": {
-      "description": "「アカウント追加」をクリックして Gemini Cli アカウントの管理を開始してください"
-    },
-    "addModal": {
-      "title": "Gemini Cli アカウントを追加"
-    },
-    "oauth": {
-      "desc": "下のボタンをクリックして、ブラウザで Gemini Cli の認可を完了してください。"
-    },
-    "token": {
-      "desc": "Gemini Cli アクセストークン（JWT）またはエクスポートされた JSON データを貼り付けてください。",
-      "formatHint": "必須フィールドと例（クリックで展開）",
-      "formatRequired": "単一トークン：JWT を直接貼り付け；一括インポート：JSON 配列形式を使用",
-      "singleExample": "単一の例（JWT）",
-      "batchExample": "一括の例（JSON）"
-    },
-    "import": {
-      "localDesc": "ローカルの Gemini Cli クライアントまたは JSON ファイルからアカウントデータをインポートします。",
-      "localClient": "ローカル Gemini Cli からインポート"
-    },
-    "flowNotice": {
-      "title": "Gemini Cli アカウントガイド（クリックで展開/折りたたみ）",
-      "desc": "ローカルの Gemini Cli インストールからのインポートまたは JWT トークンの貼り付けで Gemini Cli アカウントを管理します。データはローカルでのみ処理されます。",
-      "reason": "権限範囲: デフォルトの ~/.gemini またはインスタンスパス (GEMINI_CLI_HOME/.gemini) 配下の oauth_creds.json、google_accounts.json、settings.json を読み書きし、アカウントのインポートとローカル認証情報の注入（アカウント切り替え）を行います。",
-      "storage": "ネットワーク範囲: OAuth とクォータ更新では Google/Gemini の公式 API（oauth2.googleapis.com、googleapis.com など）を呼び出します。送信されるのは必要な認証/クォータ項目のみで、ローカルのアカウントファイルは第三者サーバーへアップロードされません。"
-    },
-    "projectConfig": {
-      "button": "GCP プロジェクトを設定",
-      "title": "GCP プロジェクトを設定",
-      "selectLabel": "プロジェクトを選択",
-      "loading": "プロジェクト一覧を読み込み中...",
-      "auto": "自動選択（手動指定しない）",
-      "empty": "利用可能なプロジェクトが見つかりません。このアカウントに GCP プロジェクトへのアクセス権があるか確認してください。",
-      "hint": "保存後、このプロジェクトがクォータ取得で優先され、起動コマンドでは GOOGLE_CLOUD_PROJECT として注入されます。",
-      "current": "プロジェクト: {{projectId}}",
-      "saved": "プロジェクトを保存しました: {{projectId}}",
-      "cleared": "プロジェクト自動解決に戻しました",
-      "savedWithRefreshError": "プロジェクトは保存されましたが、クォータ更新に失敗しました: {{error}}"
-    },
-    "identity": {
-      "authMethod": "認証方法",
-      "tier": "プラン",
-      "signedInWithGoogle": "Google でサインイン",
-      "signedInWithGoogleEmail": "Google でサインイン（{{email}}）"
-    },
-    "quotaTable": {
-      "model": "モデル",
-      "leftOfTotal": "残量 / 総量",
-      "usage": "使用量",
-      "usageResets": "使用量のリセット",
-      "usedPercent": "{{value}}%​",
-      "remainingOfTotal": "{{remaining}} / {{total}}​",
-      "resetAtWithRelative": "{{absolute}}（{{relative}}）"
-    },
-    "tierText": {
-      "pro": "Google One AI Pro の Gemini Code Assist",
-      "ultra": "Google AI Ultra の Gemini Code Assist",
-      "free": "Gemini Code Assist 無料版"
     }
   },
   "codebuddy": {

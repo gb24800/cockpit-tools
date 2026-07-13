@@ -139,9 +139,6 @@ interface ModelPricingDraft {
   priorityInputUsdPerMillion: string;
   priorityCachedInputUsdPerMillion: string;
   priorityOutputUsdPerMillion: string;
-  priorityLongInputUsdPerMillion: string;
-  priorityLongCachedInputUsdPerMillion: string;
-  priorityLongOutputUsdPerMillion: string;
   hasPreset: boolean;
   custom: boolean;
 }
@@ -341,15 +338,6 @@ function modelPricingDraftFromRow(item: ModelPricingRow): ModelPricingDraft {
     ),
     priorityOutputUsdPerMillion: formatPriceDraftValue(
       item.priorityOutputUsdPerMillion,
-    ),
-    priorityLongInputUsdPerMillion: formatPriceDraftValue(
-      item.priorityLongInputUsdPerMillion,
-    ),
-    priorityLongCachedInputUsdPerMillion: formatPriceDraftValue(
-      item.priorityLongCachedInputUsdPerMillion,
-    ),
-    priorityLongOutputUsdPerMillion: formatPriceDraftValue(
-      item.priorityLongOutputUsdPerMillion,
     ),
     hasPreset: item.hasPreset,
     custom: item.custom,
@@ -913,12 +901,6 @@ export function CodexApiServicePage() {
         priorityOutputUsdPerMillion: source?.priorityOutputUsdPerMillion ?? null,
         priorityCachedInputUsdPerMillion:
           source?.priorityCachedInputUsdPerMillion ?? null,
-        priorityLongInputUsdPerMillion:
-          source?.priorityLongInputUsdPerMillion ?? null,
-        priorityLongOutputUsdPerMillion:
-          source?.priorityLongOutputUsdPerMillion ?? null,
-        priorityLongCachedInputUsdPerMillion:
-          source?.priorityLongCachedInputUsdPerMillion ?? null,
         hasPreset: Boolean(preset),
         custom: Boolean(custom),
       };
@@ -1654,6 +1636,7 @@ export function CodexApiServicePage() {
   const saveMembers = async (
     accountIds: string[],
     restrictFreeAccounts: boolean,
+    backupAccountIds?: string[],
   ) => {
     const filteredAccountIds =
       accountIds.length === 0
@@ -1673,9 +1656,15 @@ export function CodexApiServicePage() {
       );
     }
 
+    const filteredAccountIdSet = new Set(filteredAccountIds);
+    const nextBackupAccountIds = (backupAccountIds ?? []).filter((id) =>
+      filteredAccountIdSet.has(id),
+    );
+
     const next = await codexLocalAccessService.saveCodexLocalAccessAccounts(
       filteredAccountIds,
       restrictFreeAccounts,
+      nextBackupAccountIds,
     );
     setState(next);
     void fetchAccounts().catch((error) => {
@@ -1689,9 +1678,10 @@ export function CodexApiServicePage() {
   const handleSaveMembers = async (
     accountIds: string[],
     restrictFreeAccounts: boolean,
+    backupAccountIds?: string[],
   ) => {
     await runAction(
-      () => saveMembers(accountIds, restrictFreeAccounts),
+      () => saveMembers(accountIds, restrictFreeAccounts, backupAccountIds),
       t("codex.localAccess.saveSuccess", "API 服务集合已更新"),
     );
   };
@@ -1699,12 +1689,13 @@ export function CodexApiServicePage() {
   const handleSaveMembersFromModal = async (
     accountIds: string[],
     restrictFreeAccounts: boolean,
+    backupAccountIds?: string[],
   ) => {
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      await saveMembers(accountIds, restrictFreeAccounts);
+      await saveMembers(accountIds, restrictFreeAccounts, backupAccountIds);
       setNotice(t("codex.localAccess.saveSuccess", "API 服务集合已更新"));
     } catch (err) {
       const message = String(err).replace(/^Error:\s*/, "");
@@ -1717,9 +1708,17 @@ export function CodexApiServicePage() {
 
   const handleRemoveMember = async (accountId: string) => {
     if (!collection) return;
+    const remainingIds = collection.accountIds.filter(
+      (item) => item !== accountId,
+    );
+    const remainingSet = new Set(remainingIds);
+    const backupAccountIds = (collection.customRoutingRules ?? [])
+      .filter((rule) => rule.isBackup && remainingSet.has(rule.accountId))
+      .map((rule) => rule.accountId);
     await handleSaveMembers(
-      collection.accountIds.filter((item) => item !== accountId),
+      remainingIds,
       collection.restrictFreeAccounts,
+      backupAccountIds,
     );
   };
 
@@ -1991,15 +1990,6 @@ export function CodexApiServicePage() {
               priorityOutputUsdPerMillion: formatPriceDraftValue(
                 preset?.priorityOutputUsdPerMillion ?? null,
               ),
-              priorityLongInputUsdPerMillion: formatPriceDraftValue(
-                preset?.priorityLongInputUsdPerMillion ?? null,
-              ),
-              priorityLongCachedInputUsdPerMillion: formatPriceDraftValue(
-                preset?.priorityLongCachedInputUsdPerMillion ?? null,
-              ),
-              priorityLongOutputUsdPerMillion: formatPriceDraftValue(
-                preset?.priorityLongOutputUsdPerMillion ?? null,
-              ),
               custom: false,
             }
           : item,
@@ -2066,18 +2056,6 @@ export function CodexApiServicePage() {
       sameOptionalPrice(
         parsePriceDraftValue(draft.priorityCachedInputUsdPerMillion, true),
         preset.priorityCachedInputUsdPerMillion ?? null,
-      ) &&
-      sameOptionalPrice(
-        parsePriceDraftValue(draft.priorityLongInputUsdPerMillion, true),
-        preset.priorityLongInputUsdPerMillion ?? null,
-      ) &&
-      sameOptionalPrice(
-        parsePriceDraftValue(draft.priorityLongOutputUsdPerMillion, true),
-        preset.priorityLongOutputUsdPerMillion ?? null,
-      ) &&
-      sameOptionalPrice(
-        parsePriceDraftValue(draft.priorityLongCachedInputUsdPerMillion, true),
-        preset.priorityLongCachedInputUsdPerMillion ?? null,
       );
     const nextPricings: CodexLocalAccessModelPricing[] = [];
     for (const draft of pricingDrafts) {
@@ -2111,18 +2089,6 @@ export function CodexApiServicePage() {
         draft.priorityOutputUsdPerMillion,
         true,
       );
-      const priorityLongInput = parsePriceDraftValue(
-        draft.priorityLongInputUsdPerMillion,
-        true,
-      );
-      const priorityLongCached = parsePriceDraftValue(
-        draft.priorityLongCachedInputUsdPerMillion,
-        true,
-      );
-      const priorityLongOutput = parsePriceDraftValue(
-        draft.priorityLongOutputUsdPerMillion,
-        true,
-      );
       const preset = presetMap.get(draft.modelId.toLowerCase());
       const unsetUnknown =
         !preset &&
@@ -2135,10 +2101,7 @@ export function CodexApiServicePage() {
         draft.standardLongOutputUsdPerMillion.trim() === "" &&
         draft.priorityInputUsdPerMillion.trim() === "" &&
         draft.priorityCachedInputUsdPerMillion.trim() === "" &&
-        draft.priorityOutputUsdPerMillion.trim() === "" &&
-        draft.priorityLongInputUsdPerMillion.trim() === "" &&
-        draft.priorityLongCachedInputUsdPerMillion.trim() === "" &&
-        draft.priorityLongOutputUsdPerMillion.trim() === "";
+        draft.priorityOutputUsdPerMillion.trim() === "";
       if (unsetUnknown) {
         continue;
       }
@@ -2155,10 +2118,7 @@ export function CodexApiServicePage() {
         (standardLongCached !== null && !Number.isFinite(standardLongCached)) ||
         (priorityInput !== null && !Number.isFinite(priorityInput)) ||
         (priorityOutput !== null && !Number.isFinite(priorityOutput)) ||
-        (priorityCached !== null && !Number.isFinite(priorityCached)) ||
-        (priorityLongInput !== null && !Number.isFinite(priorityLongInput)) ||
-        (priorityLongOutput !== null && !Number.isFinite(priorityLongOutput)) ||
-        (priorityLongCached !== null && !Number.isFinite(priorityLongCached));
+        (priorityCached !== null && !Number.isFinite(priorityCached));
       if (
         tokenInvalid ||
         inputInvalid ||
@@ -2184,10 +2144,7 @@ export function CodexApiServicePage() {
         (standardLongCached == null || standardLongCached === 0) &&
         priorityInput === 0 &&
         priorityOutput === 0 &&
-        (priorityCached == null || priorityCached === 0) &&
-        priorityLongInput === 0 &&
-        priorityLongOutput === 0 &&
-        (priorityLongCached == null || priorityLongCached === 0);
+        (priorityCached == null || priorityCached === 0);
       if ((preset && sameAsPreset(draft, preset)) || allZero) {
         continue;
       }
@@ -2203,6 +2160,7 @@ export function CodexApiServicePage() {
         priorityInputUsdPerMillion: priorityInput,
         priorityOutputUsdPerMillion: priorityOutput,
         priorityCachedInputUsdPerMillion: priorityCached,
+        // priority_long_* is not a product tier; keep wire fields cleared.
         priorityLongInputUsdPerMillion: null,
         priorityLongOutputUsdPerMillion: null,
         priorityLongCachedInputUsdPerMillion: null,
@@ -5791,8 +5749,16 @@ export function CodexApiServicePage() {
         initialSelectedIds={memberIds}
         maskAccountText={maskAccountText}
         onClose={() => setMemberModalOpen(false)}
-        onSaveAccounts={({ accountIds, restrictFreeAccounts }) =>
-          handleSaveMembersFromModal(accountIds, restrictFreeAccounts)
+        onSaveAccounts={({
+          accountIds,
+          restrictFreeAccounts,
+          backupAccountIds,
+        }) =>
+          handleSaveMembersFromModal(
+            accountIds,
+            restrictFreeAccounts,
+            backupAccountIds,
+          )
         }
         onClearStats={() =>
           codexLocalAccessService.clearCodexLocalAccessStats().then(setState)

@@ -14,10 +14,11 @@ use crate::models::codebuddy::CodebuddyOAuthCompletePayload;
 use crate::models::workbuddy::WorkbuddyOAuthCompletePayload;
 use crate::modules::{
     claude_account, codebuddy_account, codebuddy_cn_account, codebuddy_cn_oauth, codebuddy_oauth,
-    codex_account, config, cursor_account, gemini_account, github_copilot_account,
-    github_copilot_instance, import, kiro_account, kiro_oauth, logger, qoder_account, trae_account,
-    windsurf_account, windsurf_oauth, workbuddy_account, workbuddy_oauth, zed_account,
+    codex_account, config, cursor_account, github_copilot_account, github_copilot_instance, import,
+    kiro_account, kiro_oauth, logger, qoder_account, trae_account, windsurf_account, windsurf_oauth,
+    workbuddy_account, workbuddy_oauth, zed_account,
 };
+use serde::Serialize;
 
 const POLL_INTERVAL_SECONDS: u64 = 30;
 const STARTUP_DELAY_SECONDS: u64 = 10;
@@ -63,6 +64,37 @@ pub fn notify_config_changed(enabled: bool) {
         if enabled { "启用" } else { "停用" }
     ));
     CONFIG_CHANGED.notify_one();
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AutoLocalImportScanResult {
+    pub scanned: u32,
+    pub imported: u32,
+    pub failed: u32,
+    pub platforms: Vec<String>,
+}
+
+/// 开启时立即扫描：导入当前本机已登录身份，并写入基线。
+/// 不强制校验开关，便于前端在 patch 落盘前触发首扫。
+pub async fn scan_now(app_handle: AppHandle) -> Result<AutoLocalImportScanResult, String> {
+    Ok(run_watch_cycle_with_mode(&app_handle, WatchMode::FullScanImport).await)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WatchMode {
+    /// 后台轮询：首次只记基线；身份变化才导入。
+    PollOnChange,
+    /// 用户刚开启：有身份则尝试导入，并建立/刷新基线。
+    FullScanImport,
+}
+
+fn identity_log_tag(identity: &str) -> String {
+    // 避免日志写入完整邮箱/token 前缀。
+    let digest = identity
+        .bytes()
+        .fold(0u32, |acc, b| acc.wrapping_mul(33).wrapping_add(u32::from(b)));
+    format!("{:08x}", digest)
 }
 
 fn identity_key(parts: &[Option<String>]) -> Option<String> {
@@ -161,10 +193,6 @@ fn peek_cursor_identity() -> Option<String> {
         payload.auth_id,
         token_prefix(&payload.access_token),
     ])
-}
-
-fn peek_gemini_identity() -> Option<String> {
-    identity_key(&[gemini_account::get_local_active_email()])
 }
 
 fn peek_windsurf_identity() -> Option<String> {
@@ -363,14 +391,6 @@ fn import_cursor() -> ImportFuture {
     })
 }
 
-fn import_gemini() -> ImportFuture {
-    Box::pin(async {
-        gemini_account::import_from_local()
-            .map(|account| account.is_some())
-            .map_err(|error| error.to_string())
-    })
-}
-
 fn import_windsurf() -> ImportFuture {
     Box::pin(async {
         let auth_status = windsurf_account::read_local_auth_status()?.ok_or_else(|| {
@@ -543,11 +563,6 @@ fn platform_watchers() -> Vec<PlatformWatcher> {
             import_account: import_cursor,
         },
         PlatformWatcher {
-            platform: "gemini",
-            peek_identity: peek_gemini_identity,
-            import_account: import_gemini,
-        },
-        PlatformWatcher {
             platform: "windsurf",
             peek_identity: peek_windsurf_identity,
             import_account: import_windsurf,
@@ -619,7 +634,17 @@ async fn run_watch_cycle(app_handle: &AppHandle) {
     if !config::get_user_config().auto_import_from_local_enabled {
         return;
     }
+    let _ = run_watch_cycle_with_mode(app_handle, WatchMode::PollOnChange).await;
+}
 
+async fn run_watch_cycle_with_mode(
+    app_handle: &AppHandle,
+    mode: WatchMode,
+) -> AutoLocalImportScanResult {
+    let mut scanned = 0u32;
+    let mut imported = 0u32;
+    let mut failed = 0u32;
+    let mut platforms = Vec::new();
     let mut imported_any = false;
 
     for watcher in platform_watchers() {
@@ -630,21 +655,29 @@ async fn run_watch_cycle(app_handle: &AppHandle) {
             }
             continue;
         };
+        scanned += 1;
 
         let should_import = {
             let Ok(mut state) = LAST_IDENTITIES.lock() else {
                 continue;
             };
-            match state.get(watcher.platform) {
-                None => {
-                    state.insert(watcher.platform.to_string(), current_identity.clone());
-                    false
-                }
-                Some(previous) if previous == &current_identity => false,
-                Some(_) => {
+            match mode {
+                WatchMode::FullScanImport => {
                     state.insert(watcher.platform.to_string(), current_identity.clone());
                     true
                 }
+                WatchMode::PollOnChange => match state.get(watcher.platform) {
+                    None => {
+                        // 首次只建基线，避免应用启动时批量导入。
+                        state.insert(watcher.platform.to_string(), current_identity.clone());
+                        false
+                    }
+                    Some(previous) if previous == &current_identity => false,
+                    Some(_) => {
+                        state.insert(watcher.platform.to_string(), current_identity.clone());
+                        true
+                    }
+                },
             }
         };
 
@@ -654,16 +687,18 @@ async fn run_watch_cycle(app_handle: &AppHandle) {
 
         match (watcher.import_account)().await {
             Ok(true) => {
+                imported += 1;
                 imported_any = true;
+                platforms.push(watcher.platform.to_string());
                 logger::log_info(&format!(
-                    "[AutoLocalImport] 已自动导入本机账号: platform={}, identity={}",
-                    watcher.platform, current_identity
+                    "[AutoLocalImport] 已自动导入本机账号: platform={}, identity_tag={}",
+                    watcher.platform,
+                    identity_log_tag(&current_identity)
                 ));
                 let _ = app_handle.emit(
                     "auto_local_import:completed",
                     serde_json::json!({
                         "platform": watcher.platform,
-                        "identity": current_identity,
                     }),
                 );
                 let _ = app_handle.emit(
@@ -676,6 +711,7 @@ async fn run_watch_cycle(app_handle: &AppHandle) {
             }
             Ok(false) => {}
             Err(error) => {
+                failed += 1;
                 logger::log_warn(&format!(
                     "[AutoLocalImport] 自动导入失败: platform={}, error={}",
                     watcher.platform, error
@@ -687,6 +723,13 @@ async fn run_watch_cycle(app_handle: &AppHandle) {
     if imported_any {
         crate::modules::websocket::broadcast_data_changed("auto_import_from_local");
         let _ = crate::modules::tray::update_tray_menu(app_handle);
+    }
+
+    AutoLocalImportScanResult {
+        scanned,
+        imported,
+        failed,
+        platforms,
     }
 }
 

@@ -250,7 +250,6 @@
       "restart": "Redémarrer",
       "installing": "Installation"
     },
-    "gemini": "Gemini Cli​",
     "codebuddy": "CodeBuddy​",
     "qoder": "Qoder​",
     "trae": "Trae​",
@@ -754,7 +753,7 @@
       "codexAutoSwitchAccountScope": "Portée de bascule automatique des comptes Codex",
       "codexAutoSwitchAccountScopeDesc": "État actuel de la bascule automatique Codex : {{status}}. Seuls les comptes de cette portée seront pris en compte.",
       "defaultTerminal": "Terminal par défaut",
-      "defaultTerminalDesc": "Le terminal utilisé lors de l'ouverture de Gemini CLI",
+      "defaultTerminalDesc": "Le terminal utilisé lors de l'ouverture de CLI",
       "terminalSystem": "Système par défaut",
       "currentAccountRefreshRequiresAutoRefresh": "Activez d'abord « Actualisation automatique du quota » pour configurer l'actualisation du compte actuel.",
       "codebuddyCnAppPath": "Chemin de l'application CodeBuddy CN",
@@ -807,7 +806,17 @@
       "platformAutoRefresh": "Actualisation automatique du quota {{platform}}",
       "traeSoloAppPath": "Chemin de lancement TRAE SOLO",
       "traeCnAppPath": "Chemin de lancement Trae CN",
-      "traeSoloCnAppPath": "Chemin de lancement TRAE SOLO CN"
+      "traeSoloCnAppPath": "Chemin de lancement TRAE SOLO CN",
+      "reducedMotion": "Réduire les animations",
+      "reducedMotionDesc": "Réduit fondus, transitions de modales, ombres, flou et défilement fluide ; conserve le retour de chargement essentiel",
+      "autoImportFromLocal": "Import auto des comptes locaux",
+      "autoImportFromLocalDesc": "À l’activation, scanne et importe les connexions locales, puis à chaque changement dans le client officiel. Autorisez le trousseau si demandé.",
+      "autoImportFromLocalScanning": "Analyse des comptes locaux… désactivable à tout moment",
+      "autoImportFromLocalScanDone": "Terminé : {{scanned}} trouvés, {{imported}} importés",
+      "autoImportFromLocalScanEmpty": "Terminé : aucune connexion locale",
+      "autoImportFromLocalScanPartial": "Terminé : échecs partiels",
+      "autoImportFromLocalScanFailed": "Échec de l’analyse : {{error}}",
+      "autoImportFromLocalScanCancelled": "Désactivé ; le scan en cours sera ignoré"
     },
     "network": {
       "apiTitle": "API du cockpit antigravité",
@@ -1963,7 +1972,7 @@
       },
       "customRoutingEdit": "Modifier le routage personnalisé",
       "customRoutingTitle": "Routage personnalisé",
-      "customRoutingDesc": "Définissez la priorité et le poids de chaque compte pour contrôler l’ordre de sélection et la répartition à priorité égale.",
+      "customRoutingDesc": "Définissez la priorité et le poids pour contrôler l’ordre de sélection et la répartition de charge.",
       "customRoutingBackupTitle": "Compte de secours",
       "customRoutingBackupDesc": "Utilisé uniquement lorsque tous les comptes standard sont indisponibles. Les nouvelles requêtes reviennent automatiquement dès qu’un compte standard est rétabli.",
       "customRoutingBackupShort": "Secours",
@@ -3156,22 +3165,40 @@
         "rulesSaved": "Règles modèles enregistrées",
         "pricingAction": "Tarifs",
         "pricingTitle": "Tarifs modèles",
-        "pricingDesc": "USD / 1M jetons, uniquement pour les statistiques locales de valeur.",
+        "pricingDesc": "USD / 1M tokens, uniquement pour les statistiques locales.",
         "pricingModel": "Modèle",
         "pricingInput": "Entrée",
         "pricingCache": "Entrée cache",
         "pricingOutput": "Sortie",
         "pricingSource": "Source​",
         "pricingActions": "Action",
-        "pricingCachePlaceholder": "Comme entrée",
+        "pricingCachePlaceholder": "-",
         "pricingCustom": "Perso",
         "pricingPreset": "Préréglé",
         "pricingUnset": "Non défini",
         "pricingReset": "Réinit.",
         "pricingSaved": "Tarifs enregistrés",
-        "pricingInvalid": "Les tarifs doivent être des nombres supérieurs ou égaux à 0",
+        "pricingInvalid": "Les prix doivent être ≥ 0 et le seuil de tokens un entier positif",
         "pricingReprice": "Recalculer historique",
-        "pricingRepriced": "Les estimations historiques ont été recalculées avec les prix actuels"
+        "pricingRepriced": "Les estimations historiques ont été recalculées avec les prix actuels",
+        "pricingLongThreshold": "Seuil long contexte (tokens)",
+        "pricingStandard": "Normal",
+        "pricingStandardLong": "Standard (long)",
+        "pricingPriority": "Priorité",
+        "pricingOfficialMissing": "-",
+        "pricingStandardLongInput": "Entrée standard (long)",
+        "pricingStandardLongCache": "Entrée cache standard (long)",
+        "pricingStandardLongOutput": "Sortie standard (long)",
+        "pricingPriorityInput": "Entrée priorité",
+        "pricingPriorityCache": "Entrée cache priorité",
+        "pricingPriorityOutput": "Sortie priorité",
+        "pricingRepriceDone": "Estimations historiques mises à jour ; {{updated}} lignes modifiées",
+        "pricingRepriceFailedWithMessage": "Échec de la mise à jour des estimations : {{message}}",
+        "pricingRepriceFailed": "Échec de la mise à jour des estimations",
+        "pricingRepriceSuperseded": "Nouveaux tarifs reçus ; bascule vers le dernier recalcul",
+        "pricingRepriceRunning": "Mise à jour des estimations {{processed}} / {{total}} ; {{updated}} mises à jour",
+        "pricingRepriceCompleted": "Estimations historiques mises à jour",
+        "pricingRepriceSaveBlocked": "Recalcul en cours ; enregistrez après la fin"
       },
       "keys": {
         "policyTitle": "Politique de modèles",
@@ -3609,13 +3636,6 @@
       "appPath": "Chemin Cursor"
     },
     "cursorRefreshInterval": "Actualisation auto du quota",
-    "gemini": {
-      "title": "Paramètres Gemini Cli",
-      "appPath": "Chemin Gemini Cli",
-      "syncWsl": "Synchroniser la configuration WSL",
-      "syncWslDesc": "Remplacer automatiquement la configuration .gemini dans WSL lors du changement de compte"
-    },
-    "geminiRefreshInterval": "Actualisation auto du quota",
     "grok": {
       "title": "Paramètres de Grok CLI",
       "appPath": "Chemin de Grok CLI",
@@ -4203,99 +4223,6 @@
       },
       "summary": "Cette section explique comment utiliser Tâches wakeup et vérification dans le flux quotidien.",
       "title": "Tâches wakeup et vérification"
-    }
-  },
-  "gemini": {
-    "injectToGemini": "Basculer vers Gemini Cli",
-    "updated": {
-      "label": "Mis à jour il y a {{relative}}"
-    },
-    "quota": {
-      "pro": "PRO",
-      "flash": "FLASH",
-      "left": "{{value}}% restants",
-      "resetsIn": "Réinitialisation dans {{relative}}",
-      "resetsSoon": "Réinitialisation imminente",
-      "resetsUnknown": "Heure de réinitialisation inconnue",
-      "onDemand": "À la demande",
-      "gemini5h": "5h",
-      "geminiWeekly": "Weekly",
-      "claude5h": "5h",
-      "claudeWeekly": "Weekly"
-    },
-    "title": "Gestion des comptes Gemini Cli",
-    "instances": {
-      "unsupported": "La gestion multi-instances Gemini Cli n’est pas encore prise en charge.",
-      "unsupportedDescPlatform": "Le mode multi-instances Gemini Cli est pris en charge uniquement sur macOS, Windows et Linux.",
-      "launchDialogTitle": "Lancer l’instance",
-      "launchHint": "Copiez la commande et exécutez-la manuellement, ou lancez-la directement dans le terminal.",
-      "runInTerminal": "Exécuter dans le terminal",
-      "workingDir": "Répertoire de travail",
-      "workingDirPlaceholder": "Par défaut le chemin actuel",
-      "workingDirDesc": "Bascule d'abord vers ce répertoire au démarrage",
-      "pickWorkingDir": "Sélectionner le répertoire de travail"
-    },
-    "switch": {
-      "success": "Compte changé avec succès"
-    },
-    "empty": {
-      "description": "Cliquez sur « Ajouter un compte » pour commencer à gérer vos comptes Gemini Cli"
-    },
-    "addModal": {
-      "title": "Ajouter un compte Gemini Cli"
-    },
-    "oauth": {
-      "desc": "Cliquez sur le bouton ci-dessous et terminez l'autorisation Gemini Cli dans le navigateur."
-    },
-    "token": {
-      "desc": "Collez votre jeton d'accès Gemini Cli (JWT) ou des données JSON exportées.",
-      "formatHint": "Champs obligatoires et exemples (cliquer pour développer)",
-      "formatRequired": "Jeton unique : collez le JWT directement ; import en lot : utilisez le format tableau JSON",
-      "singleExample": "Exemple unique (JWT)",
-      "batchExample": "Exemple en lot (JSON)"
-    },
-    "import": {
-      "localDesc": "Importer les données de compte depuis le client Gemini Cli local ou un fichier JSON.",
-      "localClient": "Importer depuis Gemini Cli local"
-    },
-    "flowNotice": {
-      "title": "Guide du compte Gemini Cli (cliquer pour développer/réduire)",
-      "desc": "Gérez les comptes Gemini Cli en important depuis l'installation locale de Gemini Cli ou en collant des jetons JWT. Les données sont traitées uniquement en local.",
-      "reason": "Portée des autorisations : lecture et écriture de oauth_creds.json, google_accounts.json et settings.json sous ~/.gemini par défaut ou le chemin d’instance (GEMINI_CLI_HOME/.gemini) pour l’import de comptes et l’injection locale d’identifiants (changement de compte).",
-      "storage": "Portée réseau : OAuth et l’actualisation du quota appellent les API officielles Google/Gemini (comme oauth2.googleapis.com et googleapis.com). Seuls les champs d’authentification/quota nécessaires sont envoyés ; les fichiers locaux ne sont pas téléversés vers des serveurs tiers."
-    },
-    "projectConfig": {
-      "button": "Définir le projet GCP",
-      "title": "Définir le projet GCP",
-      "selectLabel": "Sélectionner un projet",
-      "loading": "Chargement de la liste des projets...",
-      "auto": "Sélection automatique (sans définition manuelle)",
-      "empty": "Aucun projet disponible trouvé. Vérifiez que ce compte a accès aux projets GCP.",
-      "hint": "Après enregistrement, ce projet sera prioritaire pour les requêtes de quota et injecté comme GOOGLE_CLOUD_PROJECT au lancement.",
-      "current": "Projet : {{projectId}}",
-      "saved": "Projet enregistré : {{projectId}}",
-      "cleared": "Retour à la résolution automatique du projet",
-      "savedWithRefreshError": "Projet enregistré, mais l’actualisation du quota a échoué : {{error}}"
-    },
-    "identity": {
-      "authMethod": "Méthode d'authentification",
-      "tier": "Forfait",
-      "signedInWithGoogle": "Connecté avec Google",
-      "signedInWithGoogleEmail": "Connecté avec Google ({{email}})"
-    },
-    "quotaTable": {
-      "model": "Modèle",
-      "leftOfTotal": "Restant / Total",
-      "usage": "Utilisé",
-      "usageResets": "Réinitialisation de l'usage",
-      "usedPercent": "{{value}}%​",
-      "remainingOfTotal": "{{remaining}} / {{total}}​",
-      "resetAtWithRelative": "{{absolute}} ({{relative}})​"
-    },
-    "tierText": {
-      "pro": "Gemini Code Assist dans Google One AI Pro",
-      "ultra": "Gemini Code Assist dans Google AI Ultra",
-      "free": "Gemini Code Assist gratuit"
     }
   },
   "codebuddy": {

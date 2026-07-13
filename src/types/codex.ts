@@ -811,6 +811,7 @@ export function getCodexPlanDisplayName(planType?: string): string {
   if (upper.includes("ENTERPRISE")) return "ENTERPRISE";
   if (upper.includes("PLUS")) return "PLUS";
   if (upper.includes("PRO")) return "PRO";
+  if (upper.includes("API")) return "API";
   return upper;
 }
 
@@ -864,6 +865,9 @@ function normalizeCodexAuthFilePlanType(
 function getCodexPlanBadgeLabel(account: CodexAccount): string {
   if (isCodexNewApiAccount(account)) {
     return account.plan_type?.trim() || "Cockpit Api";
+  }
+  if (isCodexApiKeyAccount(account)) {
+    return "API";
   }
   const baseLabel = getCodexPlanDisplayName(account.plan_type);
   if (normalizeCodexPlanKey(account.plan_type) !== "pro") {

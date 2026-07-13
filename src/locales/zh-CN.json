@@ -290,7 +290,6 @@
     "codebuddy": "CodeBuddy",
     "githubCopilot": "GitHub Copilot",
     "windsurf": "Windsurf",
-    "gemini": "Gemini Cli",
     "dashboard": "仪表盘",
     "morePlatforms": "更多平台",
     "collapseSidebar": "收起侧边栏",
@@ -939,7 +938,7 @@
       "theme": "应用主题",
       "themeDesc": "切换深色或浅色模式",
       "defaultTerminal": "默认终端",
-      "defaultTerminalDesc": "Gemini CLI 打开时使用的终端",
+      "defaultTerminalDesc": "CLI 打开时使用的终端",
       "terminalSystem": "跟随系统",
       "sideNavLayout": "侧边栏布局",
       "sideNavLayoutDesc": "切换原始布局或经典布局",
@@ -1166,7 +1165,15 @@
       "tokenKeeper": "后台授权保活",
       "tokenKeeperDesc": "仅在授权快过期时分批刷新账号 Token，降低大量账号场景下的后台请求压力。",
       "autoImportFromLocal": "本机账号自动导入",
-      "autoImportFromLocalDesc": "开启后，当你在官方客户端更换登录账号时，Cockpit Tools 会自动将新账号导入到对应平台列表中。"
+      "autoImportFromLocalDesc": "开启后会立即扫描本机客户端登录状态并导入当前账号；之后当官方客户端更换登录时自动导入。首次可能弹出系统钥匙串授权，请选择「始终允许」。",
+      "reducedMotion": "减少动画",
+      "reducedMotionDesc": "降低页面淡入、弹层过渡、阴影、模糊和平滑滚动，仅保留必要加载反馈",
+      "autoImportFromLocalScanning": "正在扫描本机账号，可随时关闭…",
+      "autoImportFromLocalScanDone": "扫描完成：发现 {{scanned}} 个本机登录，已导入 {{imported}} 个",
+      "autoImportFromLocalScanEmpty": "扫描完成：未发现可导入的本机登录",
+      "autoImportFromLocalScanPartial": "扫描完成：未成功导入，部分平台失败，可到账号页手动导入",
+      "autoImportFromLocalScanFailed": "扫描失败：{{error}}",
+      "autoImportFromLocalScanCancelled": "已关闭，后台扫描将忽略结果"
     },
     "network": {
       "apiTitle": "反重力驾驶舱 API",
@@ -2288,7 +2295,7 @@
       },
       "customRoutingEdit": "编辑自定义调度",
       "customRoutingTitle": "自定义调度",
-      "customRoutingDesc": "设置账号的优先级、权重和备用角色，控制账号选择顺序与负载分配。",
+      "customRoutingDesc": "设置账号的优先级和权重，控制账号选择顺序与负载分配。",
       "customRoutingBackupTitle": "备用账号",
       "customRoutingBackupDesc": "仅在所有普通账号不可用时使用；普通账号恢复后，新请求会自动切回。",
       "customRoutingBackupShort": "备用",
@@ -3396,7 +3403,25 @@
         "pricingSaved": "价格设置已保存",
         "pricingInvalid": "价格必须是大于或等于 0 的数字，Token 阈值必须是正整数",
         "pricingReprice": "重算历史估值",
-        "pricingRepriced": "历史估值已按当前价格重算"
+        "pricingRepriced": "历史估值已按当前价格重算",
+        "pricingLongThreshold": "长上下文阶梯阈值（tokens）",
+        "pricingStandard": "标准",
+        "pricingStandardLong": "标准（长上下文）",
+        "pricingPriority": "快速",
+        "pricingOfficialMissing": "-",
+        "pricingStandardLongInput": "标准（长上下文）输入",
+        "pricingStandardLongCache": "标准（长上下文）缓存输入",
+        "pricingStandardLongOutput": "标准（长上下文）输出",
+        "pricingPriorityInput": "快速输入",
+        "pricingPriorityCache": "快速缓存输入",
+        "pricingPriorityOutput": "快速输出",
+        "pricingRepriceDone": "历史估算价值已更新，变更 {{updated}} 条",
+        "pricingRepriceFailedWithMessage": "历史估算价值更新失败：{{message}}",
+        "pricingRepriceFailed": "历史估算价值更新失败",
+        "pricingRepriceSuperseded": "已收到新的价格配置，正在切换到最新重算任务",
+        "pricingRepriceRunning": "正在更新历史估算价值 {{processed}} / {{total}}，已更新 {{updated}} 条",
+        "pricingRepriceCompleted": "历史估算价值已更新",
+        "pricingRepriceSaveBlocked": "历史估算价值更新中，完成后再保存"
       },
       "keys": {
         "policyTitle": "模型策略",
@@ -3919,13 +3944,6 @@
       "title": "CodeBuddy 设置",
       "appPath": "CodeBuddy 路径"
     },
-    "gemini": {
-      "title": "Gemini Cli 设置",
-      "appPath": "Gemini Cli 路径",
-      "syncWsl": "同步 WSL 配置",
-      "syncWslDesc": "切换账号时自动覆盖 WSL 下的 .gemini 配置"
-    },
-    "geminiRefreshInterval": "配额自动刷新",
     "grok": {
       "title": "Grok CLI 设置",
       "appPath": "Grok CLI 路径",
@@ -4206,99 +4224,6 @@
       "desc": "支持从本地 Cursor 安装导入、粘贴 JWT 令牌或 OAuth 授权登录来管理 Cursor 账号。",
       "reason": "权限范围：读取并写入 Cursor 本地认证存储（state.vscdb），用于账号导入与令牌注入（切号）。",
       "storage": "网络请求范围：刷新配额时携带 JWT 向 cursor.com 官方接口请求使用量、用户信息及订阅信息；不向任何第三方服务器上传数据。"
-    }
-  },
-  "gemini": {
-    "injectToGemini": "切换到 Gemini Cli",
-    "identity": {
-      "authMethod": "认证方式",
-      "tier": "套餐",
-      "signedInWithGoogle": "使用 Google 登录",
-      "signedInWithGoogleEmail": "使用 Google 登录（{{email}}）"
-    },
-    "updated": {
-      "label": "更新于 {{relative}}前"
-    },
-    "quota": {
-      "gemini5h": "5h",
-      "geminiWeekly": "Weekly",
-      "claude5h": "5h",
-      "claudeWeekly": "Weekly",
-      "pro": "Pro",
-      "flash": "Flash",
-      "left": "{{value}}% 剩余",
-      "resetsIn": "{{relative}} 后重置",
-      "resetsSoon": "即将重置",
-      "resetsUnknown": "重置时间未知",
-      "onDemand": "按需使用"
-    },
-    "quotaTable": {
-      "model": "模型",
-      "leftOfTotal": "剩余 / 总量",
-      "usage": "已用",
-      "usageResets": "重置时间",
-      "usedPercent": "{{value}}%",
-      "remainingOfTotal": "{{remaining}} / {{total}}",
-      "resetAtWithRelative": "{{absolute}}（{{relative}}）"
-    },
-    "tierText": {
-      "pro": "Google One AI Pro 的 Gemini Code Assist",
-      "ultra": "Google AI Ultra 的 Gemini Code Assist",
-      "free": "Gemini Code Assist（免费版）"
-    },
-    "title": "Gemini Cli 账号管理",
-    "instances": {
-      "unsupported": "Gemini Cli 暂不支持应用多开管理。",
-      "unsupportedDescPlatform": "Gemini Cli 应用多开仅支持 macOS、Windows 和 Linux。",
-      "launchDialogTitle": "启动实例",
-      "launchHint": "可复制命令手动执行，或点击下方按钮直接在终端执行。",
-      "runInTerminal": "终端执行",
-      "workingDir": "工作目录",
-      "workingDirPlaceholder": "默认当前路径",
-      "workingDirDesc": "启动时将首先切换到此目录",
-      "pickWorkingDir": "选择工作目录"
-    },
-    "switch": {
-      "success": "切号成功"
-    },
-    "empty": {
-      "description": "点击\"添加账号\"开始管理您的 Gemini Cli 账号"
-    },
-    "addModal": {
-      "title": "添加 Gemini Cli 账号"
-    },
-    "oauth": {
-      "desc": "点击下方按钮，在浏览器中完成 Gemini Cli OAuth 授权登录。"
-    },
-    "token": {
-      "desc": "粘贴您的 Gemini Cli Access Token（JWT）或导出的 JSON 数据。",
-      "formatHint": "必填字段与示例（点击展开）",
-      "formatRequired": "单条 Token 直接粘贴 JWT；批量导入使用 JSON 数组格式",
-      "singleExample": "单条示例（JWT）",
-      "batchExample": "批量示例（JSON）"
-    },
-    "import": {
-      "localDesc": "支持从本机 Gemini Cli 配置目录（~/.gemini）或 JSON 文件导入账号数据。",
-      "localClient": "从本机 Gemini Cli 导入"
-    },
-    "projectConfig": {
-      "button": "设置 GCP 项目",
-      "title": "设置 GCP 项目",
-      "selectLabel": "选择项目",
-      "loading": "正在加载项目列表...",
-      "auto": "自动选择（不手动指定）",
-      "empty": "未获取到可用项目，请确认该账号具备 GCP 项目权限。",
-      "hint": "保存后将优先使用该项目请求配额，并在启动命令中注入 GOOGLE_CLOUD_PROJECT。",
-      "current": "项目：{{projectId}}",
-      "saved": "项目已保存：{{projectId}}",
-      "cleared": "已恢复为自动项目识别",
-      "savedWithRefreshError": "项目已保存，但刷新配额失败：{{error}}"
-    },
-    "flowNotice": {
-      "title": "Gemini Cli 账号管理说明（点击展开/收起）",
-      "desc": "支持从本机 Gemini Cli 配置目录导入、粘贴 JWT 令牌或 OAuth 授权登录来管理 Gemini Cli 账号。",
-      "reason": "权限范围：读取并写入默认 ~/.gemini 或实例目录（GEMINI_CLI_HOME/.gemini）下的 oauth_creds.json、google_accounts.json、settings.json，用于账号导入与本地凭证注入（切号）。",
-      "storage": "网络请求范围：OAuth 与刷新会调用 Google/Gemini 官方接口（如 oauth2.googleapis.com、googleapis.com）；仅发送认证与配额所需字段，不向第三方服务器上传账号文件。"
     }
   },
   "breakout": {

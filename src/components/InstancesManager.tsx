@@ -159,7 +159,6 @@ interface InstancesManagerProps<TAccount extends AccountLike> {
     | "windsurf"
     | "kiro"
     | "cursor"
-    | "gemini"
     | "grok"
     | "codebuddy"
     | "codebuddy_cn"
@@ -748,10 +747,9 @@ export function InstancesManager<TAccount extends AccountLike>({
     () => new Set(stoppingInstanceIds),
     [stoppingInstanceIds],
   );
-  const isGeminiApp = appType === "gemini";
   const isGrokApp = appType === "grok";
   const supportsInstanceInitialization = !isGrokApp;
-  const isCliOnlyApp = isGeminiApp || isGrokApp;
+  const isCliOnlyApp = isGrokApp;
   const isCodexApp = appType === "codex";
   const isClaudeApp = appType === "claude";
   const supportsLaunchModeSelect = isCodexApp || isClaudeApp;
@@ -1385,7 +1383,6 @@ export function InstancesManager<TAccount extends AccountLike>({
       rawApp === "windsurf" ||
       rawApp === "kiro" ||
       rawApp === "cursor" ||
-      rawApp === "gemini" ||
       rawApp === "grok" ||
       rawApp === "codebuddy" ||
       rawApp === "codebuddy_cn" ||
@@ -2481,7 +2478,7 @@ export function InstancesManager<TAccount extends AccountLike>({
         </div>
       ) : (
         <div
-          className={`instances-list${isGeminiApp ? " instances-list-no-pid" : ""}${
+          className={`instances-list${
             isCodexApp ? " instances-list-codex" : ""
           }`}
         >

@@ -290,7 +290,6 @@
     "codebuddy": "CodeBuddy​",
     "githubCopilot": "GitHub Copilot​",
     "windsurf": "Windsurf​",
-    "gemini": "Gemini Cli​",
     "dashboard": "Dasbor",
     "morePlatforms": "Platform Lainnya",
     "collapseSidebar": "Ciutkan bilah sisi",
@@ -801,7 +800,7 @@
       "antigravityDualSwitchNoRestart": "Penggantian ganda tanpa mulai ulang",
       "antigravityDualSwitchNoRestartDesc": "Saat mengganti, tulis data akun lokal dan panggil penggantian mulus ekstensi dalam satu alur, tanpa memulai ulang Antigravity IDE.",
       "defaultTerminal": "Terminal default",
-      "defaultTerminalDesc": "Terminal yang digunakan saat membuka Gemini CLI.",
+      "defaultTerminalDesc": "Terminal yang digunakan saat membuka CLI.",
       "terminalSystem": "Ikuti sistem",
       "currentAccountRefreshRequiresAutoRefresh": "Aktifkan terlebih dahulu \"Penyegaran Kuota Otomatis\" untuk mengatur penyegaran akun saat ini.",
       "codebuddyCnAppPath": "Path Aplikasi CodeBuddy CN",
@@ -854,7 +853,17 @@
       "platformAutoRefresh": "Penyegaran otomatis kuota {{platform}}",
       "traeSoloAppPath": "Jalur peluncuran TRAE SOLO",
       "traeCnAppPath": "Jalur peluncuran Trae CN",
-      "traeSoloCnAppPath": "Jalur peluncuran TRAE SOLO CN"
+      "traeSoloCnAppPath": "Jalur peluncuran TRAE SOLO CN",
+      "reducedMotion": "Kurangi animasi",
+      "reducedMotionDesc": "Kurangi fade, transisi modal, bayangan, blur, dan gulir halus; hanya sisakan umpan balik muat yang perlu",
+      "autoImportFromLocal": "Impor otomatis akun lokal",
+      "autoImportFromLocalDesc": "Saat diaktifkan, langsung pindai dan impor login lokal; lalu saat klien resmi ganti akun. Mungkin minta izin keychain.",
+      "autoImportFromLocalScanning": "Memindai akun lokal… bisa dimatikan kapan saja",
+      "autoImportFromLocalScanDone": "Selesai: {{scanned}} ditemukan, {{imported}} diimpor",
+      "autoImportFromLocalScanEmpty": "Selesai: tidak ada login lokal",
+      "autoImportFromLocalScanPartial": "Selesai: sebagian gagal",
+      "autoImportFromLocalScanFailed": "Pindai gagal: {{error}}",
+      "autoImportFromLocalScanCancelled": "Dimatikan; hasil pindai yang berjalan akan diabaikan"
     },
     "network": {
       "apiTitle": "API Antigravity Cockpit",
@@ -2013,7 +2022,7 @@
       },
       "customRoutingEdit": "Edit routing kustom",
       "customRoutingTitle": "Routing kustom",
-      "customRoutingDesc": "Atur prioritas dan bobot per akun untuk mengontrol urutan pemilihan akun dan pembagian beban pada prioritas yang sama.",
+      "customRoutingDesc": "Atur prioritas dan bobot untuk mengontrol urutan pemilihan akun dan distribusi beban.",
       "customRoutingBackupTitle": "Akun cadangan",
       "customRoutingBackupDesc": "Hanya digunakan saat semua akun biasa tidak tersedia. Permintaan baru otomatis kembali saat akun biasa pulih.",
       "customRoutingBackupShort": "Cadangan",
@@ -3203,22 +3212,40 @@
         "rulesSaved": "Aturan model tersimpan",
         "pricingAction": "Harga",
         "pricingTitle": "Harga Model",
-        "pricingDesc": "USD / 1M token, hanya untuk statistik nilai lokal.",
+        "pricingDesc": "USD / 1M token, hanya untuk statistik lokal.",
         "pricingModel": "Nama model",
         "pricingInput": "Masuk",
         "pricingCache": "Input cache",
         "pricingOutput": "Keluar",
         "pricingSource": "Sumber",
         "pricingActions": "Aksi",
-        "pricingCachePlaceholder": "Sama input",
+        "pricingCachePlaceholder": "-",
         "pricingCustom": "Kustom",
         "pricingPreset": "Prasetel",
         "pricingUnset": "Belum diatur",
         "pricingReset": "Atur ulang",
         "pricingSaved": "Harga tersimpan",
-        "pricingInvalid": "Harga harus berupa angka lebih besar atau sama dengan 0",
+        "pricingInvalid": "Harga harus ≥ 0 dan ambang token bilangan bulat positif",
         "pricingReprice": "Hitung ulang riwayat",
-        "pricingRepriced": "Estimasi riwayat dihitung ulang dengan harga saat ini"
+        "pricingRepriced": "Estimasi riwayat dihitung ulang dengan harga saat ini",
+        "pricingLongThreshold": "Ambang konteks panjang (tokens)",
+        "pricingStandard": "Standar",
+        "pricingStandardLong": "Standar (panjang)",
+        "pricingPriority": "Prioritas",
+        "pricingOfficialMissing": "-",
+        "pricingStandardLongInput": "Input standar (panjang)",
+        "pricingStandardLongCache": "Input cache standar (panjang)",
+        "pricingStandardLongOutput": "Output standar (panjang)",
+        "pricingPriorityInput": "Input prioritas",
+        "pricingPriorityCache": "Input cache prioritas",
+        "pricingPriorityOutput": "Output prioritas",
+        "pricingRepriceDone": "Estimasi historis diperbarui; {{updated}} baris berubah",
+        "pricingRepriceFailedWithMessage": "Gagal memperbarui estimasi: {{message}}",
+        "pricingRepriceFailed": "Gagal memperbarui estimasi",
+        "pricingRepriceSuperseded": "Harga baru diterima; beralih ke pekerjaan hitung ulang terbaru",
+        "pricingRepriceRunning": "Memperbarui estimasi {{processed}} / {{total}}; {{updated}} diperbarui",
+        "pricingRepriceCompleted": "Estimasi historis diperbarui",
+        "pricingRepriceSaveBlocked": "Hitung ulang sedang berjalan; simpan setelah selesai"
       },
       "keys": {
         "policyTitle": "Kebijakan Model",
@@ -3760,13 +3787,6 @@
       "title": "CodeBuddy Settings​",
       "appPath": "CodeBuddy Path​"
     },
-    "gemini": {
-      "title": "Gemini Cli Settings​",
-      "appPath": "Gemini Cli Path​",
-      "syncWsl": "Sinkronkan Konfigurasi WSL",
-      "syncWslDesc": "Otomatis menimpa konfigurasi .gemini di WSL saat mengganti akun"
-    },
-    "geminiRefreshInterval": "Quota Auto Refresh​",
     "grok": {
       "title": "Pengaturan Grok CLI",
       "appPath": "Lokasi Grok CLI",
@@ -4052,99 +4072,6 @@
       "desc": "Kelola akun Cursor dengan mengimpor dari instalasi Cursor lokal, menempelkan token JWT, atau masuk melalui OAuth.",
       "reason": "Cakupan izin: baca dan tulis penyimpanan auth lokal Cursor (state.vscdb) untuk impor akun dan injeksi token (penggantian akun).",
       "storage": "Cakupan jaringan: saat menyegarkan kuota, JWT dikirim ke API resmi cursor.com untuk mengambil penggunaan, info pengguna, dan data langganan. Tidak ada data yang dikirim ke server pihak ketiga."
-    }
-  },
-  "gemini": {
-    "injectToGemini": "Switch to Gemini Cli​",
-    "updated": {
-      "label": "Updated {{relative}} ago​"
-    },
-    "quota": {
-      "pro": "Pro​",
-      "flash": "Flash​",
-      "left": "{{value}}% left​",
-      "resetsIn": "Resets in {{relative}}​",
-      "resetsSoon": "Resets soon​",
-      "resetsUnknown": "Reset time unknown​",
-      "onDemand": "On-Demand​",
-      "gemini5h": "5h",
-      "geminiWeekly": "Weekly",
-      "claude5h": "5h",
-      "claudeWeekly": "Weekly"
-    },
-    "title": "Gemini Cli Account​",
-    "instances": {
-      "unsupported": "Gemini Cli multi-instance management is not supported yet.​",
-      "unsupportedDescPlatform": "Gemini Cli multi-instance is supported on macOS, Windows, and Linux only.​",
-      "launchDialogTitle": "Launch Instance​",
-      "launchHint": "Salin perintah dan jalankan secara manual, atau jalankan langsung di terminal.",
-      "runInTerminal": "Jalankan di Terminal",
-      "workingDir": "Direktori kerja",
-      "workingDirPlaceholder": "Gunakan direktori saat ini sebagai default",
-      "workingDirDesc": "Saat startup, Gemini CLI akan berpindah ke direktori ini terlebih dahulu",
-      "pickWorkingDir": "Pilih direktori kerja"
-    },
-    "switch": {
-      "success": "Account switched successfully​"
-    },
-    "empty": {
-      "description": "Klik \"Tambah Akun\" untuk mulai mengelola akun Gemini Cli Anda"
-    },
-    "addModal": {
-      "title": "Tambah Akun Gemini Cli"
-    },
-    "oauth": {
-      "desc": "Klik tombol di bawah ini dan selesaikan otorisasi OAuth Gemini Cli di peramban Anda."
-    },
-    "token": {
-      "desc": "Tempel Token Akses Gemini Cli (JWT) atau data JSON yang diekspor.",
-      "formatHint": "Bidang yang diperlukan & contoh (klik untuk perluas)",
-      "formatRequired": "Token tunggal: tempel JWT langsung; impor batch: gunakan format array JSON",
-      "singleExample": "Single example (JWT)​",
-      "batchExample": "Batch example (JSON)​"
-    },
-    "import": {
-      "localDesc": "Impor data akun Gemini Cli dari direktori konfigurasi Gemini Cli lokal (~/.gemini) atau berkas JSON.",
-      "localClient": "Impor dari Gemini Cli lokal"
-    },
-    "projectConfig": {
-      "button": "Set GCP Project​",
-      "title": "Set GCP Project​",
-      "selectLabel": "Pilih proyek",
-      "loading": "Loading project list...​",
-      "auto": "Auto-select (do not specify manually)​",
-      "empty": "No available project found. Ensure this account has access to GCP projects.​",
-      "hint": "Setelah menyimpan, proyek ini lebih diutamakan untuk permintaan kuota dan diinjeksi sebagai GOOGLE_CLOUD_PROJECT dalam perintah peluncuran.",
-      "current": "Project: {{projectId}}​",
-      "saved": "Project saved: {{projectId}}​",
-      "cleared": "Switched back to automatic project resolution​",
-      "savedWithRefreshError": "Project saved, but quota refresh failed: {{error}}​"
-    },
-    "flowNotice": {
-      "title": "Panduan akun Gemini Cli (klik untuk perluas/ciutkan)",
-      "desc": "Kelola akun Gemini Cli dengan mengimpor dari konfigurasi Gemini Cli lokal, menempelkan token JWT, atau masuk melalui OAuth.",
-      "reason": "Cakupan izin: baca dan tulis oauth_creds.json, google_accounts.json, dan settings.json di bawah ~/.gemini default atau jalur instansi (GEMINI_CLI_HOME/.gemini) untuk impor akun dan injeksi kredensial lokal (penggantian akun).",
-      "storage": "Cakupan jaringan: OAuth dan penyegaran memanggil API resmi Google/Gemini (seperti oauth2.googleapis.com dan googleapis.com). Hanya bidang auth/kuota yang diperlukan yang dikirim; berkas akun lokal tidak diunggah ke server pihak ketiga."
-    },
-    "identity": {
-      "authMethod": "Metode autentikasi",
-      "tier": "Paket",
-      "signedInWithGoogle": "Masuk dengan Google",
-      "signedInWithGoogleEmail": "Masuk dengan Google ({{email}})"
-    },
-    "quotaTable": {
-      "model": "Nama model",
-      "leftOfTotal": "Sisa / Total",
-      "usage": "Terpakai",
-      "usageResets": "Reset penggunaan",
-      "usedPercent": "{{value}}%​",
-      "remainingOfTotal": "{{remaining}} / {{total}}​",
-      "resetAtWithRelative": "{{absolute}} ({{relative}})​"
-    },
-    "tierText": {
-      "pro": "Gemini Code Assist di Google One AI Pro",
-      "ultra": "Gemini Code Assist di Google AI Ultra",
-      "free": "Gemini Code Assist gratis"
     }
   },
   "breakout": {

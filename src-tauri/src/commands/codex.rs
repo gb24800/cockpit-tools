@@ -2889,10 +2889,12 @@ pub async fn codex_local_access_get_state() -> Result<CodexLocalAccessState, Str
 pub async fn codex_local_access_save_accounts(
     account_ids: Vec<String>,
     restrict_free_accounts: Option<bool>,
+    backup_account_ids: Option<Vec<String>>,
 ) -> Result<CodexLocalAccessState, String> {
     codex_local_access::save_local_access_accounts(
         account_ids,
         restrict_free_accounts.unwrap_or(true),
+        backup_account_ids,
     )
     .await
 }
