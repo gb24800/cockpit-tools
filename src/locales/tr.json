@@ -2,6 +2,8 @@
   "common": {
     "confirm": "Onayla",
     "cancel": "İptal",
+    "cancelling": "İptal ediliyor...",
+    "cancelled": "İptal edildi",
     "save": "Kaydet",
     "saving": "Kaydediliyor...",
     "delete": "Sil",
@@ -270,7 +272,9 @@
     "switchClassicLayoutConfirm": "Şimdi geç",
     "2faManager": "2FA Yönetimi",
     "apiRelay": "Aktarım",
-    "claude": "Claude"
+    "claude": "Claude",
+    "openrouter": "OpenRouter",
+    "opencode": "OpenCode"
   },
   "sponsors": {
     "pageTitle": "Sponsorlar",
@@ -816,7 +820,25 @@
       "autoImportFromLocalScanEmpty": "Bitti: aktarılabilir oturum yok",
       "autoImportFromLocalScanPartial": "Bitti: kısmi hatalar",
       "autoImportFromLocalScanFailed": "Tarama başarısız: {{error}}",
-      "autoImportFromLocalScanCancelled": "Kapatıldı; süren tarama yok sayılacak"
+      "autoImportFromLocalScanCancelled": "Kapatıldı; süren tarama yok sayılacak",
+      "startupPage": "Başlangıç sayfası",
+      "startupPageDesc": "Soğuk başlangıçta açılacak sayfa. “Sonuncuyu hatırla” önceki sayfayı geri yükler.",
+      "startupPageLast": "Sonuncuyu hatırla",
+      "startupPageCodexApi": "Codex API hizmeti",
+      "hermesAuthOverwrite": "Codex değişiminde Hermes senkron",
+      "hermesAuthOverwriteDesc": "Yalnız OAuth: ~/.hermes/auth.json içine openai-codex yazar (varsayılan kapalı)",
+      "themeColor": "Renk paketi",
+      "themeColorDesc": "Açık/koyu üzerine renk paketi",
+      "themeColorDefault": "Varsayılan",
+      "themeColorNord": "Nord",
+      "themeColorTokyoNight": "Tokyo Night",
+      "themeColorCatppuccin": "Catppuccin",
+      "themeColorGruvbox": "Gruvbox",
+      "themeColorEverforest": "Everforest",
+      "externalNetwork": "Harici ağa izin ver",
+      "externalNetworkDesc": "Kapalı: WebDAV, OpenRouter kullanımı, duyurular ve otomatik güncelleme kontrolünü engeller (yerel sürer).",
+      "webdavAllowedDomains": "WebDAV alan adı listesi",
+      "webdavAllowedDomainsDesc": "Virgülle ayır; boş = sınır yok"
     },
     "network": {
       "apiTitle": "Yerçekimine Karşı Kokpit API'si",
@@ -881,6 +903,7 @@
       "releaseHistoryLoading": "Sürüm notları yükleniyor...",
       "releaseHistoryEmpty": "Henüz sürüm notu yok",
       "releaseHistoryLoadFailed": "Yüklenemedi: {{error}}",
+      "releaseHistorySectionHighlights": "Önemli yenilikler",
       "releaseHistorySectionAdded": "Eklendi",
       "releaseHistorySectionChanged": "Değiştirildi",
       "releaseHistorySectionFixed": "Sabit",
@@ -1045,6 +1068,19 @@
       "retentionUnit": "days",
       "collapseAll": "Collapse remote backups",
       "expandAll": "Expand all remote backups ({{count}} more)"
+    },
+    "keysVault": {
+      "title": "OpenRouter / OpenCode Key",
+      "desc": "API anahtarlarını yerel saklar. Harici ağ açıkken OpenRouter kullanımını yeniler. Tam platform değildir.",
+      "openRouter": "OpenRouter",
+      "openCode": "OpenCode Go / Zen",
+      "label": "Etiket",
+      "empty": "Key yok",
+      "added": "Eklendi",
+      "deleted": "Silindi",
+      "refreshed": "Kullanım yenilendi",
+      "usage": "Kullanım",
+      "tierOther": "Diğer"
     }
   },
   "appPath": {
@@ -1741,7 +1777,8 @@
       "title": "Codex hesabı ekle",
       "oauth": "OAuth Yetkilendirme",
       "token": "JSON içe aktar",
-      "local": "Yerel içe aktar"
+      "local": "Yerel içe aktar",
+      "accessToken": "Erişim jetonu"
     },
     "oauth": {
       "desc": "Aşağıdaki butona tıklayın ve tarayıcıda OpenAI yetkilendirmesini tamamlayın",
@@ -2131,7 +2168,12 @@
     },
     "list": {
       "showCodeReviewQuota": "Code Review kotasını göster",
-      "showAdditionalQuota": "Modele özel kotalar"
+      "showAdditionalQuota": "Modele özel kotalar",
+      "planBadgeStyle": "Plan rozet stili",
+      "planBadgeStyleDefault": "Varsayılan",
+      "planBadgeStyleOutline": "Çerçeve",
+      "planBadgeStyleSoft": "Yumuşak",
+      "planBadgeStyleMono": "Tek renk"
     },
     "time": {
       "today": "Bugün {{time}}",
@@ -2391,7 +2433,8 @@
         "selectAllSessions": "Tüm oturumları seç",
         "clearSelectedSessions": "Seçimi kaldır",
         "copyToInstance": "Örneğe kopyala",
-        "trash": "Çöp kutusu"
+        "trash": "Çöp kutusu",
+        "openRollout": "Oturum dosyasını aç"
       },
       "confirm": {
         "title": "Çöp kutusuna taşı",
@@ -2593,7 +2636,15 @@
         "removeItem": "Çıkar",
         "emptyFilteredTitle": "Eşleşen oturum yok",
         "emptyFilteredDesc": "Arama, kaynak veya seçim durumunu değiştirip tekrar deneyin."
-      }
+      },
+      "kindFilter": "Oturum türü",
+      "kind": {
+        "conversation": "Sohbet",
+        "external": "Harici",
+        "subagent": "Alt ajan",
+        "all": "Tüm türler"
+      },
+      "pickInstancePrompt": "Oturum birden fazla örnekte var. Örnek kimliğini girin:"
     },
     "api": {
       "baseUrl": "Temel URL",
@@ -2607,6 +2658,20 @@
       "showApiKey": "API Key’i göster",
       "hideApiKey": "API Key’i gizle",
       "apiKeyHiddenHint": "API Key gizli. Göstermek için tıklayın.",
+      "modelCatalog": {
+        "label": "Model listesi",
+        "fetch": "Sağlayıcıdan al",
+        "fetching": "Alınıyor...",
+        "count": "{{count}} model",
+        "placeholder": "Her satıra bir model kimliği girin veya kimlikleri virgülle ayırın.",
+        "editHint": "Alınan modeller yalnızca bu taslağa eklenir. Kaydetmeden önce inceleyip düzenleyin.",
+        "syncToggle": "Sağlayıcı modellerini Codex ile eşitle",
+        "syncDescription": "Kaydettikten sonra bu liste Cockpit tarafından yönetilen Codex model kataloğunu oluşturur. Özel katalogların üzerine yazılmaz.",
+        "fetchCredentialsRequired": "Önce API Key ve Base URL girin.",
+        "fetchEmpty": "Sağlayıcı model döndürmedi. Mevcut liste korundu.",
+        "fetchFailed": "Sağlayıcı modelleri alınamadı: {{error}}",
+        "syncRequiresModels": "Codex ile eşitlemeden önce en az bir model alın veya girin."
+      },
       "actions": {
         "addAndSwitch": "Ekle ve geçiş yap"
       },
@@ -2983,7 +3048,10 @@
         "help": "Yalnızca sağlayıcı Responses için WebSocket desteğini açıkça sunuyorsa etkinleştirin; bağlantı türünü Codex veya proxy hizmeti günlüklerinden doğrulayın.",
         "enabled": "Etkin",
         "disabled": "Devre dışı"
-      }
+      },
+      "renameApiKeyPrompt": "API key yeniden adlandır",
+      "renameApiKeySuccess": "API key yeniden adlandırıldı",
+      "renameApiKeyFailed": "API key yeniden adlandırılamadı: {{error}}"
     },
     "quickSwitch": {
       "action": "Sağlayıcıyı hızlı değiştir",
@@ -3326,8 +3394,20 @@
       "previewSubtitle": "Kaydedilecek hesapları seçin",
       "scanSubtitle": "Hesaplar tek tek ayrıştırılıp kontrol ediliyor",
       "parseSubtitle": "Hesap dosyaları ayrıştırılıyor",
+      "importSubtitle": "Seçilen hesaplar kaydediliyor",
+      "finalizing": "İçe aktarma tamamlanıyor",
+      "finalizingSubtitle": "Hesap listesi ve ilgili ayarlar güncelleniyor",
+      "cancelImport": "İçe aktarmayı iptal et",
+      "importCancelledSummary": "İçe aktarma {{processed}}/{{total}} hesap işlendiğinde iptal edildi.",
+      "importChecked": "Kontrol edilen hesapları içe aktar",
+      "directImport": "Kontrol etmeden doğrudan içe aktar",
+      "importCheckedAndAddToApiService": "Kontrol edilen hesapları içe aktar ve API Hizmetine ekle",
+      "directImportAndAddToApiService": "Doğrudan içe aktar ve API Hizmetine ekle",
+      "viewAllTasks": "{{count}} görevin tümünü göster",
+      "collapseTasks": "Görevleri daralt",
       "cancelling": "İptal ediliyor...",
       "scanDone": "Tarama tamamlandı",
+      "scanCompleteReview": "Denetim tamamlandı, sonucu görüntüleyin",
       "parseDone": "Ayrıştırma tamamlandı",
       "scanning": "Taranıyor",
       "parsing": "Ayrıştırılıyor",
@@ -3336,7 +3416,7 @@
       "failed": "Başarısız",
       "quotaOk": "Hesap OK",
       "quotaFailed": "Hata",
-      "checkQuotaToggle": "Hesapları denetle",
+      "checkQuotaToggle": "İçe aktarmadan önce denetle",
       "preparing": "İçe aktarma hazırlanıyor...",
       "importSelected": "Seçili hesapları içe aktar",
       "noSelection": "Önce hesap seçin",
@@ -3359,7 +3439,17 @@
       "taskRunning": "{{current}} / {{total}} işleniyor",
       "taskPreview": "{{total}} önizleme hazır",
       "reopen": "Görevi aç",
-      "dismissTask": "Kapat"
+      "dismissTask": "Kapat",
+      "queueCount": "Kuyrukta {{count}} iş",
+      "queued": "Sıraya alındı",
+      "batchLabel": "Toplu {{index}}",
+      "runInBackground": "Arka plan",
+      "cancelQueued": "Sırayı iptal et",
+      "importing": "İthalat",
+      "checkAccounts": "Hesapları kontrol et",
+      "importAndAddToApiService": "İçe Aktarma + API",
+      "importAndAddToApiServiceSuccess": "İçe aktarıldı ve API hizmetine eklendi",
+      "addToApiServiceFailed": "İçe aktarıldı ancak API hizmetine ekleme işlemi başarısız oldu: {{error}}"
     },
     "autoRepairMode": {
       "label": "Otomatik onarım mantığı",
@@ -3406,6 +3496,71 @@
       "chipSearch": "Ara",
       "chipPlan": "Abonelik",
       "chipFolder": "Klasör"
+    },
+    "accessTokenImport": {
+      "nameRequired": "Hesap adı girin",
+      "tokenRequired": "Codex erişim jetonu girin",
+      "desc": "Access token hesabı kaydeder. Refresh/id yoksa personal_access_token yazar.",
+      "nameLabel": "Hesap adı",
+      "namePlaceholder": "Listedeki ad",
+      "tokenLabel": "Codex erişim jetonu",
+      "hideToken": "Gizle",
+      "showToken": "Göster",
+      "submit": "Jetonu içe aktar",
+      "success": "Access token hesabı içe aktarıldı: {{name}}"
+    },
+    "ssh": {
+      "tab": "SSH senkron",
+      "title": "Codex SSH senkronu",
+      "desc": "Uzak ana bilgisayarları kaydedin, bağlantıyı test edin ve auth.json gönderin. Seçiliyse hesap değişiminde otomatik senkron.",
+      "new": "Yeni",
+      "empty": "SSH ana bilgisayarı yok",
+      "test": "Sına",
+      "sync": "Senkron",
+      "saved": "SSH sunucusu kaydedildi",
+      "deleted": "Silindi",
+      "name": "Ad",
+      "host": "Ana bilgisayar",
+      "user": "Kullanıcı",
+      "port": "Bağlantı noktası",
+      "remoteDir": "Uzak Codex dizini",
+      "syncSwitch": "SSH açık",
+      "syncSwitchDesc": "Bir SSH ana bilgisayarını yapılandırmak için açın; Codex anahtarları mevcut hesabı uzaktan senkronize eder.",
+      "configure": "Kurmak",
+      "modalTitle": "SSH senkronizasyon kurulumu",
+      "modalHint": "Codex hesap anahtarlarının uzak kimlik doğrulamasını güncellemesi için otomatik senkronizasyonun etkin olduğu bir SSH ana bilgisayarı ekleyin ve seçin.",
+      "subtitle": "Seçilen ana bilgisayar, hesap geçişlerinden sonra geçerli Codex kimlik doğrulama paketini alır.",
+      "addServer": "Sunucu ekle",
+      "editServer": "Sunucuyu düzenle",
+      "username": "Kullanıcı adı",
+      "codexHome": "Uzaktan Kodeks dizini",
+      "authMethod": "Kimlik doğrulama yöntemi",
+      "agentAuth": "SSH Temsilcisi",
+      "privateKeyAuth": "Özel anahtar",
+      "privateKeyPath": "Anahtar yolu",
+      "syncOnSwitch": "Geçişten sonra senkronizasyon",
+      "emptyTitle": "SSH sunucusu yok",
+      "emptyBody": "Soldaki bir ana bilgisayarı doldurun ve bunu bir anahtar senkronizasyon hedefi olarak kaydedin.",
+      "selected": "Seçildi",
+      "select": "Seçme",
+      "testConnection": "Dene",
+      "syncNow": "Şimdi senkronize et",
+      "connectionOk": "Bağlı",
+      "syncVerified": "SSH senkronizasyonu doğrulandı",
+      "syncFailed": "SSH senkronizasyonu başarısız oldu",
+      "syncedAs": "Senkronize {{email}} · {{time}}",
+      "neverSynced": "Henüz senkronize edilmedi",
+      "latestVerified": "Son SSH senkronizasyonu doğrulandı",
+      "syncSwitchActive": "Açık · {{name}} ({{user}}@{{host}})",
+      "footerHint": "Kaydetme işleminden sonra anahtar açılır; Otomatik senkronizasyonu durdurmak için istediğiniz zaman kapatın.",
+      "formLead": "Uzak ana bilgisayar ayrıntıları",
+      "namePlaceholder": "örneğin Ev NAS'ı",
+      "syncOnSwitchHint": "Kaydedip seçtikten sonra Codex anahtarları kimlik doğrulamasını bu ana bilgisayara iletir",
+      "addAndSave": "Ekle ve kaydet",
+      "serverList": "Sunucular",
+      "serverListLead": "Senkronizasyon hedefi seçin",
+      "serverCount": "{{count}} sunucu",
+      "autoSyncBadge": "Otomatik"
     }
   },
   "githubCopilot": {
@@ -4323,6 +4478,12 @@
     },
     "quota": {
       "usedOfTotal": "{{used}} / {{total}}​"
+    },
+    "sessions": {
+      "title": "Yerel oturum dosyaları",
+      "desc": "Yerel oturum dosyaları — Yerel tarama ve konumu açma.",
+      "empty": "Oturum dosyası yok",
+      "open": "Konumu aç"
     }
   },
   "qoder": {
@@ -5042,7 +5203,8 @@
       "installHint": "Aşağıdaki resmî komutu terminalde çalıştırın, kurulum tamamlandıktan sonra Yenile'ye tıklayın.",
       "selectWorkingDir": "Grok CLI çalışma dizinini seç",
       "workingDirAccountHint": "Çalışma dizini bu hesaba bağlıdır ve sonraki başlatmada geri yüklenir.",
-      "launchCommandPlaceholder": "Başlatma komutunu oluşturmak için dizin seçin veya onaylayın"
+      "launchCommandPlaceholder": "Başlatma komutunu oluşturmak için dizin seçin veya onaylayın",
+      "reauthLaunchHint": "Hesap kimlik doğrulamasının süresi doldu. Yeniden yetkilendirin; aşağıdaki başlatma komutu hala kullanılabilir."
     },
     "switch": {
       "success": "Hesap değiştirildi"
@@ -5325,5 +5487,23 @@
       "supports1mLabel": "1M desteğini bildir",
       "supports1mShort": "1M bağlam"
     }
+  },
+  "openrouter": {
+    "title": "OpenRouter",
+    "desc": "OpenRouter API anahtarları, kullanım ve modelleri yönetin.",
+    "tabKeys": "Anahtar ve kullanım",
+    "tabModels": "Modeller",
+    "modelsLoaded": "{{count}} model yüklendi",
+    "noUsageYet": "Kullanım henüz yenilenmedi",
+    "loadModels": "Modelleri yükle",
+    "searchModels": "Model ara",
+    "freeOnly": "Yalnızca ücretsiz",
+    "noModels": "Model yok — key ekleyip yükleyin.",
+    "free": "Ücretsiz",
+    "noCtx": "Bağlam uzunluğu yok"
+  },
+  "opencode": {
+    "title": "OpenCode",
+    "desc": "OpenCode Go/Zen anahtarlarını yönetin ve kademeye göre süzün."
   }
 }

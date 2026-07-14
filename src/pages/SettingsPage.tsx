@@ -27,7 +27,10 @@ import {
   buildAccountTierCounts,
   buildAccountTierFilterOptions,
 } from '../utils/accountFilters';
-import { resolveUpdaterDownloadUrl } from '../utils/updaterReleaseNotes';
+import {
+  getUpdaterReleaseHighlightLines,
+  resolveUpdaterDownloadUrl,
+} from '../utils/updaterReleaseNotes';
 import { applyReducedMotion } from '../utils/reducedMotion';
 import { getSubscriptionTier } from '../utils/account';
 import type { Account } from '../types/account';
@@ -81,6 +84,7 @@ import { getZedAccountDisplayEmail } from '../types/zed';
 import { ALL_PLATFORM_IDS, PlatformId } from '../types/platform';
 import { SettingsAccountTransferSection } from '../components/SettingsAccountTransferSection';
 import { SettingsWebdavSyncSection } from '../components/SettingsWebdavSyncSection';
+import { CodexSshSyncSettingsControl } from '../components/codex/CodexSshSyncSettingsControl';
 import { useEscClose } from '../hooks/useEscClose';
 import './settings/Settings.css';
 import { 
@@ -126,6 +130,9 @@ interface GeneralConfig {
   language: string;
   default_terminal: string;
   theme: string;
+  theme_color?: string;
+  external_network_enabled?: boolean;
+  webdav_allowed_domains?: string;
   reduced_motion_enabled: boolean;
   ui_scale: number;
   auto_refresh_minutes: number;
@@ -144,6 +151,8 @@ interface GeneralConfig {
   tray_icon_style?: 'template' | 'color';
   floating_card_show_on_startup?: boolean;
   startup_minimized?: boolean;
+  /** `last` = restore previous page; otherwise a page id like `dashboard` / `codex` */
+  startup_page?: string;
   floating_card_always_on_top?: boolean;
   app_auto_launch_enabled?: boolean;
   token_keeper_enabled?: boolean;
@@ -203,6 +212,7 @@ interface GeneralConfig {
   opencode_sync_on_switch: boolean;
   opencode_auth_overwrite_on_switch: boolean;
   openclaw_auth_overwrite_on_switch: boolean;
+  hermes_auth_overwrite_on_switch?: boolean;
   codex_launch_on_switch: boolean;
   antigravity_launch_on_switch: boolean;
   codex_restart_specified_app_on_switch: boolean;
@@ -310,11 +320,12 @@ type UpdateCheckFinishedDetail = {
   error?: string;
 };
 
-type ReleaseHistorySectionKey = 'added' | 'changed' | 'fixed' | 'removed';
+type ReleaseHistorySectionKey = 'highlights' | 'added' | 'changed' | 'fixed' | 'removed';
 
 interface ReleaseHistoryItem {
   version: string;
   date: string;
+  highlights?: string[];
   added: string[];
   changed: string[];
   fixed: string[];
@@ -456,6 +467,9 @@ export function SettingsPage() {
   const [language, setLanguage] = useState(getCurrentLanguage());
   const [defaultTerminal, setDefaultTerminal] = useState('system');
   const [theme, setTheme] = useState('system');
+  const [themeColor, setThemeColor] = useState('default');
+  const [externalNetworkEnabled, setExternalNetworkEnabled] = useState(true);
+  const [webdavAllowedDomains, setWebdavAllowedDomains] = useState('');
   const [reducedMotionEnabled, setReducedMotionEnabled] = useState(false);
   const [uiScale, setUiScale] = useState('1');
   const [autoRefresh, setAutoRefresh] = useState('5');
@@ -478,6 +492,7 @@ export function SettingsPage() {
   const [trayIconStyle, setTrayIconStyle] = useState<'template' | 'color'>('template');
   const [floatingCardShowOnStartup, setFloatingCardShowOnStartup] = useState(false);
   const [startupMinimized, setStartupMinimized] = useState(false);
+  const [startupPage, setStartupPage] = useState('last');
   const [floatingCardAlwaysOnTop, setFloatingCardAlwaysOnTop] = useState(false);
   const [appAutoLaunchEnabled, setAppAutoLaunchEnabled] = useState(false);
   const [tokenKeeperEnabled, setTokenKeeperEnabled] = useState(true);
@@ -490,6 +505,9 @@ export function SettingsPage() {
   const [opencodeAppPath, setOpencodeAppPath] = useState('');
   const [antigravityAppPath, setAntigravityAppPath] = useState('');
   const [codexAppPath, setCodexAppPath] = useState('');
+  const [codexAppScanRoots, setCodexAppScanRoots] = useState('');
+  const [codexLaunchCandidates, setCodexLaunchCandidates] = useState<AppLaunchCandidate[]>([]);
+  const [codexAppScanError, setCodexAppScanError] = useState('');
   const [claudeAppPath, setClaudeAppPath] = useState('');
   const [claudeAppScanRoots, setClaudeAppScanRoots] = useState('');
   const [codexSpecifiedAppPath, setCodexSpecifiedAppPath] = useState('');
@@ -579,6 +597,7 @@ export function SettingsPage() {
   const [opencodeSyncOnSwitch, setOpencodeSyncOnSwitch] = useState(false);
   const [opencodeAuthOverwriteOnSwitch, setOpencodeAuthOverwriteOnSwitch] = useState(false);
   const [openclawAuthOverwriteOnSwitch, setOpenclawAuthOverwriteOnSwitch] = useState(false);
+  const [hermesAuthOverwriteOnSwitch, setHermesAuthOverwriteOnSwitch] = useState(false);
   const [codexLaunchOnSwitch, setCodexLaunchOnSwitch] = useState(true);
   const [antigravityLaunchOnSwitch, setAntigravityLaunchOnSwitch] = useState(true);
   const [codexRestartSpecifiedAppOnSwitch, setCodexRestartSpecifiedAppOnSwitch] = useState(false);
@@ -981,6 +1000,9 @@ export function SettingsPage() {
       language,
       default_terminal: defaultTerminal,
       theme,
+      theme_color: themeColor || 'default',
+      external_network_enabled: externalNetworkEnabled,
+      webdav_allowed_domains: webdavAllowedDomains,
       reduced_motion_enabled: reducedMotionEnabled,
       ui_scale: normalizedUiScale,
       auto_refresh_minutes: autoRefreshNum,
@@ -1007,6 +1029,7 @@ export function SettingsPage() {
       tray_icon_style: isMacOS ? trayIconStyle : undefined,
       floating_card_show_on_startup: floatingCardShowOnStartup,
       startup_minimized: startupMinimized,
+      startup_page: startupPage || 'last',
       floating_card_always_on_top: floatingCardAlwaysOnTop,
       app_auto_launch_enabled: appAutoLaunchEnabled,
       token_keeper_enabled: tokenKeeperEnabled,
@@ -1038,6 +1061,7 @@ export function SettingsPage() {
       opencode_sync_on_switch: opencodeSyncOnSwitch,
       opencode_auth_overwrite_on_switch: opencodeAuthOverwriteOnSwitch,
       openclaw_auth_overwrite_on_switch: openclawAuthOverwriteOnSwitch,
+      hermes_auth_overwrite_on_switch: hermesAuthOverwriteOnSwitch,
       codex_launch_on_switch: codexLaunchOnSwitch,
       antigravity_launch_on_switch: antigravityLaunchOnSwitch,
       codex_restart_specified_app_on_switch: codexRestartSpecifiedAppOnSwitch,
@@ -1211,6 +1235,7 @@ export function SettingsPage() {
     isMacOS,
     floatingCardShowOnStartup,
     startupMinimized,
+    startupPage,
     floatingCardAlwaysOnTop,
     appAutoLaunchEnabled,
     tokenKeeperEnabled,
@@ -1220,6 +1245,9 @@ export function SettingsPage() {
     language,
     defaultTerminal,
     theme,
+    themeColor,
+    externalNetworkEnabled,
+    webdavAllowedDomains,
     reducedMotionEnabled,
     uiScale,
     opencodeAppPath,
@@ -1249,6 +1277,7 @@ export function SettingsPage() {
     opencodeSyncOnSwitch,
     opencodeAuthOverwriteOnSwitch,
     openclawAuthOverwriteOnSwitch,
+    hermesAuthOverwriteOnSwitch,
     codexLaunchOnSwitch,
     antigravityLaunchOnSwitch,
     codexRestartSpecifiedAppOnSwitch,
@@ -1525,6 +1554,9 @@ export function SettingsPage() {
       setLanguage(normalizeLanguage(config.language));
       setDefaultTerminal(config.default_terminal || 'system');
       setTheme(config.theme);
+      setThemeColor((config.theme_color || 'default').trim() || 'default');
+      setExternalNetworkEnabled(config.external_network_enabled ?? true);
+      setWebdavAllowedDomains(config.webdav_allowed_domains || '');
       setReducedMotionEnabled(Boolean(config.reduced_motion_enabled ?? false));
       setUiScale(String(config.ui_scale ?? 1));
       setAutoRefresh(String(config.auto_refresh_minutes));
@@ -1541,6 +1573,7 @@ export function SettingsPage() {
       setTrayIconStyle(config.tray_icon_style === 'color' ? 'color' : 'template');
       setFloatingCardShowOnStartup(config.floating_card_show_on_startup ?? false);
       setStartupMinimized(config.startup_minimized ?? false);
+      setStartupPage((config.startup_page || 'last').trim() || 'last');
       setFloatingCardAlwaysOnTop(config.floating_card_always_on_top ?? false);
       setAppAutoLaunchEnabled(config.app_auto_launch_enabled ?? false);
       setTokenKeeperEnabled(config.token_keeper_enabled ?? true);
@@ -1606,6 +1639,7 @@ export function SettingsPage() {
       setOpencodeSyncOnSwitch(config.opencode_sync_on_switch ?? false);
       setOpencodeAuthOverwriteOnSwitch(config.opencode_auth_overwrite_on_switch ?? false);
       setOpenclawAuthOverwriteOnSwitch(config.openclaw_auth_overwrite_on_switch ?? false);
+      setHermesAuthOverwriteOnSwitch(config.hermes_auth_overwrite_on_switch ?? false);
       setCodexLaunchOnSwitch(config.codex_launch_on_switch ?? true);
       setAntigravityLaunchOnSwitch(config.antigravity_launch_on_switch ?? true);
       setCodexRestartSpecifiedAppOnSwitch(
@@ -1919,6 +1953,8 @@ export function SettingsPage() {
       setAntigravityAppPath(path);
     } else if (target === 'codex') {
       setCodexAppPath(path);
+      setCodexLaunchCandidates([]);
+      setCodexAppScanError('');
     } else if (target === 'claude') {
       setClaudeAppPath(path);
     } else if (target === 'vscode') {
@@ -1951,6 +1987,9 @@ export function SettingsPage() {
   };
 
   const getResetLabelByTarget = (target: AppPathTarget) => {
+    if (target === 'codex' && isWindows) {
+      return t('appPath.missing.scanApps', '扫描应用');
+    }
     if (target === 'vscode') {
       return t('settings.general.vscodePathReset', '重置默认');
     }
@@ -2033,6 +2072,28 @@ export function SettingsPage() {
     setClaudeLaunchCandidates([]);
   };
 
+  const handlePickCodexScanRoot = async () => {
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: true,
+      });
+      const path = Array.isArray(selected) ? selected[0] : selected;
+      if (!path) return;
+      setCodexAppScanRoots(path);
+      setCodexLaunchCandidates([]);
+      setCodexAppScanError('');
+    } catch (err) {
+      console.error('选择 Codex 扫描范围失败:', err);
+    }
+  };
+
+  const handleClearCodexScanRoot = () => {
+    setCodexAppScanRoots('');
+    setCodexLaunchCandidates([]);
+    setCodexAppScanError('');
+  };
+
   const handlePickTraeScanRoot = async (target: TraeAppPathTarget) => {
     try {
       const selected = await open({
@@ -2077,6 +2138,22 @@ export function SettingsPage() {
       return next;
     });
     try {
+      if (target === 'codex' && isWindows) {
+        setCodexAppScanError('');
+        const candidates = await invoke<AppLaunchCandidate[]>('scan_app_launch_targets', {
+          app: target,
+          scanRoots: codexAppScanRoots.trim() || null,
+        });
+        setCodexLaunchCandidates(candidates);
+        if (candidates.length === 0) {
+          setCodexAppScanError(
+            t('appPath.missing.scanEmptyGeneric', '未扫描到 {{app}}，请手动选择路径或调整扫描范围。', {
+              app: t('nav.codex', 'Codex'),
+            }),
+          );
+        }
+        return;
+      }
       if (target === 'claude') {
         const candidates = await invoke<ClaudeDesktopLaunchCandidate[]>(
           'scan_claude_desktop_launch_targets',
@@ -2113,7 +2190,11 @@ export function SettingsPage() {
       setAppPathForTarget(target, detected || '');
     } catch (err) {
       console.error('重置启动路径失败:', err);
-      setAppPathForTarget(target, '');
+      if (target === 'codex' && isWindows) {
+        setCodexAppScanError(String(err));
+      } else {
+        setAppPathForTarget(target, '');
+      }
     } finally {
       setAppPathResetDetectingTargets((prev) => {
         const next = new Set(prev);
@@ -2125,6 +2206,11 @@ export function SettingsPage() {
 
   const handleSelectClaudeLaunchCandidate = (candidate: ClaudeDesktopLaunchCandidate) => {
     setClaudeAppPath(candidate.target);
+  };
+
+  const handleSelectCodexLaunchCandidate = (candidate: AppLaunchCandidate) => {
+    setCodexAppScanError('');
+    setCodexAppPath(candidate.target);
   };
 
   const handleSelectTraeLaunchCandidate = (target: TraeAppPathTarget, candidate: AppLaunchCandidate) => {
@@ -2950,6 +3036,7 @@ export function SettingsPage() {
     Array<{ key: ReleaseHistorySectionKey; label: string }>
   >(
     () => [
+      { key: 'highlights', label: t('settings.about.releaseHistorySectionHighlights', '重要更新') },
       { key: 'added', label: t('settings.about.releaseHistorySectionAdded', '新增') },
       { key: 'changed', label: t('settings.about.releaseHistorySectionChanged', '变更') },
       { key: 'fixed', label: t('settings.about.releaseHistorySectionFixed', '修复') },
@@ -2966,7 +3053,14 @@ export function SettingsPage() {
         locale: language,
         limit: 30,
       });
-      setReleaseHistoryItems(Array.isArray(items) ? items : []);
+      setReleaseHistoryItems(
+        Array.isArray(items)
+          ? items.map((item) => ({
+              ...item,
+              highlights: getUpdaterReleaseHighlightLines(item.version, language),
+            }))
+          : [],
+      );
     } catch (error) {
       console.error('加载更新记录失败:', error);
       setReleaseHistoryItems([]);
@@ -3625,6 +3719,149 @@ export function SettingsPage() {
                   </label>
                 </div>
               </div>
+
+              <div className="settings-row">
+                <div className="row-label">
+                  <div className="row-title">
+                    {t('settings.general.startupPage', '启动默认页')}
+                  </div>
+                  <div className="row-desc">
+                    {t(
+                      'settings.general.startupPageDesc',
+                      '应用冷启动时打开的页面；选“记住上次”则恢复上次离开时的页面'
+                    )}
+                  </div>
+                </div>
+                <div className="row-control">
+                  <select
+                    className="settings-select"
+                    value={startupPage}
+                    onChange={(e) => setStartupPage(e.target.value)}
+                  >
+                    <option value="last">
+                      {t('settings.general.startupPageLast', '记住上次')}
+                    </option>
+                    <option value="dashboard">{t('nav.dashboard', '仪表盘')}</option>
+                    <option value="overview">{t('nav.overview', 'Antigravity IDE')}</option>
+                    <option value="codex">{t('nav.codex', 'Codex')}</option>
+                    <option value="codex-api-service">
+                      {t('settings.general.startupPageCodexApi', 'Codex API 服务')}
+                    </option>
+                    <option value="claude">{t('nav.claude', 'Claude')}</option>
+                    <option value="github-copilot">{t('nav.githubCopilot', 'GitHub Copilot')}</option>
+                    <option value="windsurf">{t('nav.windsurf', 'Windsurf')}</option>
+                    <option value="kiro">Kiro</option>
+                    <option value="cursor">Cursor</option>
+                    <option value="grok">Grok CLI</option>
+                    <option value="codebuddy">{t('nav.codebuddy', 'CodeBuddy')}</option>
+                    <option value="codebuddy-cn">{t('nav.codebuddyCn', 'CodeBuddy CN')}</option>
+                    <option value="qoder">{t('nav.qoder', 'Qoder')}</option>
+                    <option value="zcode">ZCode</option>
+                    <option value="trae">{t('nav.trae', 'Trae')}</option>
+                    <option value="trae-solo">{t('nav.traeSolo', 'TRAE SOLO')}</option>
+                    <option value="trae-cn">{t('nav.traeCn', 'Trae CN')}</option>
+                    <option value="trae-solo-cn">{t('nav.traeSoloCn', 'TRAE SOLO CN')}</option>
+                    <option value="workbuddy">WorkBuddy</option>
+                    <option value="zed">{t('nav.zed', 'Zed')}</option>
+                    <option value="instances">{t('nav.instances', '应用多开')}</option>
+                    <option value="wakeup">{t('nav.wakeup', '唤醒任务')}</option>
+                    <option value="2fa">{t('nav.2faManager', '2FA 管理')}</option>
+                    <option value="api-relay">{t('nav.apiRelay', '中转站')}</option>
+                    <option value="manual">{t('nav.manual', '使用手册')}</option>
+                    <option value="settings">{t('nav.settings', '设置')}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="settings-row">
+                <div className="row-label">
+                  <div className="row-title">
+                    {t('settings.general.themeColor', '主题色套件')}
+                  </div>
+                  <div className="row-desc">
+                    {t(
+                      'settings.general.themeColorDesc',
+                      '在浅色/深色之上叠加配色包（Nord、Tokyo Night 等）'
+                    )}
+                  </div>
+                </div>
+                <div className="row-control">
+                  <select
+                    className="settings-select"
+                    value={themeColor}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setThemeColor(next);
+                      try {
+                        document.documentElement.setAttribute('data-theme-color', next);
+                      } catch {
+                        /* ignore */
+                      }
+                    }}
+                  >
+                    <option value="default">{t('settings.general.themeColorDefault', '默认')}</option>
+                    <option value="nord">{t('settings.general.themeColorNord', 'Nord')}</option>
+                    <option value="tokyo-night">
+                      {t('settings.general.themeColorTokyoNight', 'Tokyo Night')}
+                    </option>
+                    <option value="catppuccin">
+                      {t('settings.general.themeColorCatppuccin', 'Catppuccin')}
+                    </option>
+                    <option value="gruvbox">
+                      {t('settings.general.themeColorGruvbox', 'Gruvbox')}
+                    </option>
+                    <option value="everforest">
+                      {t('settings.general.themeColorEverforest', 'Everforest')}
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="settings-row">
+                <div className="row-label">
+                  <div className="row-title">
+                    {t('settings.general.externalNetwork', '允许外连')}
+                  </div>
+                  <div className="row-desc">
+                    {t(
+                      'settings.general.externalNetworkDesc',
+                      '关闭后阻断 WebDAV 同步与 OpenRouter 用量刷新（不影响应用更新等其他网络）'
+                    )}
+                  </div>
+                </div>
+                <div className="row-control">
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={externalNetworkEnabled}
+                      onChange={(e) => setExternalNetworkEnabled(e.target.checked)}
+                    />
+                    <span className="slider"></span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="settings-row">
+                <div className="row-label">
+                  <div className="row-title">
+                    {t('settings.general.webdavAllowedDomains', 'WebDAV 域名白名单')}
+                  </div>
+                  <div className="row-desc">
+                    {t(
+                      'settings.general.webdavAllowedDomainsDesc',
+                      '逗号分隔；留空不限制。非空时同步 URL 主机必须匹配'
+                    )}
+                  </div>
+                </div>
+                <div className="row-control">
+                  <input
+                    className="settings-input"
+                    value={webdavAllowedDomains}
+                    onChange={(e) => setWebdavAllowedDomains(e.target.value)}
+                    placeholder="example.com, dav.example.org"
+                  />
+                </div>
+              </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ order: platformSettingsOrder.antigravity }}>
@@ -4216,19 +4453,56 @@ export function SettingsPage() {
                 </>
               )}
 
+              <CodexSshSyncSettingsControl variant="settings" />
+
               <div className="settings-row">
                 <div className="row-label">
                   <div className="row-title">{t('settings.general.codexAppPath', 'Codex 启动路径')}</div>
                   <div className="row-desc">{t('settings.general.codexAppPathDesc', '留空则使用默认路径')}</div>
                 </div>
-                <div className="row-control row-control--grow">
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: 1 }}>
+                <div className="row-control row-control--grow settings-claude-launch-control">
+                  {isWindows ? (
+                    <div className="settings-claude-scan-roots">
+                      <label>{t('appPath.missing.scanRoots', '扫描范围')}</label>
+                      <div className="settings-claude-scan-root-row">
+                        <input
+                          type="text"
+                          className="settings-input settings-claude-scan-roots-input"
+                          value={codexAppScanRoots}
+                          placeholder={t(
+                            'appPath.missing.scanRootsPlaceholder',
+                            '可选，选择一个目录或盘符；留空时按盘符扫描 WindowsApps 并补充开始菜单应用。',
+                          )}
+                          readOnly
+                        />
+                        <button
+                          className="btn btn-secondary"
+                          onClick={handlePickCodexScanRoot}
+                          disabled={isAppPathResetDetecting('codex')}
+                        >
+                          {t('settings.general.codexPathSelect', '选择')}
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={handleClearCodexScanRoot}
+                          disabled={isAppPathResetDetecting('codex') || !codexAppScanRoots.trim()}
+                        >
+                          {t('common.clear', '清除')}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="settings-claude-launch-row">
                     <input
                       type="text"
                       className="settings-input settings-input--path"
                       value={codexAppPath}
                       placeholder={t('settings.general.codexAppPathPlaceholder', '默认路径')}
-                      onChange={(e) => setCodexAppPath(e.target.value)}
+                      onChange={(e) => {
+                        setCodexLaunchCandidates([]);
+                        setCodexAppScanError('');
+                        setCodexAppPath(e.target.value);
+                      }}
                     />
                     <button
                       className="btn btn-secondary"
@@ -4248,6 +4522,33 @@ export function SettingsPage() {
                         : getResetLabelByTarget('codex')}
                     </button>
                   </div>
+                  {isWindows && codexLaunchCandidates.length > 0 ? (
+                    <div className="settings-claude-candidate-list">
+                      {codexLaunchCandidates.map((candidate) => (
+                        <button
+                          key={`${candidate.target_type}:${candidate.target}`}
+                          type="button"
+                          className={`settings-claude-candidate-item${
+                            codexAppPath.trim() === candidate.target ? ' selected' : ''
+                          }`}
+                          onClick={() => handleSelectCodexLaunchCandidate(candidate)}
+                        >
+                          <div className="settings-claude-candidate-main">
+                            <span>{candidate.label || t('nav.codex', 'Codex')}</span>
+                            <span className="settings-claude-candidate-badge">EXE</span>
+                          </div>
+                          <div className="settings-claude-candidate-target">
+                            {candidate.target}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  {codexAppScanError ? (
+                    <p className="settings-app-path-error" role="alert">
+                      {codexAppScanError}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
@@ -4389,6 +4690,30 @@ export function SettingsPage() {
                       type="checkbox"
                       checked={openclawAuthOverwriteOnSwitch}
                       onChange={(e) => setOpenclawAuthOverwriteOnSwitch(e.target.checked)}
+                    />
+                    <span className="slider"></span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="settings-row">
+                <div className="row-label">
+                  <div className="row-title">
+                    {t('settings.general.hermesAuthOverwrite', '切换 Codex 时同步 Hermes')}
+                  </div>
+                  <div className="row-desc">
+                    {t(
+                      'settings.general.hermesAuthOverwriteDesc',
+                      '仅 OAuth 账号：切号后写入 ~/.hermes/auth.json 的 openai-codex 凭据（默认关闭）'
+                    )}
+                  </div>
+                </div>
+                <div className="row-control">
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={hermesAuthOverwriteOnSwitch}
+                      onChange={(e) => setHermesAuthOverwriteOnSwitch(e.target.checked)}
                     />
                     <span className="slider"></span>
                   </label>

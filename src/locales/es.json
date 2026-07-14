@@ -2,6 +2,8 @@
   "common": {
     "confirm": "Confirmar",
     "cancel": "Cancelar",
+    "cancelling": "Cancelando...",
+    "cancelled": "Cancelado",
     "save": "Guardar",
     "saving": "Guardando...",
     "delete": "Eliminar",
@@ -270,7 +272,9 @@
     "switchClassicLayoutConfirm": "Cambiar ahora",
     "2faManager": "Gestión 2FA",
     "apiRelay": "Relé",
-    "claude": "Claude"
+    "claude": "Claude",
+    "openrouter": "OpenRouter",
+    "opencode": "OpenCode"
   },
   "sponsors": {
     "pageTitle": "Patrocinadores",
@@ -816,7 +820,25 @@
       "autoImportFromLocalScanEmpty": "Listo: sin inicios importables",
       "autoImportFromLocalScanPartial": "Listo: fallos parciales",
       "autoImportFromLocalScanFailed": "Error de escaneo: {{error}}",
-      "autoImportFromLocalScanCancelled": "Desactivado; se ignorará el escaneo en curso"
+      "autoImportFromLocalScanCancelled": "Desactivado; se ignorará el escaneo en curso",
+      "startupPage": "Página de inicio",
+      "startupPageDesc": "Página al arranque en frío. «Recordar última» restaura la página anterior.",
+      "startupPageLast": "Recordar última",
+      "startupPageCodexApi": "Servicio API Codex",
+      "hermesAuthOverwrite": "Sincronizar Hermes al cambiar Codex",
+      "hermesAuthOverwriteDesc": "Solo OAuth: escribe openai-codex en ~/.hermes/auth.json (desactivado por defecto)",
+      "themeColor": "Paquete de color",
+      "themeColorDesc": "Aplica un paquete sobre claro/oscuro",
+      "themeColorDefault": "Predeterminado",
+      "themeColorNord": "Nord",
+      "themeColorTokyoNight": "Tokyo Night",
+      "themeColorCatppuccin": "Catppuccin",
+      "themeColorGruvbox": "Gruvbox",
+      "themeColorEverforest": "Everforest",
+      "externalNetwork": "Permitir red externa",
+      "externalNetworkDesc": "Desactivado: bloquea WebDAV, uso de OpenRouter, anuncios y comprobaciones de actualización (lo local sigue).",
+      "webdavAllowedDomains": "Lista blanca WebDAV",
+      "webdavAllowedDomainsDesc": "Separado por comas; vacío = sin límite"
     },
     "network": {
       "apiTitle": "API de cabina antigravedad",
@@ -881,6 +903,7 @@
       "releaseHistoryLoading": "Cargando notas de la versión...",
       "releaseHistoryEmpty": "Aún no hay notas de lanzamiento",
       "releaseHistoryLoadFailed": "No se pudo cargar: {{error}}",
+      "releaseHistorySectionHighlights": "Novedades destacadas",
       "releaseHistorySectionAdded": "Agregado",
       "releaseHistorySectionChanged": "Cambió",
       "releaseHistorySectionFixed": "Fijado",
@@ -1045,6 +1068,19 @@
       "retentionUnit": "days",
       "collapseAll": "Collapse remote backups",
       "expandAll": "Expand all remote backups ({{count}} more)"
+    },
+    "keysVault": {
+      "title": "OpenRouter / OpenCode Key",
+      "desc": "Guarda claves API en local. Actualiza el uso de OpenRouter si hay red externa. No es una plataforma completa.",
+      "openRouter": "OpenRouter",
+      "openCode": "OpenCode Go / Zen",
+      "label": "Etiqueta",
+      "empty": "Sin claves",
+      "added": "Añadido",
+      "deleted": "Eliminado",
+      "refreshed": "Uso actualizado",
+      "usage": "Uso",
+      "tierOther": "Otro"
     }
   },
   "appPath": {
@@ -1741,7 +1777,8 @@
       "title": "Agregar cuenta de Codex",
       "oauth": "Autorización OAuth",
       "token": "Importar JSON",
-      "local": "Importación local"
+      "local": "Importación local",
+      "accessToken": "Token de acceso"
     },
     "oauth": {
       "desc": "Haz clic abajo y completa la autorización en el navegador",
@@ -2131,7 +2168,12 @@
     },
     "list": {
       "showCodeReviewQuota": "Mostrar cuota de Code Review",
-      "showAdditionalQuota": "Cuotas por modelo"
+      "showAdditionalQuota": "Cuotas por modelo",
+      "planBadgeStyle": "Estilo de insignia",
+      "planBadgeStyleDefault": "Predeterminado",
+      "planBadgeStyleOutline": "Contorno",
+      "planBadgeStyleSoft": "Suave",
+      "planBadgeStyleMono": "Monocromo"
     },
     "time": {
       "today": "Hoy {{time}}",
@@ -2391,7 +2433,8 @@
         "selectAllSessions": "Seleccionar sesiones",
         "clearSelectedSessions": "Deseleccionar",
         "copyToInstance": "Copiar a instancia",
-        "trash": "Papelera"
+        "trash": "Papelera",
+        "openRollout": "Abrir archivo de sesión"
       },
       "confirm": {
         "title": "Mover a la papelera",
@@ -2593,7 +2636,15 @@
         "removeItem": "Retirar",
         "emptyFilteredTitle": "Sin sesiones coincidentes",
         "emptyFilteredDesc": "Ajusta búsqueda, origen o selección e inténtalo de nuevo."
-      }
+      },
+      "kindFilter": "Tipo de sesión",
+      "kind": {
+        "conversation": "Chats",
+        "external": "Externa",
+        "subagent": "Subagente",
+        "all": "Todos"
+      },
+      "pickInstancePrompt": "La sesión existe en varias instancias. Introduce el ID de instancia:"
     },
     "api": {
       "baseUrl": "URL base",
@@ -2607,6 +2658,20 @@
       "showApiKey": "Mostrar API Key",
       "hideApiKey": "Ocultar API Key",
       "apiKeyHiddenHint": "API Key oculta. Haz clic para mostrarla.",
+      "modelCatalog": {
+        "label": "Lista de modelos",
+        "fetch": "Obtener del proveedor",
+        "fetching": "Obteniendo...",
+        "count": "{{count}} modelos",
+        "placeholder": "Introduce un ID de modelo por línea o separa los ID con comas.",
+        "editHint": "Los modelos obtenidos solo se añaden a este borrador. Revísalos y edítalos antes de guardar.",
+        "syncToggle": "Sincronizar modelos del proveedor con Codex",
+        "syncDescription": "Al guardar, esta lista generará el catálogo de modelos de Codex administrado por Cockpit. Los catálogos personalizados no se sobrescriben.",
+        "fetchCredentialsRequired": "Introduce primero la API Key y la Base URL.",
+        "fetchEmpty": "El proveedor no devolvió modelos. Se conservó la lista actual.",
+        "fetchFailed": "No se pudieron obtener los modelos del proveedor: {{error}}",
+        "syncRequiresModels": "Obtén o introduce al menos un modelo antes de sincronizar con Codex."
+      },
       "actions": {
         "addAndSwitch": "Añadir y cambiar"
       },
@@ -2983,7 +3048,10 @@
         "help": "Actívalo solo si el proveedor admite explícitamente Responses mediante WebSocket; confirma el transporte en los registros de Codex o del servicio proxy.",
         "enabled": "Activado",
         "disabled": "Desactivado"
-      }
+      },
+      "renameApiKeyPrompt": "Renombrar API key",
+      "renameApiKeySuccess": "API key renombrada",
+      "renameApiKeyFailed": "Error al renombrar API key: {{error}}"
     },
     "quickSwitch": {
       "action": "Cambio rápido de proveedor",
@@ -3326,8 +3394,20 @@
       "previewSubtitle": "Selecciona cuentas para guardar",
       "scanSubtitle": "Analizando y revisando cuentas una por una",
       "parseSubtitle": "Analizando archivos de cuentas",
+      "importSubtitle": "Guardando las cuentas seleccionadas",
+      "finalizing": "Finalizando la importación",
+      "finalizingSubtitle": "Actualizando la lista de cuentas y los ajustes relacionados",
+      "cancelImport": "Cancelar importación",
+      "importCancelledSummary": "Importación cancelada tras procesar {{processed}}/{{total}} cuentas.",
+      "importChecked": "Importar cuentas verificadas",
+      "directImport": "Importar directamente sin verificar",
+      "importCheckedAndAddToApiService": "Importar cuentas verificadas y añadirlas al servicio API",
+      "directImportAndAddToApiService": "Importar directamente y añadir al servicio API",
+      "viewAllTasks": "Ver las {{count}} tareas",
+      "collapseTasks": "Contraer tareas",
       "cancelling": "Cancelando...",
       "scanDone": "Escaneo completo",
+      "scanCompleteReview": "Comprobación completa; revisa el resultado",
       "parseDone": "Análisis completo",
       "scanning": "Escaneando",
       "parsing": "Analizando",
@@ -3336,7 +3416,7 @@
       "failed": "Fallidas",
       "quotaOk": "Cuenta OK",
       "quotaFailed": "Anomalía",
-      "checkQuotaToggle": "Comprobar cuentas",
+      "checkQuotaToggle": "Comprobar antes de importar",
       "preparing": "Preparando importación...",
       "importSelected": "Importar cuentas seleccionadas",
       "noSelection": "Selecciona cuentas para importar",
@@ -3359,7 +3439,17 @@
       "taskRunning": "Procesando {{current}} / {{total}}",
       "taskPreview": "{{total}} vista(s) previa(s) listas",
       "reopen": "Ver tarea",
-      "dismissTask": "Descartar"
+      "dismissTask": "Descartar",
+      "queueCount": "{{count}} tareas en cola",
+      "queued": "En cola",
+      "batchLabel": "Lote {{index}}",
+      "runInBackground": "Fondo",
+      "cancelQueued": "Cancelar cola",
+      "importing": "Importador",
+      "checkAccounts": "comprobar cuentas",
+      "importAndAddToApiService": "Importar + API",
+      "importAndAddToApiServiceSuccess": "Importado y agregado al servicio API",
+      "addToApiServiceFailed": "Importado, pero falló al agregarlo al servicio API: {{error}}"
     },
     "autoRepairMode": {
       "label": "Lógica de autorreparación",
@@ -3406,6 +3496,71 @@
       "chipSearch": "Buscar",
       "chipPlan": "Plan tarifario",
       "chipFolder": "Carpeta"
+    },
+    "accessTokenImport": {
+      "nameRequired": "Introduce un nombre de cuenta",
+      "tokenRequired": "Introduce un access token de Codex",
+      "desc": "Guarda una cuenta por access token. Sin refresh/id se escribe personal_access_token.",
+      "nameLabel": "Nombre de cuenta",
+      "namePlaceholder": "Nombre en la lista",
+      "tokenLabel": "Access token de Codex",
+      "hideToken": "Ocultar",
+      "showToken": "Mostrar",
+      "submit": "Importar token",
+      "success": "Cuenta de access token importada: {{name}}"
+    },
+    "ssh": {
+      "tab": "Sync SSH",
+      "title": "Sync SSH de Codex",
+      "desc": "Guarda hosts, prueba la conexión y envía auth.json. Sincroniza al cambiar de cuenta si hay host seleccionado.",
+      "new": "Nuevo",
+      "empty": "Sin hosts SSH",
+      "test": "Probar",
+      "sync": "Sincronizar",
+      "saved": "Servidor SSH guardado",
+      "deleted": "Eliminado",
+      "name": "Nombre",
+      "host": "Host",
+      "user": "Usuario",
+      "port": "Puerto",
+      "remoteDir": "Directorio Codex remoto",
+      "syncSwitch": "SSH en el interruptor",
+      "syncSwitchDesc": "Actívelo para configurar un host SSH; Los interruptores Codex sincronizan la cuenta actual de forma remota.",
+      "configure": "Configuración",
+      "modalTitle": "Configuración de sincronización SSH",
+      "modalHint": "Agregue y seleccione un host SSH con sincronización automática habilitada para que los conmutadores de cuenta Codex actualicen la autenticación remota.",
+      "subtitle": "El host seleccionado recibe el paquete de autenticación actual del Codex después de cambiar de cuenta.",
+      "addServer": "Agregar servidor",
+      "editServer": "Editar servidor",
+      "username": "Nombre de usuario",
+      "codexHome": "Directorio remoto del Codex",
+      "authMethod": "método de autenticación",
+      "agentAuth": "Agente SSH",
+      "privateKeyAuth": "clave privada",
+      "privateKeyPath": "Ruta clave",
+      "syncOnSwitch": "Sincronización después del cambio",
+      "emptyTitle": "Sin servidores SSH",
+      "emptyBody": "Complete un host a la izquierda y guárdelo como destino de sincronización del interruptor.",
+      "selected": "Seleccionado",
+      "select": "Seleccionar",
+      "testConnection": "Prueba",
+      "syncNow": "Sincronizar ahora",
+      "connectionOk": "Conectado",
+      "syncVerified": "Sincronización SSH verificada",
+      "syncFailed": "Error de sincronización SSH",
+      "syncedAs": "Sincronizado {{email}} · {{time}}",
+      "neverSynced": "Aún no sincronizado",
+      "latestVerified": "Última sincronización SSH verificada",
+      "syncSwitchActive": "En · {{name}} ({{user}}@{{host}})",
+      "footerHint": "El interruptor se enciende después de guardar; Apáguelo en cualquier momento para detener la sincronización automática.",
+      "formLead": "Detalles del host remoto",
+      "namePlaceholder": "p.ej. InicioNAS",
+      "syncOnSwitchHint": "Después de guardar y seleccionar, los interruptores del Codex envían autenticación a este host",
+      "addAndSave": "Agregar y guardar",
+      "serverList": "Servidores",
+      "serverListLead": "Elige el objetivo de sincronización",
+      "serverCount": "{{count}} servidores",
+      "autoSyncBadge": "Automático"
     }
   },
   "githubCopilot": {
@@ -4323,6 +4478,12 @@
     },
     "quota": {
       "usedOfTotal": "{{used}} / {{total}}​"
+    },
+    "sessions": {
+      "title": "Archivos de sesión locales",
+      "desc": "Archivos de sesión locales — Escaneo local y apertura de ubicación.",
+      "empty": "Sin archivos de sesión",
+      "open": "Abrir ubicación"
     }
   },
   "qoder": {
@@ -5042,7 +5203,8 @@
       "installHint": "Ejecuta el siguiente comando oficial en la terminal y, cuando termine la instalación, pulsa Actualizar.",
       "selectWorkingDir": "Seleccionar directorio de trabajo de Grok CLI",
       "workingDirAccountHint": "El directorio de trabajo está vinculado a esta cuenta y se restaurará en el próximo inicio.",
-      "launchCommandPlaceholder": "Elige o confirma un directorio para generar el comando de inicio"
+      "launchCommandPlaceholder": "Elige o confirma un directorio para generar el comando de inicio",
+      "reauthLaunchHint": "La autenticación de la cuenta expiró. Reautorizar; El siguiente comando de inicio todavía está disponible."
     },
     "switch": {
       "success": "Cuenta cambiada"
@@ -5325,5 +5487,23 @@
       "supports1mLabel": "Declarar 1M",
       "supports1mShort": "1M contexto"
     }
+  },
+  "openrouter": {
+    "title": "OpenRouter",
+    "desc": "Gestiona claves API de OpenRouter, uso y modelos.",
+    "tabKeys": "Claves y uso",
+    "tabModels": "Modelos",
+    "modelsLoaded": "{{count}} modelos cargados",
+    "noUsageYet": "Uso aún no actualizado",
+    "loadModels": "Cargar modelos",
+    "searchModels": "Buscar modelos",
+    "freeOnly": "Solo gratis",
+    "noModels": "Sin modelos — añade una clave y carga.",
+    "free": "Gratis",
+    "noCtx": "Sin longitud de contexto"
+  },
+  "opencode": {
+    "title": "OpenCode",
+    "desc": "Gestiona claves OpenCode Go/Zen y filtra por nivel."
   }
 }

@@ -2,6 +2,8 @@
   "common": {
     "confirm": "確認",
     "cancel": "キャンセル",
+    "cancelling": "キャンセル中...",
+    "cancelled": "キャンセル済み",
     "save": "保存",
     "saving": "保存中...",
     "delete": "削除",
@@ -270,7 +272,9 @@
     "switchClassicLayoutConfirm": "今すぐ切り替える",
     "2faManager": "2FA管理",
     "apiRelay": "リレー",
-    "claude": "Claude"
+    "claude": "Claude",
+    "openrouter": "OpenRouter",
+    "opencode": "OpenCode"
   },
   "sponsors": {
     "pageTitle": "スポンサー",
@@ -816,7 +820,25 @@
       "autoImportFromLocalScanEmpty": "完了：取り込めるログインがありません",
       "autoImportFromLocalScanPartial": "完了：一部失敗。アカウントページから手動取り込みできます",
       "autoImportFromLocalScanFailed": "スキャン失敗：{{error}}",
-      "autoImportFromLocalScanCancelled": "オフにしました。進行中のスキャン結果は無視されます"
+      "autoImportFromLocalScanCancelled": "オフにしました。進行中のスキャン結果は無視されます",
+      "startupPage": "起動ページ",
+      "startupPageDesc": "コールドスタート時に開くページ。「前回を記憶」で前回のページを復元します。",
+      "startupPageLast": "前回を記憶",
+      "startupPageCodexApi": "Codex API サービス",
+      "hermesAuthOverwrite": "Codex 切替時に Hermes を同期",
+      "hermesAuthOverwriteDesc": "OAuth のみ：切替後に ~/.hermes/auth.json の openai-codex 資格情報を更新（既定オフ）",
+      "themeColor": "カラーパック",
+      "themeColorDesc": "明暗テーマに配色パックを重ねます",
+      "themeColorDefault": "標準",
+      "themeColorNord": "Nord",
+      "themeColorTokyoNight": "Tokyo Night",
+      "themeColorCatppuccin": "Catppuccin",
+      "themeColorGruvbox": "Gruvbox",
+      "themeColorEverforest": "Everforest",
+      "externalNetwork": "外部通信を許可",
+      "externalNetworkDesc": "オフ時は WebDAV・OpenRouter 使用量・お知らせ・自動更新チェックを遮断します（ローカル機能は継続）。",
+      "webdavAllowedDomains": "WebDAV ドメイン許可リスト",
+      "webdavAllowedDomainsDesc": "カンマ区切り。空なら制限なし"
     },
     "network": {
       "apiTitle": "反重力コックピット API",
@@ -881,6 +903,7 @@
       "releaseHistoryLoading": "リリースノートを読み込んでいます...",
       "releaseHistoryEmpty": "リリースノートはまだありません",
       "releaseHistoryLoadFailed": "ロードに失敗しました: {{error}}",
+      "releaseHistorySectionHighlights": "重要な更新",
       "releaseHistorySectionAdded": "追加した",
       "releaseHistorySectionChanged": "変更されました",
       "releaseHistorySectionFixed": "修理済み",
@@ -1045,6 +1068,19 @@
       "retentionUnit": "days",
       "collapseAll": "Collapse remote backups",
       "expandAll": "Expand all remote backups ({{count}} more)"
+    },
+    "keysVault": {
+      "title": "OpenRouter / OpenCode Key",
+      "desc": "API キーをアプリデータにローカル保存します。外連 ON で OpenRouter 使用量を更新できます。完全なプラットフォームではありません。",
+      "openRouter": "OpenRouter",
+      "openCode": "OpenCode Go / Zen",
+      "label": "ラベル",
+      "empty": "Key がありません",
+      "added": "追加しました",
+      "deleted": "削除しました",
+      "refreshed": "使用量を更新しました",
+      "usage": "使用量",
+      "tierOther": "その他"
     }
   },
   "appPath": {
@@ -1741,7 +1777,8 @@
       "title": "Codex アカウントを追加",
       "oauth": "OAuth 認証",
       "token": "JSON インポート",
-      "local": "ローカルインポート"
+      "local": "ローカルインポート",
+      "accessToken": "アクセストークン"
     },
     "oauth": {
       "desc": "下のボタンをクリックしてブラウザで OpenAI 認可を完了してください",
@@ -2131,7 +2168,12 @@
     },
     "list": {
       "showCodeReviewQuota": "Code Review 配額を表示",
-      "showAdditionalQuota": "モデル専用枠を表示"
+      "showAdditionalQuota": "モデル専用枠を表示",
+      "planBadgeStyle": "プランバッジ様式",
+      "planBadgeStyleDefault": "標準",
+      "planBadgeStyleOutline": "枠線",
+      "planBadgeStyleSoft": "ソフト",
+      "planBadgeStyleMono": "モノクロ"
     },
     "time": {
       "today": "今日 {{time}}",
@@ -2391,7 +2433,8 @@
         "selectAllSessions": "全セッションを選択",
         "clearSelectedSessions": "選択解除",
         "copyToInstance": "インスタンスへコピー",
-        "trash": "ゴミ箱"
+        "trash": "ゴミ箱",
+        "openRollout": "セッションファイルを開く"
       },
       "confirm": {
         "title": "ゴミ箱へ移動",
@@ -2593,7 +2636,15 @@
         "removeItem": "外す",
         "emptyFilteredTitle": "一致する会話がありません",
         "emptyFilteredDesc": "検索、ソース、選択状態を調整してください。"
-      }
+      },
+      "kindFilter": "セッション種別",
+      "kind": {
+        "conversation": "会話",
+        "external": "外部",
+        "subagent": "サブエージェント",
+        "all": "すべて"
+      },
+      "pickInstancePrompt": "このセッションは複数インスタンスにあります。インスタンス ID を入力:"
     },
     "api": {
       "baseUrl": "ベース URL",
@@ -2607,6 +2658,20 @@
       "showApiKey": "API Keyを表示",
       "hideApiKey": "API Keyを非表示",
       "apiKeyHiddenHint": "API Keyは非表示です。クリックすると表示します。",
+      "modelCatalog": {
+        "label": "モデル一覧",
+        "fetch": "プロバイダーから取得",
+        "fetching": "取得中...",
+        "count": "{{count}} 件のモデル",
+        "placeholder": "1 行に 1 つのモデル ID を入力するか、カンマで区切ってください。",
+        "editHint": "取得したモデルはこの下書きにのみ反映されます。保存前に確認・編集できます。",
+        "syncToggle": "プロバイダーのモデルを Codex に同期",
+        "syncDescription": "保存後、この一覧から Cockpit 管理の Codex モデルカタログを生成します。ユーザー独自のカタログは上書きしません。",
+        "fetchCredentialsRequired": "先に API Key と Base URL を入力してください。",
+        "fetchEmpty": "プロバイダーからモデルが返されませんでした。現在の一覧を保持します。",
+        "fetchFailed": "プロバイダーのモデルを取得できませんでした：{{error}}",
+        "syncRequiresModels": "Codex に同期する前に、モデルを 1 件以上取得または入力してください。"
+      },
       "actions": {
         "addAndSwitch": "追加して切り替える"
       },
@@ -2983,7 +3048,10 @@
         "help": "プロバイダーが Responses WebSocket を明示的にサポートしている場合のみ有効にしてください。接続方式は Codex またはプロキシサービスのログで確認できます。",
         "enabled": "有効",
         "disabled": "無効"
-      }
+      },
+      "renameApiKeyPrompt": "API キー名を変更",
+      "renameApiKeySuccess": "API キーを変更しました",
+      "renameApiKeyFailed": "API キー名の変更に失敗：{{error}}"
     },
     "quickSwitch": {
       "action": "プロバイダーをクイック切り替え",
@@ -3326,8 +3394,20 @@
       "previewSubtitle": "保存するアカウントを選択",
       "scanSubtitle": "アカウントを1件ずつ解析して確認中",
       "parseSubtitle": "アカウントファイルを解析中",
+      "importSubtitle": "選択したアカウントを保存中",
+      "finalizing": "インポートを完了処理中",
+      "finalizingSubtitle": "アカウント一覧と関連設定を更新中",
+      "cancelImport": "インポートをキャンセル",
+      "importCancelledSummary": "インポートをキャンセルしました。{{processed}}/{{total}} 件を処理済みです。",
+      "importChecked": "確認済みアカウントをインポート",
+      "directImport": "確認せず直接インポート",
+      "importCheckedAndAddToApiService": "確認済みアカウントをインポートして API サービスに追加",
+      "directImportAndAddToApiService": "直接インポートして API サービスに追加",
+      "viewAllTasks": "全 {{count}} 件のタスクを表示",
+      "collapseTasks": "タスクを折りたたむ",
       "cancelling": "キャンセル中...",
       "scanDone": "スキャン完了",
+      "scanCompleteReview": "確認が完了しました。結果を確認してください",
       "parseDone": "解析完了",
       "scanning": "スキャン中",
       "parsing": "解析中",
@@ -3336,7 +3416,7 @@
       "failed": "失敗",
       "quotaOk": "アカウント正常",
       "quotaFailed": "異常",
-      "checkQuotaToggle": "アカウントを検査",
+      "checkQuotaToggle": "インポート前に確認",
       "preparing": "インポートタスクを準備中...",
       "importSelected": "選択したアカウントをインポート",
       "noSelection": "インポートするアカウントを選択してください",
@@ -3359,7 +3439,17 @@
       "taskRunning": "{{current}} / {{total}} 件を処理中",
       "taskPreview": "{{total}} 件のプレビューを作成済み",
       "reopen": "タスクを表示",
-      "dismissTask": "破棄"
+      "dismissTask": "破棄",
+      "queueCount": "キューに {{count}} 件",
+      "queued": "キューに入れられました",
+      "batchLabel": "バッチ {{index}}",
+      "runInBackground": "背景",
+      "cancelQueued": "キューをキャンセルする",
+      "importing": "インポート中",
+      "checkAccounts": "小切手口座",
+      "importAndAddToApiService": "インポート + API",
+      "importAndAddToApiServiceSuccess": "インポートされ、API サービスに追加されました",
+      "addToApiServiceFailed": "インポートされましたが、API サービスへの追加に失敗しました: {{error}}"
     },
     "autoRepairMode": {
       "label": "自動修復ロジック",
@@ -3406,6 +3496,71 @@
       "chipSearch": "検索",
       "chipPlan": "プラン",
       "chipFolder": "フォルダ"
+    },
+    "accessTokenImport": {
+      "nameRequired": "アカウント名を入力",
+      "tokenRequired": "Codex アクセストークンを入力してください",
+      "desc": "アカウント名と access token を保存します。refresh/id がない場合は personal_access_token 形式で書き出します。",
+      "nameLabel": "アカウント名",
+      "namePlaceholder": "一覧表示用の名前",
+      "tokenLabel": "Codex アクセストークン",
+      "hideToken": "非表示",
+      "showToken": "表示",
+      "submit": "トークンをインポート",
+      "success": "アクセストークンアカウントを取り込みました: {{name}}"
+    },
+    "ssh": {
+      "tab": "SSH 同期",
+      "title": "Codex SSH 同期",
+      "desc": "リモートホストを保存し、接続テスト後に現在の auth.json を転送します。切替後、選択中ホストへ自動同期します。",
+      "new": "新規",
+      "empty": "SSH ホストがありません",
+      "test": "接続テスト",
+      "sync": "同期",
+      "saved": "SSH サーバーを保存しました",
+      "deleted": "削除しました",
+      "name": "名前",
+      "host": "ホスト",
+      "user": "ユーザー",
+      "port": "ポート",
+      "remoteDir": "リモート Codex ディレクトリ",
+      "syncSwitch": "スイッチ上の SSH",
+      "syncSwitchDesc": "SSH ホストを構成するにはオンにします。 Codex スイッチは、現在のアカウントをリモートで同期します。",
+      "configure": "設定",
+      "modalTitle": "SSH同期セットアップ",
+      "modalHint": "自動同期が有効になっている SSH ホストを追加して選択し、Codex アカウントの切り替えによってリモート認証が更新されるようにします。",
+      "subtitle": "選択したホストは、アカウントの切り替え後に現在の Codex 認証バンドルを受け取ります。",
+      "addServer": "サーバーの追加",
+      "editServer": "サーバーの編集",
+      "username": "ユーザー名",
+      "codexHome": "リモートコーデックスディレクトリ",
+      "authMethod": "認証方法",
+      "agentAuth": "SSHエージェント",
+      "privateKeyAuth": "秘密鍵",
+      "privateKeyPath": "キーパス",
+      "syncOnSwitch": "切り替え後の同期",
+      "emptyTitle": "SSHサーバーがありません",
+      "emptyBody": "左側にホストを入力し、スイッチ同期ターゲットとして保存します。",
+      "selected": "選択済み",
+      "select": "選択",
+      "testConnection": "テスト",
+      "syncNow": "今すぐ同期する",
+      "connectionOk": "接続済み",
+      "syncVerified": "SSH同期が確認されました",
+      "syncFailed": "SSH同期に失敗しました",
+      "syncedAs": "同期済み {{email}} · {{time}}",
+      "neverSynced": "まだ同期されていません",
+      "latestVerified": "最後に確認された SSH 同期",
+      "syncSwitchActive": "オン · {{name}} ({{user}}@{{host}})",
+      "footerHint": "保存後にスイッチがオンになります。いつでもオフにして自動同期を停止できます。",
+      "formLead": "リモートホストの詳細",
+      "namePlaceholder": "例えばホームNAS",
+      "syncOnSwitchHint": "保存して選択した後、Codex スイッチは認証をこのホストにプッシュします",
+      "addAndSave": "追加して保存",
+      "serverList": "サーバー",
+      "serverListLead": "同期ターゲットを選択",
+      "serverCount": "{{count}} 台",
+      "autoSyncBadge": "自動"
     }
   },
   "githubCopilot": {
@@ -4323,6 +4478,12 @@
     },
     "quota": {
       "usedOfTotal": "{{used}} / {{total}}​"
+    },
+    "sessions": {
+      "title": "ローカルセッション",
+      "desc": "ローカルセッション — ローカルデータからスキャンして場所を開きます。",
+      "empty": "セッションファイルが見つかりません",
+      "open": "場所を開く"
     }
   },
   "qoder": {
@@ -5042,7 +5203,8 @@
       "installHint": "ターミナルで次の公式コマンドを実行し、インストール完了後に更新してください。",
       "selectWorkingDir": "Grok CLI の作業ディレクトリを選択",
       "workingDirAccountHint": "作業ディレクトリはこのアカウントに紐づき、次回起動時に復元されます。",
-      "launchCommandPlaceholder": "作業ディレクトリを選択または確認すると起動コマンドを生成します"
+      "launchCommandPlaceholder": "作業ディレクトリを選択または確認すると起動コマンドを生成します",
+      "reauthLaunchHint": "アカウント認証の有効期限が切れました。再認証します。以下の起動コマンドは引き続き使用できます。"
     },
     "switch": {
       "success": "アカウントを切り替えました"
@@ -5325,5 +5487,23 @@
       "supports1mLabel": "1M 対応を宣言",
       "supports1mShort": "1M対応"
     }
+  },
+  "openrouter": {
+    "title": "OpenRouter",
+    "desc": "OpenRouter の API キー、使用量、モデル一覧を管理します。",
+    "tabKeys": "キーと使用量",
+    "tabModels": "モデル",
+    "modelsLoaded": "{{count}} 件のモデルを読み込みました",
+    "noUsageYet": "使用量は未更新",
+    "loadModels": "モデルを読み込む",
+    "searchModels": "モデル検索",
+    "freeOnly": "無料のみ",
+    "noModels": "モデルがありません。Key を追加して読み込んでください。",
+    "free": "無料",
+    "noCtx": "コンテキスト長なし"
+  },
+  "opencode": {
+    "title": "OpenCode",
+    "desc": "OpenCode の Go/Zen API キーを管理し、ティアで絞り込みます。"
   }
 }

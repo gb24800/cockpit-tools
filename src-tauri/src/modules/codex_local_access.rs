@@ -45,7 +45,7 @@ use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::process::{Child, Command as TokioCommand};
-use tokio::sync::{oneshot, watch, Mutex as TokioMutex};
+use tokio::sync::{oneshot, watch, Mutex as TokioMutex, Notify};
 use tokio::time::{timeout, Duration};
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::handshake::client::Request as WsClientRequest;
@@ -87,6 +87,7 @@ const CODEX_LOCAL_ACCESS_DEV_DEFAULT_PORT: u16 = 1456;
 const CODEX_LOCAL_ACCESS_TAKEOVER_BACKUP_VERSION: u32 = 1;
 const CODEX_LOCAL_ACCESS_RUNTIME_PROVIDER_ID: &str = "codex_local_access";
 const CODEX_LOCAL_ACCESS_RUNTIME_ACCOUNT_ID: &str = "codex_local_access_runtime";
+const CODEX_IMAGEGEN_ACTOR_HEADER: &str = "x-openai-actor-authorization";
 const CODEX_PROFILE_AUTH_FILE: &str = "auth.json";
 const CODEX_PROFILE_CONFIG_FILE: &str = "config.toml";
 const CODEX_PROVIDER_MODEL_CATALOG_FILE: &str = "cockpit-provider-model-catalog.json";
@@ -206,6 +207,121 @@ static BOUND_OAUTH_QUOTA_REFRESH_FAILURES: OnceLock<Mutex<HashSet<String>>> = On
 static BOUND_OAUTH_QUOTA_REFRESH_CONTROL: OnceLock<TokioMutex<BoundOauthQuotaRefreshControl>> =
     OnceLock::new();
 static BOUND_OAUTH_QUOTA_MONITOR_STARTED: AtomicBool = AtomicBool::new(false);
+static MODEL_PROVIDER_CHAT_TEST_CANCELLATION: OnceLock<ModelProviderChatTestCancellationState> =
+    OnceLock::new();
+
+pub const MODEL_PROVIDER_CHAT_TEST_CANCELLED_ERROR: &str = "MODEL_PROVIDER_CHAT_TEST_CANCELLED";
+
+#[derive(Default)]
+struct ModelProviderChatTestCancellationInner {
+    active_run_ids: HashSet<String>,
+    cancelled_run_ids: HashSet<String>,
+}
+
+#[derive(Default)]
+struct ModelProviderChatTestCancellationState {
+    inner: Mutex<ModelProviderChatTestCancellationInner>,
+    notify: Notify,
+}
+
+fn model_provider_chat_test_cancellation() -> &'static ModelProviderChatTestCancellationState {
+    MODEL_PROVIDER_CHAT_TEST_CANCELLATION
+        .get_or_init(ModelProviderChatTestCancellationState::default)
+}
+
+fn with_model_provider_chat_test_cancellation<R>(
+    operation: impl FnOnce(&mut ModelProviderChatTestCancellationInner) -> R,
+) -> R {
+    let state = model_provider_chat_test_cancellation();
+    let mut guard = state
+        .inner
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    operation(&mut guard)
+}
+
+pub fn register_model_provider_chat_test_run(run_id: &str) {
+    let run_id = run_id.trim();
+    if run_id.is_empty() {
+        return;
+    }
+    with_model_provider_chat_test_cancellation(|state| {
+        state.cancelled_run_ids.remove(run_id);
+        state.active_run_ids.insert(run_id.to_string());
+    });
+}
+
+pub fn cancel_model_provider_chat_test_run(run_id: &str) -> bool {
+    let run_id = run_id.trim();
+    if run_id.is_empty() {
+        return false;
+    }
+    let cancelled = with_model_provider_chat_test_cancellation(|state| {
+        if !state.active_run_ids.contains(run_id) {
+            return false;
+        }
+        state.cancelled_run_ids.insert(run_id.to_string());
+        true
+    });
+    if cancelled {
+        model_provider_chat_test_cancellation().notify.notify_waiters();
+    }
+    cancelled
+}
+
+pub fn finish_model_provider_chat_test_run(run_id: &str) {
+    let run_id = run_id.trim();
+    if run_id.is_empty() {
+        return;
+    }
+    with_model_provider_chat_test_cancellation(|state| {
+        state.active_run_ids.remove(run_id);
+        state.cancelled_run_ids.remove(run_id);
+    });
+}
+
+pub fn is_model_provider_chat_test_cancelled(run_id: &str) -> bool {
+    let run_id = run_id.trim();
+    if run_id.is_empty() {
+        return false;
+    }
+    with_model_provider_chat_test_cancellation(|state| {
+        state.cancelled_run_ids.contains(run_id)
+    })
+}
+
+async fn wait_for_model_provider_chat_test_cancellation(run_id: &str) {
+    loop {
+        let notified = model_provider_chat_test_cancellation().notify.notified();
+        if is_model_provider_chat_test_cancelled(run_id) {
+            return;
+        }
+        notified.await;
+    }
+}
+
+#[cfg(test)]
+mod model_provider_chat_test_cancellation_tests {
+    use super::{
+        cancel_model_provider_chat_test_run, finish_model_provider_chat_test_run,
+        is_model_provider_chat_test_cancelled, register_model_provider_chat_test_run,
+    };
+
+    #[test]
+    fn cancellation_only_applies_to_active_run() {
+        let run_id = format!("provider-test-cancel-{}", uuid::Uuid::new_v4());
+        assert!(!cancel_model_provider_chat_test_run(&run_id));
+
+        register_model_provider_chat_test_run(&run_id);
+        assert!(!is_model_provider_chat_test_cancelled(&run_id));
+        assert!(cancel_model_provider_chat_test_run(&run_id));
+        assert!(is_model_provider_chat_test_cancelled(&run_id));
+
+        finish_model_provider_chat_test_run(&run_id);
+        assert!(!is_model_provider_chat_test_cancelled(&run_id));
+        assert!(!cancel_model_provider_chat_test_run(&run_id));
+    }
+}
 
 #[derive(Default)]
 struct BoundOauthQuotaRefreshControl {
@@ -7884,6 +8000,24 @@ fn normalize_profile_base_url_for_match(raw: Option<&str>) -> Option<String> {
     ))
 }
 
+fn provider_has_nonempty_static_header(provider: &toml_edit::Table, header_name: &str) -> bool {
+    let Some(headers) = provider.get("http_headers") else {
+        return false;
+    };
+    if let Some(inline) = headers.as_inline_table() {
+        return inline.iter().any(|(name, value)| {
+            name.eq_ignore_ascii_case(header_name)
+                && value.as_str().is_some_and(|value| !value.trim().is_empty())
+        });
+    }
+    headers.as_table().is_some_and(|table| {
+        table.iter().any(|(name, value)| {
+            name.eq_ignore_ascii_case(header_name)
+                && value.as_str().is_some_and(|value| !value.trim().is_empty())
+        })
+    })
+}
+
 fn profile_base_url_matches(actual: Option<&str>, expected: &str) -> bool {
     normalize_profile_base_url_for_match(actual)
         .zip(normalize_profile_base_url_for_match(Some(expected)))
@@ -7920,10 +8054,13 @@ fn inspect_local_access_profile_config(
         .and_then(|item| item.as_str())
         .map(str::trim)
         == Some("responses");
-    let requires_openai_auth = provider_table
+    let openai_auth_disabled = provider_table
         .and_then(|table| table.get("requires_openai_auth"))
         .and_then(|item| item.as_bool())
-        .unwrap_or(false);
+        == Some(false);
+    let imagegen_actor_authorized = provider_table.is_some_and(|table| {
+        provider_has_nonempty_static_header(table, CODEX_IMAGEGEN_ACTOR_HEADER)
+    });
     let token_matched = provider_table
         .and_then(|table| table.get("experimental_bearer_token"))
         .and_then(|item| item.as_str())
@@ -7935,7 +8072,8 @@ fn inspect_local_access_profile_config(
         && provider_table.is_some()
         && profile_base_url_matches(base_url.as_deref(), expected_base_url)
         && wire_api_matches
-        && requires_openai_auth
+        && openai_auth_disabled
+        && imagegen_actor_authorized
         && token_matched;
 
     Ok(ProfileConfigInspection {
@@ -11724,14 +11862,96 @@ async fn bind_gateway_listener(bind_host: &str, port: u16) -> Result<TcpListener
     }
 }
 
-fn format_gateway_bind_error(bind_host: &str, port: u16, error: &std::io::Error) -> String {
+/// 判断端口是否落在保留区间列表内（闭区间）。
+pub fn port_in_reserved_ranges(port: u16, ranges: &[(u16, u16)]) -> bool {
+    ranges
+        .iter()
+        .any(|(start, end)| port >= *start.min(end) && port <= *start.max(end))
+}
+
+/// 组装网关绑定失败文案；若命中保留端口区间则追加 Windows 保留端口提示。
+pub fn format_gateway_bind_error_message(
+    bind_host: &str,
+    port: u16,
+    error: &std::io::Error,
+    reserved_ranges: &[(u16, u16)],
+) -> String {
     if error.kind() == std::io::ErrorKind::AddrInUse {
-        return format!(
+        let mut message = format!(
             "启动本地接入服务失败: {}:{} 已被占用，请先清理端口或改用其他端口（{}）",
             bind_host, port, error
         );
+        if port_in_reserved_ranges(port, reserved_ranges) {
+            message.push_str(&format!(
+                "。提示：端口 {} 可能处于 Windows 排除/保留端口范围（Hyper-V/WSL 等），请换端口或用 netsh 查看 excludedportrange",
+                port
+            ));
+        }
+        return message;
     }
     format!("启动本地接入服务失败: {}", error)
+}
+
+#[cfg(target_os = "windows")]
+fn windows_excluded_tcp_port_ranges() -> Vec<(u16, u16)> {
+    use std::os::windows::process::CommandExt;
+    use std::process::Command;
+
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let output = Command::new("netsh")
+        .args([
+            "interface",
+            "ipv4",
+            "show",
+            "excludedportrange",
+            "protocol=tcp",
+        ])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .creation_flags(CREATE_NO_WINDOW)
+        .output();
+
+    let Ok(output) = output else {
+        return Vec::new();
+    };
+    if !output.status.success() {
+        return Vec::new();
+    }
+    parse_windows_excluded_port_ranges(&String::from_utf8_lossy(&output.stdout))
+}
+
+#[cfg(not(target_os = "windows"))]
+fn windows_excluded_tcp_port_ranges() -> Vec<(u16, u16)> {
+    Vec::new()
+}
+
+/// 解析 `netsh ... excludedportrange` 文本中的起止端口。
+pub fn parse_windows_excluded_port_ranges(output: &str) -> Vec<(u16, u16)> {
+    let mut ranges = Vec::new();
+    for line in output.lines() {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 2 {
+            continue;
+        }
+        let Ok(start) = parts[0].parse::<u16>() else {
+            continue;
+        };
+        let Ok(end) = parts[1].parse::<u16>() else {
+            continue;
+        };
+        ranges.push((start, end));
+    }
+    ranges
+}
+
+fn format_gateway_bind_error(bind_host: &str, port: u16, error: &std::io::Error) -> String {
+    let reserved = if cfg!(target_os = "windows") {
+        windows_excluded_tcp_port_ranges()
+    } else {
+        Vec::new()
+    };
+    format_gateway_bind_error_message(bind_host, port, error, &reserved)
 }
 
 fn is_free_plan_type(plan_type: Option<&str>) -> bool {
@@ -14297,6 +14517,10 @@ async fn stop_temporary_provider_gateway_sidecar(
 pub async fn run_model_provider_gateway_chat_test(
     request: CodexModelProviderGatewayChatTestRequest,
 ) -> Result<CodexModelProviderGatewayChatTestResult, String> {
+    let run_id = request.run_id.trim().to_string();
+    if is_model_provider_chat_test_cancelled(&run_id) {
+        return Err(MODEL_PROVIDER_CHAT_TEST_CANCELLED_ERROR.to_string());
+    }
     let model_id = request.model_id.trim();
     if model_id.is_empty() {
         return Err("测试模型不能为空".to_string());
@@ -14347,6 +14571,13 @@ pub async fn run_model_provider_gateway_chat_test(
         }
     };
 
+    if is_model_provider_chat_test_cancelled(&run_id) {
+        if sidecar_dir.exists() {
+            let _ = std::fs::remove_dir_all(&sidecar_dir);
+        }
+        return Err(MODEL_PROVIDER_CHAT_TEST_CANCELLED_ERROR.to_string());
+    }
+
     let (child, task, bind_host) =
         match spawn_provider_gateway_sidecar(&collection, &launch_config).await {
             Ok(runtime) => runtime,
@@ -14357,6 +14588,17 @@ pub async fn run_model_provider_gateway_chat_test(
                 return Err(error);
             }
         };
+    if is_model_provider_chat_test_cancelled(&run_id) {
+        stop_temporary_provider_gateway_sidecar(
+            child,
+            task,
+            bind_host,
+            collection.port,
+            sidecar_dir,
+        )
+        .await;
+        return Err(MODEL_PROVIDER_CHAT_TEST_CANCELLED_ERROR.to_string());
+    }
     let client_request_id = format!(
         "{}:{}:{}:{}",
         request.run_id.trim(),
@@ -14419,81 +14661,85 @@ pub async fn run_model_provider_gateway_chat_test(
         )
     };
 
-    let result = async {
-        let client =
-            build_localhost_http_client(Duration::from_secs(90), "模型供应商临时网关测试")?;
-        let started = Instant::now();
-        let mut builder = client
-            .post(&url)
-            .bearer_auth(collection.api_key.trim())
-            .header(ACCEPT, "application/json")
-            .header(CONTENT_TYPE, "application/json");
-        builder =
-            add_model_provider_test_header(builder, "x-client-request-id", &client_request_id);
-        builder = add_model_provider_test_header(builder, "x-agtools-test-run-id", &request.run_id);
-        builder =
-            add_model_provider_test_header(builder, "x-agtools-provider-id", &request.provider_id);
-        builder = add_model_provider_test_header(builder, "x-agtools-wire-api", &request.wire_api);
-        builder = add_model_provider_test_header_b64(
-            builder,
-            "x-agtools-provider-name-b64",
-            &request.provider_name,
-        );
-        builder = add_model_provider_test_header_b64(
-            builder,
-            "x-agtools-provider-base-url-b64",
-            &request.base_url,
-        );
-        if let Some(api_key_id) = request.api_key_id.as_deref() {
-            builder = add_model_provider_test_header(
-                builder,
-                "x-agtools-provider-api-key-id",
-                api_key_id,
-            );
-        }
-        if let Some(api_key_name) = request.api_key_name.as_deref() {
+    let result = tokio::select! {
+        result = async {
+            let client =
+                build_localhost_http_client(Duration::from_secs(90), "模型供应商临时网关测试")?;
+            let started = Instant::now();
+            let mut builder = client
+                .post(&url)
+                .bearer_auth(collection.api_key.trim())
+                .header(ACCEPT, "application/json")
+                .header(CONTENT_TYPE, "application/json");
+            builder =
+                add_model_provider_test_header(builder, "x-client-request-id", &client_request_id);
+            builder = add_model_provider_test_header(builder, "x-agtools-test-run-id", &request.run_id);
+            builder =
+                add_model_provider_test_header(builder, "x-agtools-provider-id", &request.provider_id);
+            builder = add_model_provider_test_header(builder, "x-agtools-wire-api", &request.wire_api);
             builder = add_model_provider_test_header_b64(
                 builder,
-                "x-agtools-provider-api-key-name-b64",
-                api_key_name,
+                "x-agtools-provider-name-b64",
+                &request.provider_name,
             );
+            builder = add_model_provider_test_header_b64(
+                builder,
+                "x-agtools-provider-base-url-b64",
+                &request.base_url,
+            );
+            if let Some(api_key_id) = request.api_key_id.as_deref() {
+                builder = add_model_provider_test_header(
+                    builder,
+                    "x-agtools-provider-api-key-id",
+                    api_key_id,
+                );
+            }
+            if let Some(api_key_name) = request.api_key_name.as_deref() {
+                builder = add_model_provider_test_header_b64(
+                    builder,
+                    "x-agtools-provider-api-key-name-b64",
+                    api_key_name,
+                );
+            }
+            builder = add_model_provider_test_header(builder, "x-agtools-test-model", model_id);
+            builder =
+                add_model_provider_test_header(builder, "x-agtools-client-model", &client_model_id);
+            let response = builder
+                .json(&body)
+                .send()
+                .await
+                .map_err(|error| format!("本地网关对话请求失败: {}", error))?;
+            let duration_ms = started.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
+            let status = response.status();
+            let text = response
+                .text()
+                .await
+                .map_err(|error| format!("读取本地网关对话响应失败: {}", error))?;
+            if !status.is_success() {
+                return Err(format!(
+                    "本地网关对话失败({}): {}",
+                    status.as_u16(),
+                    extract_provider_gateway_test_error_message(&text)
+                ));
+            }
+            let reply = if uses_provider_gateway {
+                let parsed = serde_json::from_str::<Value>(&text)
+                    .map_err(|error| format!("解析本地网关对话响应失败: {}", error))?;
+                extract_provider_gateway_test_output_text(&parsed)
+            } else {
+                extract_chat_completion_output(&text).or_else(|| {
+                    serde_json::from_str::<Value>(&text)
+                        .ok()
+                        .and_then(|parsed| extract_provider_gateway_test_output_text(&parsed))
+                })
+            }
+            .ok_or_else(|| "本地网关对话未返回可读回复".to_string())?;
+            Ok(CodexModelProviderGatewayChatTestResult { duration_ms, reply })
+        } => result,
+        _ = wait_for_model_provider_chat_test_cancellation(&run_id) => {
+            Err(MODEL_PROVIDER_CHAT_TEST_CANCELLED_ERROR.to_string())
         }
-        builder = add_model_provider_test_header(builder, "x-agtools-test-model", model_id);
-        builder =
-            add_model_provider_test_header(builder, "x-agtools-client-model", &client_model_id);
-        let response = builder
-            .json(&body)
-            .send()
-            .await
-            .map_err(|error| format!("本地网关对话请求失败: {}", error))?;
-        let duration_ms = started.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
-        let status = response.status();
-        let text = response
-            .text()
-            .await
-            .map_err(|error| format!("读取本地网关对话响应失败: {}", error))?;
-        if !status.is_success() {
-            return Err(format!(
-                "本地网关对话失败({}): {}",
-                status.as_u16(),
-                extract_provider_gateway_test_error_message(&text)
-            ));
-        }
-        let reply = if uses_provider_gateway {
-            let parsed = serde_json::from_str::<Value>(&text)
-                .map_err(|error| format!("解析本地网关对话响应失败: {}", error))?;
-            extract_provider_gateway_test_output_text(&parsed)
-        } else {
-            extract_chat_completion_output(&text).or_else(|| {
-                serde_json::from_str::<Value>(&text)
-                    .ok()
-                    .and_then(|parsed| extract_provider_gateway_test_output_text(&parsed))
-            })
-        }
-        .ok_or_else(|| "本地网关对话未返回可读回复".to_string())?;
-        Ok(CodexModelProviderGatewayChatTestResult { duration_ms, reply })
-    }
-    .await;
+    };
 
     stop_temporary_provider_gateway_sidecar(child, task, bind_host, collection.port, sidecar_dir)
         .await;
@@ -21969,6 +22215,27 @@ async fn handle_connection(
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn port_in_reserved_ranges_detects_membership() {
+        assert!(super::port_in_reserved_ranges(1450, &[(1400, 1500)]));
+        assert!(!super::port_in_reserved_ranges(1399, &[(1400, 1500)]));
+    }
+
+    #[test]
+    fn parse_windows_excluded_port_ranges_reads_start_end() {
+        let sample = "\nProtocol tcp Port Exclusion Ranges\n\nStart Port    End Port\n  1450         1459  \n  50000        50059\n";
+        let ranges = super::parse_windows_excluded_port_ranges(sample);
+        assert!(ranges.contains(&(1450, 1459)) || ranges.iter().any(|r| r.0 == 1450));
+        assert!(super::port_in_reserved_ranges(1455, &ranges));
+    }
+
+    #[test]
+    fn format_gateway_bind_error_mentions_reserved_when_matched() {
+        let err = std::io::Error::from(std::io::ErrorKind::AddrInUse);
+        let msg = super::format_gateway_bind_error_message("127.0.0.1", 1455, &err, &[(1400, 1500)]);
+        assert!(msg.contains("保留") || msg.contains("excludedportrange") || msg.contains("Windows"), "msg={msg}");
+    }
     use base64::{engine::general_purpose, Engine as _};
 
     use super::{
@@ -22033,9 +22300,10 @@ mod tests {
         CodexModelProviderGatewayChatTestRequest, GatewayResponseAdapter, ParsedRequest,
         ResolvedLocalApiKey, ResponseUsageCollector, RoutingCandidate, SidecarUsageDetails,
         SidecarUsageEvent, UsageCapture, BOUND_OAUTH_QUOTA_RESERVE_MAX_SNAPSHOT_AGE_SECONDS,
-        CODEX_AUTO_REVIEW_MODEL_ID, CODEX_LOCAL_ACCESS_TEST_DISABLE_IMAGE_GENERATION_HEADER,
-        CODEX_PROFILE_AUTH_FILE, CODEX_PROFILE_CONFIG_FILE, CODEX_PROVIDER_MODEL_BACKUP_FILE,
-        CODEX_PROVIDER_MODEL_CATALOG_FILE, DEFAULT_MAX_RETRY_INTERVAL_MS,
+        CODEX_AUTO_REVIEW_MODEL_ID, CODEX_IMAGEGEN_ACTOR_HEADER,
+        CODEX_LOCAL_ACCESS_TEST_DISABLE_IMAGE_GENERATION_HEADER, CODEX_PROFILE_AUTH_FILE,
+        CODEX_PROFILE_CONFIG_FILE, CODEX_PROVIDER_MODEL_BACKUP_FILE, CODEX_PROVIDER_MODEL_CATALOG_FILE,
+        DEFAULT_MAX_RETRY_INTERVAL_MS,
         DEFAULT_MODEL_PRICING_VERSION, DEFAULT_SESSION_AFFINITY_TTL_MS, MAX_HTTP_REQUEST_BYTES,
     };
     use crate::models::codex::{
@@ -24202,8 +24470,9 @@ enabled = true
 name = "Codex API Service"
 base_url = "http://localhost:14998/v1"
 wire_api = "responses"
-requires_openai_auth = true
+requires_openai_auth = false
 experimental_bearer_token = "agt_codex_test"
+http_headers = { "x-openai-actor-authorization" = "cockpit-tools" }
 supports_websockets = false
 "#;
 
@@ -24226,6 +24495,30 @@ supports_websockets = false
     }
 
     #[test]
+    fn local_access_profile_config_rejects_legacy_imagegen_auth_gate() {
+        let config = r#"model_provider = "codex_local_access"
+
+[model_providers.codex_local_access]
+name = "Codex API Service"
+base_url = "http://localhost:14998/v1"
+wire_api = "responses"
+requires_openai_auth = true
+experimental_bearer_token = "agt_codex_test"
+supports_websockets = false
+"#;
+
+        let inspection = inspect_local_access_profile_config(
+            config,
+            "http://localhost:14998/v1",
+            "agt_codex_test",
+        )
+        .expect("inspect legacy config");
+
+        assert!(!inspection.config_attached);
+        assert!(inspection.token_matched);
+    }
+
+    #[test]
     fn local_access_profile_config_rejects_stale_port_or_key() {
         let config = r#"model_provider = "codex_local_access"
 
@@ -24233,8 +24526,9 @@ supports_websockets = false
 name = "Codex API Service"
 base_url = "http://127.0.0.1:14998/v1"
 wire_api = "responses"
-requires_openai_auth = true
+requires_openai_auth = false
 experimental_bearer_token = "agt_codex_old"
+http_headers = { "X-OpenAI-Actor-Authorization" = "cockpit-tools" }
 supports_websockets = false
 "#;
 
@@ -26704,6 +26998,8 @@ data: {"error":{"code":"server_error","type":"upstream","message":"stream aborte
         let config =
             fs::read_to_string(profile_dir.join(CODEX_PROFILE_CONFIG_FILE)).expect("read config");
         assert!(config.contains("model_provider = \"codex_local_access\""));
+        assert!(config.contains("requires_openai_auth = false"));
+        assert!(config.contains(CODEX_IMAGEGEN_ACTOR_HEADER));
         assert!(!config.contains("model_catalog_json"));
         assert!(!profile_dir.join(CODEX_PROVIDER_MODEL_CATALOG_FILE).exists());
 

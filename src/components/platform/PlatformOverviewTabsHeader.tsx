@@ -24,7 +24,12 @@ import { getPlatformLabel } from '../../utils/platformMeta';
 import { PlatformGroupSwitcher } from './PlatformGroupSwitcher';
 import { useRemoteConfigStore } from '../../stores/useRemoteConfigStore';
 
-export type PlatformOverviewTab = 'overview' | 'wakeup' | 'instances' | 'sessions' | 'providers';
+export type PlatformOverviewTab =
+  | 'overview'
+  | 'wakeup'
+  | 'instances'
+  | 'sessions'
+  | 'providers';
 export type PlatformOverviewHeaderId =
   | 'codex'
   | 'claude'

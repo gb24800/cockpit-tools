@@ -23,10 +23,13 @@ import {
 } from '../utils/accountFilters';
 import { getSubscriptionTier } from '../utils/account';
 import {
+  getCodexPlanBadgeStyle,
   isCodexAdditionalQuotaVisibleByDefault,
   isCodexCodeReviewQuotaVisibleByDefault,
   persistCodexAdditionalQuotaVisible,
   persistCodexCodeReviewQuotaVisible,
+  persistCodexPlanBadgeStyle,
+  type CodexPlanBadgeStyle,
 } from '../utils/codexPreferences';
 import {
   FEATURE_UNLOCK_CHANGED_EVENT,
@@ -49,6 +52,7 @@ import {
   resolveAccountsOverviewScopeFromQuickSettingsType,
   setAccountsOverviewFilterPersistenceEnabled,
 } from '../utils/accountsOverviewFilterPersistence';
+import { CodexSshSyncSettingsControl } from './codex/CodexSshSyncSettingsControl';
 import './QuickSettingsPopover.css';
 
 /** GeneralConfig from backend */
@@ -110,6 +114,7 @@ interface GeneralConfig {
   ghcp_opencode_auth_overwrite_on_switch: boolean;
   ghcp_launch_on_switch: boolean;
   openclaw_auth_overwrite_on_switch: boolean;
+  hermes_auth_overwrite_on_switch?: boolean;
   codex_launch_on_switch: boolean;
   antigravity_launch_on_switch: boolean;
   codex_restart_specified_app_on_switch: boolean;
@@ -486,6 +491,9 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
   );
   const [codexShowAdditionalQuota, setCodexShowAdditionalQuota] = useState(
     isCodexAdditionalQuotaVisibleByDefault,
+  );
+  const [codexPlanBadgeStyle, setCodexPlanBadgeStyle] = useState<CodexPlanBadgeStyle>(
+    getCodexPlanBadgeStyle,
   );
   const [currentAccountRefreshMap, setCurrentAccountRefreshMap] =
     useState<CurrentAccountRefreshMinutesMap>(() => buildDefaultCurrentAccountRefreshMinutesMap());
@@ -1929,6 +1937,11 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
     persistCodexAdditionalQuotaVisible(checked);
   };
 
+  const handleCodexPlanBadgeStyleChange = (style: CodexPlanBadgeStyle) => {
+    setCodexPlanBadgeStyle(style);
+    persistCodexPlanBadgeStyle(style);
+  };
+
   const overlayContent = isOpen ? (
     <div className="qs-overlay">
       <div className="qs-modal" ref={modalRef}>
@@ -2025,6 +2038,7 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
                     )}
                   </>
                 )}
+                <CodexSshSyncSettingsControl variant="quick" />
               </div>
             )}
 
@@ -2652,6 +2666,30 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
                     <Zap size={15} />
                     <span>
                       {t(
+                        'settings.general.hermesAuthOverwrite',
+                        '切换 Codex 时同步 Hermes'
+                      )}
+                    </span>
+                  </div>
+                  <div className="qs-row-control">
+                    <label className="qs-switch">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(config.hermes_auth_overwrite_on_switch)}
+                        onChange={(e) =>
+                          saveConfig({ hermes_auth_overwrite_on_switch: e.target.checked })
+                        }
+                      />
+                      <span className="qs-switch-slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="qs-row">
+                  <div className="qs-row-label">
+                    <Zap size={15} />
+                    <span>
+                      {t(
                         'settings.general.opencodeAuthOverwrite',
                         '切换 Codex 时覆盖 OpenCode 登录信息'
                       )}
@@ -2727,6 +2765,27 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
                       />
                       <span className="qs-switch-slider"></span>
                     </label>
+                  </div>
+                </div>
+
+                <div className="qs-row">
+                  <div className="qs-row-label">
+                    <Zap size={15} />
+                    <span>{t('codex.list.planBadgeStyle', '套餐徽章样式')}</span>
+                  </div>
+                  <div className="qs-row-control">
+                    <select
+                      className="qs-select"
+                      value={codexPlanBadgeStyle}
+                      onChange={(e) =>
+                        handleCodexPlanBadgeStyleChange(e.target.value as CodexPlanBadgeStyle)
+                      }
+                    >
+                      <option value="default">{t('codex.list.planBadgeStyleDefault', '默认')}</option>
+                      <option value="outline">{t('codex.list.planBadgeStyleOutline', '描边')}</option>
+                      <option value="soft">{t('codex.list.planBadgeStyleSoft', '柔和')}</option>
+                      <option value="mono">{t('codex.list.planBadgeStyleMono', '单色')}</option>
+                    </select>
                   </div>
                 </div>
 

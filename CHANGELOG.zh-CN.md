@@ -7,7 +7,13 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
 ---
-## [1.3.1] - 2026-07-13
+## [1.3.1] - 2026-07-14
+
+### 重要更新
+
+- **Codex API 生图兼容恢复**：修复第三方 API 服务与 API Key provider 无法使用 Codex 内置生图的问题；提供 `gpt-image-2` 的供应商及多开实例现在会自动写入所需配置。
+- **Codex SSH 账号同步**：支持主机管理、连接测试、同步 `auth.json` / `config.toml`、远端哈希校验、切号后自动同步，并在可能时重载远端 Codex app-server/daemon。
+- **Codex 切号支持同步 Hermes 鉴权**：开启后，OAuth 账号切号会同步写入 `~/.hermes/auth.json`；API Key 账号自动跳过，同步失败不会阻断切号。
 
 ### 新增
 
@@ -16,6 +22,21 @@
 - **设置新增全局「减少动画」**：可削弱页面淡入、弹框过渡、阴影/模糊与平滑滚动等动效，保留必要加载反馈。
 - **Codex「添加至 API 服务」成员列表支持标记备用与调度快捷入口**：可在成员行直接切换备用，并在限制 Free 账号旁快速切换调度策略；自定义调度仍负责优先级与权重，备用在各调度策略下均生效。
 - **Codex 支持导入 personal access token（`at-*`）账号并用于 API 服务/sidecar**：可从常见 JSON 导出或按行 token 列表导入，access-token 账号可写入 sidecar 鉴权元数据，便于反代与本地接入使用。
+- **Codex Token / JSON 导入兼容个人访问令牌（`at-…` / `personal_access_token`）**：可直接粘贴单行 `at-…`、含该字段的 JSON 或 `auth.json`；无 refresh/id 时按官方 `personal_access_token` 形态落盘，不单独占用添加账号 Tab。感谢 @daodeqing 提供思路与场景参考（#1448）。
+- **设置 → 通用支持「启动默认页」**：可指定冷启动打开的固定页面，或选择「记住上次」恢复离开时的页面（默认）。
+- **Codex 切号可选同步 Hermes 鉴权**：设置中开启后，OAuth 账号切号会写入 `~/.hermes/auth.json` 的 `openai-codex`（providers + credential_pool）；API Key 账号跳过，同步失败不阻断切号。感谢 @iwillwill-ALLWILL 提供思路与场景参考（#1434）。
+- **主题色套件（Nord / Tokyo Night / Catppuccin / Gruvbox / Everforest）**：设置 → 通用可在浅色/深色之上叠加配色包。感谢 @letr1n1ty 提供思路与场景参考（#1399）。
+- **外连总开关 + WebDAV 域名白名单**：关闭外连时阻断 WebDAV 同步、远端公告拉取与自动更新检查，并限制 WebDAV 主机。感谢 @YSheldon 提供思路与场景参考（#1104）。
+- **账号详情本地 AES-256-GCM 加密落盘**：Antigravity 账号 token 与各平台账号详情文件使用本地信封加密，旧明文读取后自动迁移/轮换；索引与摘要文件仍保持明文。感谢 @YSheldon 提供思路与场景参考（#1104）。
+- **WebSocket 高危账号操作需会话鉴权**：经本地 WebSocket 导出 token、添加/删除账号时，必须携带本进程写入 `server.json` 的鉴权 token。感谢 @YSheldon 提供思路与场景参考（#1104）。
+- **Codex SSH 账号同步**：账号总览 SSH 页签支持主机管理、测连、同步 auth.json/config.toml、远端哈希校验、切号后自动同步，并在可能时重载远端 Codex app-server/daemon。感谢 @enyihou 提供思路与场景参考（#1404）。
+- **Codex 套餐徽章支持仅样式变体（描边 / 柔和 / 单色）**：快捷设置可选外观，套餐文字仍为原始 plan 值。感谢 @vs2pk0 提供思路与场景参考（#772）。
+- **Codex 会话分类为对话 / 外部 / 子代理**，会话管理器提供类型筛选（默认对话）；支持打开会话 rollout 文件，多实例同 ID 时需指定实例；仅 total 有值时显示总 token。感谢 @andrew05060414 提供思路与场景参考（#1510）。
+- **Codex 批量导入统一任务队列**：单个或多个 JSON 均进入同一弹框，可选择导入前检测或不检测直接导入；解析、检测和实际写入均可转到后台并显示独立进度，检测完成后提示查看结果；右下角最多展示 3 个任务，更多任务可展开查看；取消导入会停止后续账号并保留已完成结果。感谢 @kerryNie-user 提供思路与场景参考（#1286）。
+- **Codex 模型供应商 API Key 可显式重命名**：复用同一 Key 时不再覆盖已保存名称。
+- **CodeBuddy 本机会话文件管理**：账号页可扫描并打开本机会话相关文件位置。感谢 @eye-gu 提供思路与场景参考（#1188）。
+- **CodeBuddy 本机会话文件列表（第一版）**：尽力扫描常见 CodeBuddy 数据路径中的会话类 JSON/JSONL。感谢 @eye-gu 提供思路与场景参考（#1188）。
+- **托管本地 LB 提供商 id `cockpit-codex-lb`** 已暴露，便于把本地 API 写成稳定供应商名。感谢 @Enjoyoer 提供思路与场景参考（#980）。
 
 ### 变更
 
@@ -24,9 +45,19 @@
 - **「添加至 API 服务」成员列表顺序与账号总览一致**：弹框内不再单独提供排序控件，总览怎么排，成员列表就怎么排。
 - **Grok 账号卡与悬浮卡展示剩余配额更完整**：同时体现周配额与产品剩余百分比，并对接口返回的精简套餐别名做展示映射。
 - **悬浮卡跟随主窗口当前平台**：例如主窗口在 Grok 时悬浮卡同步到 Grok，并跨窗口记住选择，不再锁在 Antigravity。
+- **最小化到托盘可销毁主窗口 WebView 以降内存**：关闭行为为托盘时销毁主 WebView，托盘与后台服务继续运行；从托盘再打开时重建窗口（失败则回退为隐藏）。感谢 @F0RLE 提供思路与场景参考（#686）。
+- **Codex 账号卡片网格更紧凑**（内边距与操作区间距）。感谢 @amoorkie 提供思路与场景参考（#1287）。
 
 ### 修复
 
+- **修复第三方 API 服务与 API Key provider 无法使用 Codex 内置生图的问题**：模型目录明确提供 `gpt-image-2` 的 provider 现在会写入所需鉴权开关与 actor header，已登记的多开实例也会分别写入同样的配置。
+- **修复 Codex 模型供应商一键测试运行时无法退出的问题**：测试期间可随时关闭弹框或取消任务；取消会停止后续供应商测试、中断当前请求，并清理临时 provider gateway。
+- **修复「显示模型专属配额」无法恢复 GPT-5.3-Codex-Spark 行的问题**：解析层不再丢弃 Spark 专属额度，快捷设置开关可像其它 `additional:*` 窗口一样显示/隐藏。感谢提供思路与场景参考（#1540）。
+- **修复对当前 Codex 账号重新导入 token 后运行态仍用旧凭证的问题**：导入结果包含当前激活账号时会自动重新切号落盘，无需再手动点一次切换。感谢 @lishunsheng-dev 提供思路与场景参考（#1325）。
+- **修复 Windows 下 API 服务端口占用提示未说明系统保留端口的问题**：绑定失败时对照 `netsh` 排除端口范围，提示可能为 Hyper-V/WSL 保留端口并建议换端口。感谢 @tanzui 提供思路与场景参考（#1297）。
+- **修复 Windows 上 `Antigravity IDE` 与 `Antigravity` 并存时数据目录可能选错的问题**：优先选择含 `state.vscdb` 的候选路径。感谢 @A-Gan 提供思路与场景参考（#1314）。
+- **修复本地 API 服务对「Chat Completions base + Responses path」错误拼接返回 404 的问题**：`/v1/chat/completions/v1/responses`（及 compact）走 Responses 处理。感谢 @lawyer112 提供思路与场景参考（#932）。
+- **修复 Windows 更新器在无法识别安装包类型时误回退 NSIS 的问题**：未知 bundle 时回退 MSI。感谢 @snvtac 提供思路与场景参考（#1320）。
 - **修复 Grok CLI 鉴权与后台刷新竞态导致的 401 / 配额丢失**：billing/user 请求补齐必要鉴权头；软刷新时优先采纳 CLI 轮换后的本地凭据，授权失效可重试，查询失败时保留已缓存配额。
 - **修复 Codex / Grok 多账号批量刷新配额时并发过高导致部分失败的问题**：Codex 分组与本地接入批量刷新改为后端限流并发；Grok 全量刷新限流并发，并对 billing 等传输失败做短退避重试；Grok 进度条宽度按剩余比例展示。
 - **修复 Codex API 服务费用估算与分档、长上下文及 service_tier 不一致的问题**：快速档有独立单价时使用绝对价，否则按倍率估算；长上下文按会话输入是否超过阈值整单调整输入/缓存/输出单价；默认价表补齐 GPT-5.6 等可用模型。

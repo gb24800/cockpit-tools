@@ -3053,6 +3053,9 @@ func (s *relayServer) router() *gin.Engine {
 	router.GET("/v1/models", s.handleModels)
 	router.POST("/v1/responses", s.handleResponses)
 	router.POST("/v1/responses/compact", s.handleResponsesCompact)
+	// Compatibility: some clients set chat-completions base and still append /v1/responses.
+	router.POST("/v1/chat/completions/v1/responses", s.handleResponses)
+	router.POST("/v1/chat/completions/v1/responses/compact", s.handleResponsesCompact)
 	router.POST("/v1/chat/completions", s.handleChatCompletions)
 	router.POST(anthropicMessagesPath, s.handleAnthropicMessages)
 	router.POST(anthropicCountTokensPath, s.handleAnthropicCountTokens)

@@ -2,6 +2,8 @@
   "common": {
     "confirm": "Bestätigen",
     "cancel": "Abbrechen",
+    "cancelling": "Wird abgebrochen...",
+    "cancelled": "Abgebrochen",
     "save": "Speichern",
     "saving": "Speichern...",
     "delete": "Löschen",
@@ -270,7 +272,9 @@
     "switchClassicLayoutConfirm": "Jetzt wechseln",
     "2faManager": "2FA-Verwaltung",
     "apiRelay": "API-Relay",
-    "claude": "Claude"
+    "claude": "Claude",
+    "openrouter": "OpenRouter",
+    "opencode": "OpenCode"
   },
   "sponsors": {
     "pageTitle": "Sponsoren",
@@ -816,7 +820,25 @@
       "autoImportFromLocalScanEmpty": "Scan fertig: keine importierbaren Anmeldungen",
       "autoImportFromLocalScanPartial": "Scan fertig: teilweise fehlgeschlagen",
       "autoImportFromLocalScanFailed": "Scan fehlgeschlagen: {{error}}",
-      "autoImportFromLocalScanCancelled": "Aus; laufender Scan wird verworfen"
+      "autoImportFromLocalScanCancelled": "Aus; laufender Scan wird verworfen",
+      "startupPage": "Startseite",
+      "startupPageDesc": "Seite beim Kaltstart. „Zuletzt merken“ stellt die vorherige Seite wieder her.",
+      "startupPageLast": "Zuletzt merken",
+      "startupPageCodexApi": "Codex-API-Dienst",
+      "hermesAuthOverwrite": "Hermes bei Codex-Wechsel syncen",
+      "hermesAuthOverwriteDesc": "Nur OAuth: schreibt openai-codex-Credentials nach ~/.hermes/auth.json (standardmäßig aus)",
+      "themeColor": "Farbpaket",
+      "themeColorDesc": "Farbpaket über Hell/Dunkel legen",
+      "themeColorDefault": "Standard",
+      "themeColorNord": "Nord",
+      "themeColorTokyoNight": "Tokyo Night",
+      "themeColorCatppuccin": "Catppuccin",
+      "themeColorGruvbox": "Gruvbox",
+      "themeColorEverforest": "Everforest",
+      "externalNetwork": "Externes Netz erlauben",
+      "externalNetworkDesc": "Aus: blockiert WebDAV, OpenRouter-Nutzung, Ankündigungen und Auto-Update-Checks (lokal bleibt nutzbar).",
+      "webdavAllowedDomains": "WebDAV-Domain-Whitelist",
+      "webdavAllowedDomainsDesc": "Kommagetrennt; leer = kein Limit"
     },
     "network": {
       "apiTitle": "Antigravity-Cockpit-API",
@@ -881,6 +903,7 @@
       "releaseHistoryLoading": "Versionshinweise werden geladen...",
       "releaseHistoryEmpty": "Noch keine Versionshinweise",
       "releaseHistoryLoadFailed": "Fehler beim Laden: {{error}}",
+      "releaseHistorySectionHighlights": "Wichtige Neuerungen",
       "releaseHistorySectionAdded": "Hinzugefügt",
       "releaseHistorySectionChanged": "Geändert",
       "releaseHistorySectionFixed": "Behoben",
@@ -1045,6 +1068,19 @@
       "retentionUnit": "days",
       "collapseAll": "Collapse remote backups",
       "expandAll": "Expand all remote backups ({{count}} more)"
+    },
+    "keysVault": {
+      "title": "OpenRouter / OpenCode Key",
+      "desc": "API-Keys lokal in den App-Daten speichern. OpenRouter-Nutzung bei erlaubtem Externnetz aktualisieren. Keine vollständige Plattform.",
+      "openRouter": "OpenRouter",
+      "openCode": "OpenCode Go / Zen",
+      "label": "Bezeichnung",
+      "empty": "Keine Keys",
+      "added": "Hinzugefügt",
+      "deleted": "Gelöscht",
+      "refreshed": "Nutzung aktualisiert",
+      "usage": "Nutzung",
+      "tierOther": "Andere"
     }
   },
   "appPath": {
@@ -1741,7 +1777,8 @@
       "title": "Codex-Konto hinzufügen",
       "oauth": "OAuth-Autorisierung",
       "token": "JSON-Import",
-      "local": "Lokaler Import"
+      "local": "Lokaler Import",
+      "accessToken": "Zugriffstoken"
     },
     "oauth": {
       "desc": "Klicke unten und schließe die OpenAI-Autorisierung im Browser ab",
@@ -2131,7 +2168,12 @@
     },
     "list": {
       "showCodeReviewQuota": "Code-Review-Kontingent anzeigen",
-      "showAdditionalQuota": "Modellspezifische Kontingente"
+      "showAdditionalQuota": "Modellspezifische Kontingente",
+      "planBadgeStyle": "Plan-Badge-Stil",
+      "planBadgeStyleDefault": "Standard",
+      "planBadgeStyleOutline": "Umriss",
+      "planBadgeStyleSoft": "Weich",
+      "planBadgeStyleMono": "Einfarbig"
     },
     "time": {
       "today": "Heute {{time}}",
@@ -2391,7 +2433,8 @@
         "selectAllSessions": "Alle Sitzungen wählen",
         "clearSelectedSessions": "Auswahl aufheben",
         "copyToInstance": "In Instanz kopieren",
-        "trash": "Papierkorb"
+        "trash": "Papierkorb",
+        "openRollout": "Sitzungsdatei öffnen"
       },
       "confirm": {
         "title": "In den Papierkorb verschieben",
@@ -2593,7 +2636,15 @@
         "removeItem": "Entfernen",
         "emptyFilteredTitle": "Keine passenden Sitzungen",
         "emptyFilteredDesc": "Suche, Quelle oder Auswahlstatus anpassen und erneut versuchen."
-      }
+      },
+      "kindFilter": "Sitzungstyp",
+      "kind": {
+        "conversation": "Unterhaltungen",
+        "external": "Extern",
+        "subagent": "Unteragent",
+        "all": "Alle Typen"
+      },
+      "pickInstancePrompt": "Sitzung existiert auf mehreren Instanzen. Instanz-ID eingeben:"
     },
     "api": {
       "baseUrl": "Basis-URL",
@@ -2607,6 +2658,20 @@
       "showApiKey": "API Key anzeigen",
       "hideApiKey": "API Key ausblenden",
       "apiKeyHiddenHint": "API Key ist ausgeblendet. Zum Anzeigen klicken.",
+      "modelCatalog": {
+        "label": "Modellliste",
+        "fetch": "Vom Anbieter abrufen",
+        "fetching": "Wird abgerufen...",
+        "count": "{{count}} Modelle",
+        "placeholder": "Eine Modell-ID pro Zeile eingeben oder IDs durch Kommas trennen.",
+        "editHint": "Abgerufene Modelle werden nur in diesen Entwurf übernommen. Vor dem Speichern prüfen und bearbeiten.",
+        "syncToggle": "Anbietermodelle mit Codex synchronisieren",
+        "syncDescription": "Nach dem Speichern wird aus dieser Liste der von Cockpit verwaltete Codex-Modellkatalog erstellt. Eigene Kataloge werden nicht überschrieben.",
+        "fetchCredentialsRequired": "Zuerst API Key und Base URL eingeben.",
+        "fetchEmpty": "Der Anbieter hat keine Modelle zurückgegeben. Die aktuelle Liste wurde beibehalten.",
+        "fetchFailed": "Anbietermodelle konnten nicht abgerufen werden: {{error}}",
+        "syncRequiresModels": "Vor der Synchronisierung mit Codex mindestens ein Modell abrufen oder eingeben."
+      },
       "actions": {
         "addAndSwitch": "Hinzufügen und wechseln"
       },
@@ -2983,7 +3048,10 @@
         "help": "Nur aktivieren, wenn der Anbieter Responses über WebSocket ausdrücklich unterstützt; die Verbindungsart lässt sich in den Codex- oder Proxy-Dienst-Protokollen prüfen.",
         "enabled": "Aktiviert",
         "disabled": "Deaktiviert"
-      }
+      },
+      "renameApiKeyPrompt": "API-Key umbenennen",
+      "renameApiKeySuccess": "API-Key umbenannt",
+      "renameApiKeyFailed": "API-Key umbenennen fehlgeschlagen: {{error}}"
     },
     "quickSwitch": {
       "action": "Anbieter schnell wechseln",
@@ -3326,8 +3394,20 @@
       "previewSubtitle": "Zu speichernde Konten wählen",
       "scanSubtitle": "Konten werden einzeln gelesen und geprüft",
       "parseSubtitle": "Kontodateien werden gelesen",
+      "importSubtitle": "Ausgewählte Konten werden gespeichert",
+      "finalizing": "Import wird abgeschlossen",
+      "finalizingSubtitle": "Kontenliste und verknüpfte Einstellungen werden aktualisiert",
+      "cancelImport": "Import abbrechen",
+      "importCancelledSummary": "Import nach {{processed}}/{{total}} Konten abgebrochen.",
+      "importChecked": "Geprüfte Konten importieren",
+      "directImport": "Direkt ohne Prüfung importieren",
+      "importCheckedAndAddToApiService": "Geprüfte Konten importieren und zum API-Dienst hinzufügen",
+      "directImportAndAddToApiService": "Direkt importieren und zum API-Dienst hinzufügen",
+      "viewAllTasks": "Alle {{count}} Aufgaben anzeigen",
+      "collapseTasks": "Aufgaben einklappen",
       "cancelling": "Wird abgebrochen...",
       "scanDone": "Scan abgeschlossen",
+      "scanCompleteReview": "Prüfung abgeschlossen – bitte ansehen",
       "parseDone": "Einlesen abgeschlossen",
       "scanning": "Scan läuft",
       "parsing": "Einlesen",
@@ -3336,7 +3416,7 @@
       "failed": "Fehlgeschlagen",
       "quotaOk": "Konto OK",
       "quotaFailed": "Störung",
-      "checkQuotaToggle": "Konten prüfen",
+      "checkQuotaToggle": "Vor Import prüfen",
       "preparing": "Import wird vorbereitet...",
       "importSelected": "Ausgewählte Konten importieren",
       "noSelection": "Bitte zuerst Konten auswählen",
@@ -3359,7 +3439,17 @@
       "taskRunning": "{{current}} / {{total}} wird verarbeitet",
       "taskPreview": "{{total}} Vorschauobjekt(e) bereit",
       "reopen": "Aufgabe anzeigen",
-      "dismissTask": "Verwerfen"
+      "dismissTask": "Verwerfen",
+      "queueCount": "{{count}} Jobs in Warteschlange",
+      "queued": "In der Warteschlange",
+      "batchLabel": "Charge {{index}}",
+      "runInBackground": "Hintergrund",
+      "cancelQueued": "Warteschlange abbrechen",
+      "importing": "Importieren",
+      "checkAccounts": "Konten prüfen",
+      "importAndAddToApiService": "Importieren + API",
+      "importAndAddToApiServiceSuccess": "Importiert und zum API-Dienst hinzugefügt",
+      "addToApiServiceFailed": "Importiert, aber das Hinzufügen zum API-Dienst ist fehlgeschlagen: {{error}}"
     },
     "autoRepairMode": {
       "label": "Auto-Reparaturlogik",
@@ -3406,6 +3496,71 @@
       "chipSearch": "Suche",
       "chipPlan": "Tarif",
       "chipFolder": "Ordner"
+    },
+    "accessTokenImport": {
+      "nameRequired": "Kontonamen eingeben",
+      "tokenRequired": "Codex-Zugriffstoken eingeben",
+      "desc": "Benanntes Access-Token-Konto speichern. Ohne Refresh/ID wird personal_access_token geschrieben.",
+      "nameLabel": "Kontoname",
+      "namePlaceholder": "Anzeigename in der Liste",
+      "tokenLabel": "Codex-Zugriffstoken",
+      "hideToken": "Ausblenden",
+      "showToken": "Anzeigen",
+      "submit": "Zugriffstoken importieren",
+      "success": "Zugriffstoken-Konto importiert: {{name}}"
+    },
+    "ssh": {
+      "tab": "SSH-Sync",
+      "title": "Codex SSH-Sync",
+      "desc": "Remote-Hosts speichern, Verbindung testen und auth.json übertragen. Nach Kontowechsel automatische Sync bei Auswahl.",
+      "new": "Neu",
+      "empty": "Keine SSH-Hosts",
+      "test": "Testen",
+      "sync": "Sync",
+      "saved": "SSH-Server gespeichert",
+      "deleted": "Gelöscht",
+      "name": "Name",
+      "host": "Host",
+      "user": "Benutzer",
+      "port": "Port",
+      "remoteDir": "Remote-Codex-Verzeichnis",
+      "syncSwitch": "SSH einschalten",
+      "syncSwitchDesc": "Aktivieren Sie diese Option, um einen SSH-Host zu konfigurieren. Codex-Switches synchronisieren das aktuelle Konto aus der Ferne.",
+      "configure": "Aufstellen",
+      "modalTitle": "SSH-Synchronisierungs-Setup",
+      "modalHint": "Fügen Sie einen SSH-Host mit aktivierter automatischer Synchronisierung hinzu und wählen Sie ihn aus, damit Codex-Kontowechsel die Remote-Authentifizierung aktualisieren.",
+      "subtitle": "Der ausgewählte Host erhält nach dem Kontowechsel das aktuelle Codex-Authentifizierungspaket.",
+      "addServer": "Server hinzufügen",
+      "editServer": "Server bearbeiten",
+      "username": "Benutzername",
+      "codexHome": "Remote-Codex-Verzeichnis",
+      "authMethod": "Authentifizierungsmethode",
+      "agentAuth": "SSH-Agent",
+      "privateKeyAuth": "Privater Schlüssel",
+      "privateKeyPath": "Schlüsselpfad",
+      "syncOnSwitch": "Synchronisierung nach dem Wechsel",
+      "emptyTitle": "Keine SSH-Server",
+      "emptyBody": "Geben Sie links einen Host ein und speichern Sie ihn als Switch-Synchronisierungsziel.",
+      "selected": "Ausgewählt",
+      "select": "Wählen",
+      "testConnection": "Prüfen",
+      "syncNow": "Jetzt synchronisieren",
+      "connectionOk": "Verbunden",
+      "syncVerified": "SSH-Synchronisierung überprüft",
+      "syncFailed": "Die SSH-Synchronisierung ist fehlgeschlagen",
+      "syncedAs": "Synchronisiert {{email}} · {{time}}",
+      "neverSynced": "Noch nicht synchronisiert",
+      "latestVerified": "Letzte SSH-Synchronisierung überprüft",
+      "syncSwitchActive": "Am · {{name}} ({{user}}@{{host}})",
+      "footerHint": "Der Schalter schaltet sich nach dem Speichern ein; Sie können es jederzeit ausschalten, um die automatische Synchronisierung zu stoppen.",
+      "formLead": "Details zum Remote-Host",
+      "namePlaceholder": "z.B. Heim-NAS",
+      "syncOnSwitchHint": "Nach dem Speichern und Auswählen schaltet Codex die Push-Authentifizierung auf diesen Host um",
+      "addAndSave": "Hinzufügen und speichern",
+      "serverList": "Server",
+      "serverListLead": "Wählen Sie das Synchronisierungsziel aus",
+      "serverCount": "{{count}} Server",
+      "autoSyncBadge": "Automatisch"
     }
   },
   "githubCopilot": {
@@ -4323,6 +4478,12 @@
     },
     "quota": {
       "usedOfTotal": "{{used}} / {{total}}​"
+    },
+    "sessions": {
+      "title": "Lokale Sitzungsdateien",
+      "desc": "Lokale Sitzungsdateien — Lokale Daten scannen und Speicherort öffnen.",
+      "empty": "Keine Sitzungsdateien",
+      "open": "Ort öffnen"
     }
   },
   "qoder": {
@@ -5042,7 +5203,8 @@
       "installHint": "Führen Sie den folgenden offiziellen Befehl im Terminal aus und klicken Sie nach der Installation auf Aktualisieren.",
       "selectWorkingDir": "Grok-CLI-Arbeitsverzeichnis wählen",
       "workingDirAccountHint": "Das Arbeitsverzeichnis ist an dieses Konto gebunden und wird beim nächsten Start wiederhergestellt.",
-      "launchCommandPlaceholder": "Arbeitsverzeichnis wählen oder bestätigen, um den Startbefehl zu erzeugen"
+      "launchCommandPlaceholder": "Arbeitsverzeichnis wählen oder bestätigen, um den Startbefehl zu erzeugen",
+      "reauthLaunchHint": "Die Kontoauthentifizierung ist abgelaufen. Erneut autorisieren; Der folgende Startbefehl ist weiterhin verfügbar."
     },
     "switch": {
       "success": "Konto gewechselt"
@@ -5325,5 +5487,23 @@
       "supports1mLabel": "1M-Unterstützung deklarieren",
       "supports1mShort": "1M Kontext"
     }
+  },
+  "openrouter": {
+    "title": "OpenRouter",
+    "desc": "OpenRouter-API-Keys, Nutzung und Modelle verwalten.",
+    "tabKeys": "Keys & Nutzung",
+    "tabModels": "Modelle",
+    "modelsLoaded": "{{count}} Modelle geladen",
+    "noUsageYet": "Nutzung noch nicht aktualisiert",
+    "loadModels": "Modelle laden",
+    "searchModels": "Modelle suchen",
+    "freeOnly": "Nur kostenlos",
+    "noModels": "Keine Modelle — Key hinzufügen und laden.",
+    "free": "Kostenlos",
+    "noCtx": "Keine Kontextlänge"
+  },
+  "opencode": {
+    "title": "OpenCode",
+    "desc": "OpenCode Go/Zen API-Keys verwalten und nach Stufe filtern."
   }
 }

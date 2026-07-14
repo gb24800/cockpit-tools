@@ -16,7 +16,6 @@ import { TraeCnIcon, TraeIcon, TraeSoloCnIcon, TraeSoloIcon } from '../component
 import { WorkbuddyIcon } from '../components/icons/WorkbuddyIcon';
 import { ZedIcon } from '../components/icons/ZedIcon';
 import { ZcodeIcon } from '../components/icons/ZcodeIcon';
-
 export function getPlatformLabel(platformId: PlatformId, _t: TFunction): string {
   switch (platformId) {
     case 'antigravity':
