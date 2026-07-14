@@ -23,7 +23,7 @@ use crate::modules::{
 };
 use base64::{engine::general_purpose, Engine as _};
 use futures_util::{SinkExt, StreamExt};
-use rand::{distributions::Alphanumeric, Rng};
+use rand::{distributions::Alphanumeric, seq::SliceRandom, Rng};
 use reqwest::header::{HeaderName, HeaderValue, ACCEPT, AUTHORIZATION, CONTENT_TYPE, USER_AGENT};
 use reqwest::{Client, Method, Proxy, StatusCode, Url};
 use rusqlite::{
@@ -4718,6 +4718,7 @@ fn compare_routing_candidates(
             compare_option_desc(left.plan_rank, right.plan_rank)
                 .then_with(|| compare_option_desc(left.remaining_quota, right.remaining_quota))
         }
+        CodexLocalAccessRoutingStrategy::Random => Ordering::Equal,
         CodexLocalAccessRoutingStrategy::SingleAccount => Ordering::Equal,
         CodexLocalAccessRoutingStrategy::QuotaHighFirst => {
             compare_option_desc(left.remaining_quota, right.remaining_quota)
@@ -4987,6 +4988,12 @@ fn apply_routing_strategy(
     custom_rules: &[CodexLocalAccessCustomRoutingRule],
     start: usize,
 ) -> Vec<String> {
+    if strategy == CodexLocalAccessRoutingStrategy::Random {
+        let mut shuffled = account_ids.to_vec();
+        shuffled.shuffle(&mut rand::thread_rng());
+        return shuffled;
+    }
+
     if strategy == CodexLocalAccessRoutingStrategy::SingleAccount {
         return account_ids.to_vec();
     }
@@ -8974,6 +8981,7 @@ fn sidecar_disable_image_generation_value(
 fn sidecar_routing_strategy_value(strategy: CodexLocalAccessRoutingStrategy) -> &'static str {
     match strategy {
         CodexLocalAccessRoutingStrategy::Auto => "auto",
+        CodexLocalAccessRoutingStrategy::Random => "random",
         CodexLocalAccessRoutingStrategy::SingleAccount => "single_account",
         CodexLocalAccessRoutingStrategy::QuotaHighFirst => "quota_high_first",
         CodexLocalAccessRoutingStrategy::QuotaLowFirst => "quota_low_first",
@@ -10007,6 +10015,7 @@ async fn prepare_sidecar_launch_config_in_dir(
             "excludedModels": rule.excluded_models.clone(),
         })).collect::<Vec<_>>(),
         "debugLogs": collection.debug_logs,
+        "immediateSseResponse": collection.immediate_sse_response,
     });
 
     let mut config = Map::new();
@@ -12835,6 +12844,7 @@ async fn ensure_runtime_loaded_without_start_with_profile_restore(
             disable_cooling: false,
             restrict_free_accounts: true,
             debug_logs: true,
+            immediate_sse_response: false,
             bound_oauth_account_id: None,
             bound_oauth_quota_reserve: None,
             account_ids: Vec::new(),
@@ -14106,6 +14116,7 @@ fn new_empty_local_access_collection() -> Result<CodexLocalAccessCollection, Str
         disable_cooling: false,
         restrict_free_accounts: true,
         debug_logs: true,
+        immediate_sse_response: false,
         bound_oauth_account_id: None,
         bound_oauth_quota_reserve: None,
         account_ids: Vec::new(),
@@ -16763,6 +16774,7 @@ fn new_local_access_collection() -> Result<CodexLocalAccessCollection, String> {
         disable_cooling: false,
         restrict_free_accounts: true,
         debug_logs: true,
+        immediate_sse_response: false,
         bound_oauth_account_id: None,
         bound_oauth_quota_reserve: None,
         account_ids: Vec::new(),
@@ -17201,6 +17213,7 @@ pub async fn update_local_access_routing_options(
     max_retry_credentials: u16,
     max_retry_interval_ms: u64,
     disable_cooling: bool,
+    immediate_sse_response: bool,
 ) -> Result<CodexLocalAccessState, String> {
     ensure_runtime_loaded().await?;
 
@@ -17222,6 +17235,7 @@ pub async fn update_local_access_routing_options(
     collection.max_retry_interval_ms =
         max_retry_interval_ms.clamp(MAX_RETRY_INTERVAL_MIN_MS, MAX_RETRY_INTERVAL_MAX_MS);
     collection.disable_cooling = disable_cooling;
+    collection.immediate_sse_response = immediate_sse_response;
     collection.updated_at = now_ms();
     save_collection_to_disk(&collection)?;
 
@@ -22924,6 +22938,7 @@ mod tests {
             disable_cooling: false,
             restrict_free_accounts: true,
             debug_logs: true,
+            immediate_sse_response: false,
             bound_oauth_account_id: None,
             bound_oauth_quota_reserve: None,
             account_ids,
@@ -25637,6 +25652,28 @@ data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_t
             sidecar_routing_strategy_value(CodexLocalAccessRoutingStrategy::SingleAccount),
             "single_account"
         );
+    }
+
+    #[test]
+    fn random_routing_serializes_and_keeps_all_candidates() {
+        let account_ids = vec![
+            "account-a".to_string(),
+            "account-b".to_string(),
+            "account-c".to_string(),
+        ];
+        let routed = apply_routing_strategy(
+            &account_ids,
+            CodexLocalAccessRoutingStrategy::Random,
+            &[],
+            0,
+        );
+
+        assert_eq!(
+            sidecar_routing_strategy_value(CodexLocalAccessRoutingStrategy::Random),
+            "random"
+        );
+        assert_eq!(routed.len(), account_ids.len());
+        assert!(account_ids.iter().all(|account_id| routed.contains(account_id)));
     }
 
     #[test]

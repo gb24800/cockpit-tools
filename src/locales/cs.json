@@ -1954,6 +1954,7 @@
         "planHighFirst": "Nejvyšší tarif napřed",
         "planLowFirst": "Nejnižší tarif napřed",
         "expirySoonFirst": "Brzy končící první",
+        "random": "Náhodné",
         "custom": "Vlastní"
       },
       "statusUnconfigured": "Nenastaveno",
@@ -3288,6 +3289,7 @@
         "maxRetryInterval": "Čekání retry",
         "disableCooling": "Vypnout cooldown",
         "saveOptions": "Uložit volby",
+        "immediateSseResponse": "Okamžitá SSE 200",
         "optionsSaved": "Volby směrování uloženy"
       },
       "validation": {

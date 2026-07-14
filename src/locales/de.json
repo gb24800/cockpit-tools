@@ -1954,6 +1954,7 @@
         "planHighFirst": "Hohes Abo zuerst",
         "planLowFirst": "Niedriges Abo zuerst",
         "expirySoonFirst": "Bald ablaufend zuerst",
+        "random": "Zufällig",
         "custom": "Benutzerdefiniert"
       },
       "statusUnconfigured": "Nicht konfiguriert",
@@ -3288,6 +3289,7 @@
         "maxRetryInterval": "Retry-Wartezeit",
         "disableCooling": "Cooldown deaktivieren",
         "saveOptions": "Optionen speichern",
+        "immediateSseResponse": "Sofortiges SSE 200",
         "optionsSaved": "Routingoptionen gespeichert"
       },
       "validation": {

@@ -1954,6 +1954,7 @@
         "planHighFirst": "Ưu tiên gói cao",
         "planLowFirst": "Ưu tiên gói thấp",
         "expirySoonFirst": "Sắp hết hạn trước",
+        "random": "Phân tán ngẫu nhiên",
         "custom": "Tùy chỉnh"
       },
       "statusUnconfigured": "Chưa cấu hình",
@@ -3288,6 +3289,7 @@
         "maxRetryInterval": "Chờ retry",
         "disableCooling": "Tắt cooldown",
         "saveOptions": "Lưu tùy chọn",
+        "immediateSseResponse": "SSE trả 200 ngay",
         "optionsSaved": "Đã lưu tùy chọn định tuyến"
       },
       "validation": {

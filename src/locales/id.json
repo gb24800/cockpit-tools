@@ -2004,6 +2004,7 @@
         "planHighFirst": "Paket Tinggi Dulu",
         "planLowFirst": "Paket Rendah Dulu",
         "expirySoonFirst": "Kedaluwarsa Cepat Dulu",
+        "random": "Acak",
         "custom": "Kustom"
       },
       "statusUnconfigured": "Belum dikonfigurasi",
@@ -3335,6 +3336,7 @@
         "maxRetryInterval": "Tunggu retry",
         "disableCooling": "Matikan cooldown",
         "saveOptions": "Simpan Opsi",
+        "immediateSseResponse": "SSE 200 langsung",
         "optionsSaved": "Opsi routing tersimpan"
       },
       "validation": {

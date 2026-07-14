@@ -1954,6 +1954,7 @@
         "planHighFirst": "上位プラン優先",
         "planLowFirst": "下位プラン優先",
         "expirySoonFirst": "期限が近い順",
+        "random": "ランダム",
         "custom": "カスタム"
       },
       "statusUnconfigured": "未設定",
@@ -3288,6 +3289,7 @@
         "maxRetryInterval": "再試行待ち",
         "disableCooling": "クールダウン無効",
         "saveOptions": "設定を保存",
+        "immediateSseResponse": "即時 SSE 200",
         "optionsSaved": "ルーティング設定を保存しました"
       },
       "validation": {

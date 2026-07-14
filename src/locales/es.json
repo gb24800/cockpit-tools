@@ -1954,6 +1954,7 @@
         "planHighFirst": "Plan alto primero",
         "planLowFirst": "Plan bajo primero",
         "expirySoonFirst": "Vence antes primero",
+        "random": "Aleatorio",
         "custom": "Personalizado"
       },
       "statusUnconfigured": "Sin configurar",
@@ -3288,6 +3289,7 @@
         "maxRetryInterval": "Espera retry",
         "disableCooling": "Desactivar cooldown",
         "saveOptions": "Guardar opciones",
+        "immediateSseResponse": "SSE 200 inmediato",
         "optionsSaved": "Opciones de ruta guardadas"
       },
       "validation": {

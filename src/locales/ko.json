@@ -1954,6 +1954,7 @@
         "planHighFirst": "상위 요금제 우선",
         "planLowFirst": "하위 요금제 우선",
         "expirySoonFirst": "만료 임박 우선",
+        "random": "무작위",
         "custom": "사용자 지정"
       },
       "statusUnconfigured": "미설정",
@@ -3288,6 +3289,7 @@
         "maxRetryInterval": "재시도 대기",
         "disableCooling": "쿨다운 끄기",
         "saveOptions": "옵션 저장",
+        "immediateSseResponse": "즉시 SSE 200",
         "optionsSaved": "라우팅 옵션 저장됨"
       },
       "validation": {

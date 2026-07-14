@@ -2273,6 +2273,7 @@
         "planHighFirst": "优先高订阅",
         "planLowFirst": "优先低订阅",
         "expirySoonFirst": "优先近到期",
+        "random": "随机分散",
         "custom": "自定义"
       },
       "requestKind": {
@@ -3511,6 +3512,7 @@
         "maxRetryInterval": "重试等待",
         "disableCooling": "禁用冷却",
         "saveOptions": "保存选项",
+        "immediateSseResponse": "SSE 立即返回 200",
         "optionsSaved": "调度选项已保存"
       },
       "timeouts": {

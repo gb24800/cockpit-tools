@@ -151,6 +151,7 @@ export async function updateCodexLocalAccessRoutingOptions(payload: {
   maxRetryCredentials: number;
   maxRetryIntervalMs: number;
   disableCooling: boolean;
+  immediateSseResponse: boolean;
 }): Promise<CodexLocalAccessState> {
   return await invoke("codex_local_access_update_routing_options", payload);
 }

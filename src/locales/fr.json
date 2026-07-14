@@ -1954,6 +1954,7 @@
         "planHighFirst": "Forfait élevé d'abord",
         "planLowFirst": "Forfait faible d'abord",
         "expirySoonFirst": "Expiration proche d'abord",
+        "random": "Aléatoire",
         "custom": "Personnalisé"
       },
       "statusUnconfigured": "Non configuré",
@@ -3288,6 +3289,7 @@
         "maxRetryInterval": "Attente retry",
         "disableCooling": "Désactiver cooldown",
         "saveOptions": "Enregistrer",
+        "immediateSseResponse": "SSE 200 immédiat",
         "optionsSaved": "Options de routage enregistrées"
       },
       "validation": {

@@ -2273,6 +2273,7 @@
         "planHighFirst": "High Plan First",
         "planLowFirst": "Low Plan First",
         "expirySoonFirst": "Expiry Soon First",
+        "random": "Random",
         "custom": "Custom"
       },
       "requestKind": {
@@ -3511,6 +3512,7 @@
         "maxRetryInterval": "Retry Wait",
         "disableCooling": "Disable Cooldown",
         "saveOptions": "Save Options",
+        "immediateSseResponse": "Immediate SSE 200",
         "optionsSaved": "Routing options saved"
       },
       "timeouts": {

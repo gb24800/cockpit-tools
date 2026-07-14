@@ -1954,6 +1954,7 @@
         "planHighFirst": "優先高訂閱",
         "planLowFirst": "優先低訂閱",
         "expirySoonFirst": "優先近到期",
+        "random": "隨機分散",
         "custom": "自訂"
       },
       "statusUnconfigured": "未設定",
@@ -3288,6 +3289,7 @@
         "maxRetryInterval": "重試等待",
         "disableCooling": "停用冷卻",
         "saveOptions": "儲存選項",
+        "immediateSseResponse": "SSE 立即回傳 200",
         "optionsSaved": "調度選項已儲存"
       },
       "validation": {

@@ -2001,6 +2001,7 @@
         "planHighFirst": "الأعلى باقة أولاً",
         "planLowFirst": "الأقل باقة أولاً",
         "expirySoonFirst": "الأقرب انتهاءً أولاً",
+        "random": "عشوائي",
         "custom": "مخصص"
       },
       "statusUnconfigured": "غير مُعدّ",
@@ -3335,6 +3336,7 @@
         "maxRetryInterval": "انتظار retry",
         "disableCooling": "تعطيل cooldown",
         "saveOptions": "حفظ الخيارات",
+        "immediateSseResponse": "SSE فوري 200",
         "optionsSaved": "تم حفظ خيارات التوجيه"
       },
       "validation": {

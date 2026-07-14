@@ -663,6 +663,7 @@ export function CodexApiServicePage() {
   const [maxRetryCredentialsDraft, setMaxRetryCredentialsDraft] = useState("0");
   const [maxRetryIntervalDraft, setMaxRetryIntervalDraft] = useState("3");
   const [disableCoolingDraft, setDisableCoolingDraft] = useState(false);
+  const [immediateSseResponseDraft, setImmediateSseResponseDraft] = useState(false);
   const [requestLogPage, setRequestLogPage] = useState(1);
   const [requestLogPageSize, setRequestLogPageSize] = useState(() =>
     readStoredRequestLogPageSize(),
@@ -1293,6 +1294,7 @@ export function CodexApiServicePage() {
       formatSeconds(collection?.maxRetryIntervalMs ?? 3000),
     );
     setDisableCoolingDraft(collection?.disableCooling ?? false);
+    setImmediateSseResponseDraft(collection?.immediateSseResponse ?? false);
     setTimeoutDrafts(timeoutDraftsFromValue(collection?.timeouts));
     setSelectedTimeoutPresetId(
       collection?.activeTimeoutPresetId || "long_wait",
@@ -1306,6 +1308,7 @@ export function CodexApiServicePage() {
     collection?.maxRetryCredentials,
     collection?.maxRetryIntervalMs,
     collection?.disableCooling,
+    collection?.immediateSseResponse,
     collection?.timeouts,
     collection?.activeTimeoutPresetId,
   ]);
@@ -2268,6 +2271,7 @@ export function CodexApiServicePage() {
             maxRetryCredentials,
             maxRetryIntervalMs: maxRetryIntervalSeconds * 1000,
             disableCooling: disableCoolingDraft,
+            immediateSseResponse: immediateSseResponseDraft,
           });
         setState(next);
       },
@@ -2664,6 +2668,10 @@ export function CodexApiServicePage() {
     {
       value: "auto",
       label: t("codex.localAccess.routingStrategy.auto", "自动（推荐）"),
+    },
+    {
+      value: "random",
+      label: t("codex.localAccess.routingStrategy.random", "随机分散"),
     },
     {
       value: "single_account",
@@ -3833,6 +3841,22 @@ export function CodexApiServicePage() {
                       setDisableCoolingDraft(event.target.checked)
                     }
                     disabled={busy || !collection}
+                  />
+                </label>
+                <label>
+                  <span>
+                    {t(
+                      "codex.apiService.routing.immediateSseResponse",
+                      "SSE trả 200 ngay",
+                    )}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={immediateSseResponseDraft}
+                    onChange={(event) =>
+                      setImmediateSseResponseDraft(event.target.checked)
+                    }
+                    disabled={busy || !collection || gatewayMode !== "sidecar"}
                   />
                 </label>
               </div>

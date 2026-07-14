@@ -1954,6 +1954,7 @@
         "planHighFirst": "Piano alto prima",
         "planLowFirst": "Piano basso prima",
         "expirySoonFirst": "Scadenza vicina prima",
+        "random": "Casuale",
         "custom": "Personalizzato"
       },
       "statusUnconfigured": "Non configurato",
@@ -3288,6 +3289,7 @@
         "maxRetryInterval": "Attesa retry",
         "disableCooling": "Disattiva cooldown",
         "saveOptions": "Salva opzioni",
+        "immediateSseResponse": "SSE 200 immediato",
         "optionsSaved": "Opzioni routing salvate"
       },
       "validation": {

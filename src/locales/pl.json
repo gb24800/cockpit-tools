@@ -1954,6 +1954,7 @@
         "planHighFirst": "Najpierw wyższy plan",
         "planLowFirst": "Najpierw niższy plan",
         "expirySoonFirst": "Najbliższe wygaśnięcie",
+        "random": "Losowo",
         "custom": "Niestandardowe"
       },
       "statusUnconfigured": "Nieskonfigurowane",
@@ -3288,6 +3289,7 @@
         "maxRetryInterval": "Czas retry",
         "disableCooling": "Wyłącz cooldown",
         "saveOptions": "Zapisz opcje",
+        "immediateSseResponse": "Natychmiastowe SSE 200",
         "optionsSaved": "Opcje routingu zapisane"
       },
       "validation": {

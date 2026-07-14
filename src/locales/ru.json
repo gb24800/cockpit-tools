@@ -1954,6 +1954,7 @@
         "planHighFirst": "Сначала высокий тариф",
         "planLowFirst": "Сначала низкий тариф",
         "expirySoonFirst": "Скорое истечение сначала",
+        "random": "Случайно",
         "custom": "Настраиваемая"
       },
       "statusUnconfigured": "Не настроено",
@@ -3288,6 +3289,7 @@
         "maxRetryInterval": "Ожидание retry",
         "disableCooling": "Отключить cooldown",
         "saveOptions": "Сохранить параметры",
+        "immediateSseResponse": "Немедленный SSE 200",
         "optionsSaved": "Параметры маршрута сохранены"
       },
       "validation": {

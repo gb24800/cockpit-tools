@@ -3173,6 +3173,7 @@ pub async fn codex_local_access_update_routing_options(
     max_retry_credentials: u16,
     max_retry_interval_ms: u64,
     disable_cooling: bool,
+    immediate_sse_response: bool,
 ) -> Result<CodexLocalAccessState, String> {
     codex_local_access::update_local_access_routing_options(
         session_affinity,
@@ -3180,6 +3181,7 @@ pub async fn codex_local_access_update_routing_options(
         max_retry_credentials,
         max_retry_interval_ms,
         disable_cooling,
+        immediate_sse_response,
     )
     .await
 }
