@@ -256,7 +256,7 @@ fn injection_script(provider_name: &str, quota: &QuotaResponse, locale: &str) ->
         "settings.general.codexAppUiInjectionPoolLabel",
         &[],
     ))
-    .unwrap_or_else(|_| "\"Account pool\"".to_string());
+    .unwrap_or_else(|_| "\"Accounts\"".to_string());
     let weekly_label = serde_json::to_string(&i18n::translate(
         locale,
         "settings.general.codexAppUiInjectionWeeklyLabel",
@@ -476,10 +476,10 @@ mod tests {
             },
             "zh-cn",
         );
-        assert!(script.contains("账号池"));
+        assert!(script.contains("const accountPoolLabel = \"账号\""));
         assert!(script.contains("const accountCount = 14"));
-        assert!(script.contains("周额度"));
-        assert!(script.contains("5h 额度"));
+        assert!(script.contains("const weeklyLabel = \"周\""));
+        assert!(script.contains("const fiveHourLabel = \"5h\""));
         assert!(script.contains("data-cockpit-quota-footer"));
         assert!(script.contains("document.body.appendChild(host)"));
         assert!(script.contains("position:fixed"));

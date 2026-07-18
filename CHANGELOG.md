@@ -7,11 +7,11 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
-## [Unreleased]
+## [1.3.10] - 2026-07-19
 
 ### Added
 
-- **Codex API Service shows its account pool and aggregate quotas below the official client composer by default**: the option is enabled for new installations and upgrades that have not saved it before, while users who explicitly disabled it remain opted out; restarting the corresponding Codex instance shows the account-pool size together with 5-hour and weekly quota. The independent overlay follows window and composer layout changes without modifying or expanding the official UI, and applies only to the Cockpit Tools API Service—not ordinary API Key accounts or custom Provider Gateways.
+- **Codex API Service can show account count and quotas in the ChatGPT client**: the feature is enabled by default; after restarting the corresponding Codex instance, the API Service account count together with 5-hour and weekly quota appears below the composer and follows window and composer layout changes. Users who do not need the feature or encounter display issues can turn it off in Settings.
 - **Codex Token / JSON input shows per-account progress for bulk imports**: JSON arrays, Sub2API account arrays, newline-delimited JSON, and token lines are imported sequentially while the status area and import button show real progress such as `1/10` and `2/10`; single-account objects remain intact, and partial failures preserve successful imports while reporting the failed count and reasons.
 
 ### Changed
@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 
 - **Fixed Codex accounts remaining temporarily visible after Windows batch deletion**: the account list now reconciles with the local account store as batch progress advances and when a job is paused, completed, or manually cleared; deleting every account is allowed to synchronize an empty list, and deletion events refresh the floating card window, so a failed switch is no longer required before stale accounts disappear.
+- **Fixed the Add Note button in the Codex authorization dialog losing its project styling**: note actions rendered inside the portal now use the same pill-button styling as the accounts page instead of falling back to the browser-native button appearance.
 
 ---
 ## [1.3.9] - 2026-07-17
