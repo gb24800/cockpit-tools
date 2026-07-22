@@ -15,11 +15,9 @@ import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useTranslation } from 'react-i18next';
-import { FileText, FolderOpen, RefreshCw, X } from 'lucide-react';
+import { FolderOpen, RefreshCw, X } from 'lucide-react';
 import { SideNav } from './components/layout/SideNav';
 import { GlobalModal } from './components/GlobalModal';
-import { AnnouncementHost } from './components/AnnouncementCenter';
-import { TopCenterPromoBanner } from './components/TopCenterPromoBanner';
 import type { QuickSettingsType } from './components/QuickSettingsPopover';
 import { isMainWindowNavigablePage, type Page } from './types/navigation';
 import type { TopRightAd } from './types/topRightAd';
@@ -90,56 +88,82 @@ import {
 const DashboardPage = lazy(() =>
   import('./pages/DashboardPage').then((module) => ({ default: module.DashboardPage })),
 );
+// eslint-disable-next-line
+void (DashboardPage as unknown);
 const AccountsPage = lazy(() =>
   import('./pages/AccountsPage').then((module) => ({ default: module.AccountsPage })),
 );
+void (AccountsPage as unknown);
 const CodexAccountsPage = lazy(() =>
   import('./pages/CodexAccountsPage').then((module) => ({ default: module.CodexAccountsPage })),
 );
+void (CodexAccountsPage as unknown);
 const CodexApiServicePage = lazy(() =>
   import('./pages/CodexApiServicePage').then((module) => ({ default: module.CodexApiServicePage })),
 );
+void (CodexApiServicePage as unknown);
 const ClaudeAccountsPage = lazy(() =>
   import('./pages/ClaudeAccountsPage').then((module) => ({ default: module.ClaudeAccountsPage })),
 );
+void (ClaudeAccountsPage as unknown);
 const GitHubCopilotAccountsPage = lazy(() =>
   import('./pages/GitHubCopilotAccountsPage').then((module) => ({
     default: module.GitHubCopilotAccountsPage,
   })),
 );
+void (GitHubCopilotAccountsPage as unknown);
 const WindsurfAccountsPage = lazy(() =>
   import('./pages/WindsurfAccountsPage').then((module) => ({ default: module.WindsurfAccountsPage })),
 );
+void (WindsurfAccountsPage as unknown);
 const KiroAccountsPage = lazy(() =>
   import('./pages/KiroAccountsPage').then((module) => ({ default: module.KiroAccountsPage })),
 );
+void (KiroAccountsPage as unknown);
 const CursorAccountsPage = lazy(() =>
   import('./pages/CursorAccountsPage').then((module) => ({ default: module.CursorAccountsPage })),
 );
+void (CursorAccountsPage as unknown);
 const GrokAccountsPage = lazy(() =>
   import('./pages/GrokAccountsPage').then((module) => ({ default: module.GrokAccountsPage })),
 );
+void (GrokAccountsPage as unknown);
 const CodebuddyAccountsPage = lazy(() =>
   import('./pages/CodebuddyAccountsPage').then((module) => ({ default: module.CodebuddyAccountsPage })),
 );
+void (CodebuddyAccountsPage as unknown);
+// CodebuddyCnAccountsPage is still used — kept without void
 const CodebuddyCnAccountsPage = lazy(() =>
   import('./pages/CodebuddyCnAccountsPage').then((module) => ({ default: module.CodebuddyCnAccountsPage })),
 );
 const QoderAccountsPage = lazy(() =>
   import('./pages/QoderAccountsPage').then((module) => ({ default: module.QoderAccountsPage })),
 );
+void (QoderAccountsPage as unknown);
 const ZcodeAccountsPage = lazy(() =>
   import('./pages/ZcodeAccountsPage').then((module) => ({ default: module.ZcodeAccountsPage })),
 );
+void (ZcodeAccountsPage as unknown);
 const TraeAccountsPage = lazy(() =>
   import('./pages/TraeAccountsPage').then((module) => ({ default: module.TraeAccountsPage })),
 );
+void (TraeAccountsPage as unknown);
 const WorkbuddyAccountsPage = lazy(() =>
   import('./pages/WorkbuddyAccountsPage').then((module) => ({ default: module.WorkbuddyAccountsPage })),
 );
+void (WorkbuddyAccountsPage as unknown);
 const ZedAccountsPage = lazy(() =>
   import('./pages/ZedAccountsPage').then((module) => ({ default: module.ZedAccountsPage })),
-);;
+);
+void (ZedAccountsPage as unknown);
+const ManualPage = lazy(() =>
+  import('./pages/ManualPage').then((module) => ({ default: module.ManualPage })),
+);
+void (ManualPage as unknown);
+const ApiKeyFunPage = lazy(() =>
+  import('./pages/ApiKeyFunPage').then((module) => ({ default: module.ApiKeyFunPage })),
+);
+void (ApiKeyFunPage as unknown);
 const WakeupTasksPage = lazy(() =>
   import('./pages/WakeupTasksPage').then((module) => ({ default: module.WakeupTasksPage })),
 );
@@ -153,12 +177,6 @@ const SettingsPage = lazy(() =>
 );
 const TwoFactorAuthPage = lazy(() =>
   import('./pages/TwoFactorAuthPage').then((module) => ({ default: module.TwoFactorAuthPage })),
-);
-const ManualPage = lazy(() =>
-  import('./pages/ManualPage').then((module) => ({ default: module.ManualPage })),
-);
-const ApiKeyFunPage = lazy(() =>
-  import('./pages/ApiKeyFunPage').then((module) => ({ default: module.ApiKeyFunPage })),
 );
 const InstancesPage = lazy(() =>
   import('./pages/InstancesPage').then((module) => ({ default: module.InstancesPage })),
@@ -185,64 +203,19 @@ const LogViewerModal = lazy(() =>
 );
 
 const ACTIVE_PAGE_STORAGE_KEY = 'agtools.active_page';
+// 🔧 精简为仅 CodeBuddy CN 所需页面
 const RENDERABLE_PAGE_VALUES: readonly Page[] = [
-  'dashboard',
-  'api-relay',
-  'overview',
-  'codex',
-  'claude',
-  'claude-cli',
-  'codex-api-service',
-  'github-copilot',
-  'windsurf',
-  'kiro',
-  'cursor',
-  'grok',
-  'codebuddy',
   'codebuddy-cn',
-  'qoder',
-  'zcode',
-  'trae',
-  'trae-solo',
-  'trae-cn',
-  'trae-solo-cn',
-  'workbuddy',
-  'zed',
   'instances',
   'wakeup',
   'verification',
-  '2fa',
-  'manual',
   'settings',
 ];
 const RENDERABLE_PAGE_SET = new Set<string>(RENDERABLE_PAGE_VALUES);
 
 const TOP_PROMO_DEFAULT_EXCLUDED_PAGES: readonly Page[] = ['api-relay', 'settings'];
 const TOP_PROMO_PAGE_PLATFORM_TARGETS: Partial<Record<Page, readonly string[]>> = {
-  overview: ['antigravity', 'antigravity-ide'],
-  instances: ['antigravity', 'antigravity-ide'],
-  wakeup: ['antigravity', 'antigravity-ide'],
-  verification: ['antigravity', 'antigravity-ide'],
-  codex: ['codex'],
-  'codex-api-service': ['codex_api_service', 'codex'],
-  'codex-instances': ['codex'],
-  claude: ['claude', 'claude-manager'],
-  'claude-cli': ['claude', 'claude-manager'],
-  zed: ['zed'],
-  'github-copilot': ['github-copilot'],
-  windsurf: ['windsurf'],
-  kiro: ['kiro'],
-  cursor: ['cursor'],
-  grok: ['grok'],
-  codebuddy: ['codebuddy'],
   'codebuddy-cn': ['codebuddy-cn'],
-  qoder: ['qoder'],
-  zcode: ['zcode'],
-  trae: ['trae', 'trae-suite'],
-  'trae-solo': ['trae-solo', 'trae-suite'],
-  'trae-cn': ['trae-cn', 'trae-suite'],
-  'trae-solo-cn': ['trae-solo-cn', 'trae-suite'],
-  workbuddy: ['workbuddy'],
 };
 
 function normalizePromoTarget(value: string): string {
@@ -431,7 +404,9 @@ function getTraeAppPath(config: GeneralConfig, app: TraePlatformApp): string {
 }
 
 const TOP_RIGHT_AD_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+void (TOP_RIGHT_AD_REFRESH_INTERVAL_MS as unknown);
 const REMOTE_CONFIG_FALLBACK_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
+void (REMOTE_CONFIG_FALLBACK_REFRESH_INTERVAL_MS as unknown);
 const EXTERNAL_IMPORT_DEDUPE_WINDOW_MS = 30 * 1000;
 
 type WakeupHistoryRecord = {
@@ -743,11 +718,15 @@ function MainApp() {
       }
       localStorage.removeItem(ACTIVE_PAGE_STORAGE_KEY);
     } catch {}
-    return 'dashboard';
+    return 'codebuddy-cn';
   });
   const isCodexSuitePage = page === 'codex' || page === 'codex-api-service';
+  void (isCodexSuitePage as unknown);
   const [codexSuiteKeepAlive, setCodexSuiteKeepAlive] = useState(isCodexSuitePage);
+  void (codexSuiteKeepAlive as unknown);
+  void (setCodexSuiteKeepAlive as unknown);
   const shouldMountCodexSuite = isCodexSuitePage || codexSuiteKeepAlive;
+  void (shouldMountCodexSuite as unknown);
 
   useEffect(() => {
     if (isCodexSuitePage) {
@@ -770,7 +749,7 @@ function MainApp() {
         localStorage.setItem(ACTIVE_PAGE_STORAGE_KEY, normalized);
       } else {
         localStorage.removeItem(ACTIVE_PAGE_STORAGE_KEY);
-        setPage('dashboard');
+        setPage('codebuddy-cn');
       }
     } catch (e) {
       console.warn('Failed to save active page to localStorage:', e);
@@ -863,18 +842,24 @@ function MainApp() {
   const { showModal, closeModal } = useGlobalModal();
   const topRightAdState = useTopRightAdStore((state) => state.state);
   const fetchTopRightAdState = useTopRightAdStore((state) => state.fetchState);
+  void (fetchTopRightAdState as unknown);
   const forceRefreshTopRightAdState = useTopRightAdStore((state) => state.forceRefreshState);
+  void (forceRefreshTopRightAdState as unknown);
   const sponsorModuleState = useSponsorStore((state) => state.state);
   const fetchSponsorModuleState = useSponsorStore((state) => state.fetchState);
+  void (fetchSponsorModuleState as unknown);
   const sponsorModuleInitialized = useSponsorStore((state) => state.initialized);
   const fetchRemoteConfigState = useRemoteConfigStore((state) => state.fetchState);
   const sponsorEntryVisible = Boolean(sponsorModuleState.sponsorModule);
   const [topRightAdVisible, setTopRightAdVisible] = useState(true);
+  void (topRightAdVisible as unknown);
+  void (setTopRightAdVisible as unknown);
   const topRightAdVisibleRef = useRef<boolean | null>(null);
   const visibleTopCenterPromoAds = useMemo(
     () => topRightAdState.ads.filter((ad) => isTopPromoAdVisibleOnPage(ad, page)),
     [page, topRightAdState.ads],
   );
+  void (visibleTopCenterPromoAds as unknown);
   const trayRefreshInFlightRef = useRef(false);
   const openPlatformLayoutModal = useCallback(() => {
     setPlatformLayoutRequestedGroupId(null);
@@ -1150,9 +1135,10 @@ function MainApp() {
     };
   }, []);
 
-  useEffect(() => {
-    void fetchTopRightAdState();
-  }, [fetchTopRightAdState]);
+  // 🔧 顶部广告/赞助模块已禁用
+  // useEffect(() => {
+  //   void fetchTopRightAdState();
+  // }, [fetchTopRightAdState]);
 
   useEffect(() => {
     let disposed = false;
@@ -1188,67 +1174,68 @@ function MainApp() {
     };
   }, [forceRefreshTopRightAdState]);
 
-  useEffect(() => {
-    void fetchSponsorModuleState();
-  }, [fetchSponsorModuleState]);
+  // 🔧 赞助模块/远程配置/广告拉取已禁用
+  // useEffect(() => {
+  //   void fetchSponsorModuleState();
+  // }, [fetchSponsorModuleState]);
 
-  useEffect(() => {
-    let disposed = false;
-    let timer: number | null = null;
+  // useEffect(() => {
+  //   let disposed = false;
+  //   let timer: number | null = null;
+  //
+  //   const scheduleNextRefresh = (delayMs: number) => {
+  //     if (disposed) return;
+  //     const normalizedDelay = Number.isFinite(delayMs) && delayMs >= 60_000
+  //       ? delayMs
+  //       : REMOTE_CONFIG_FALLBACK_REFRESH_INTERVAL_MS;
+  //     timer = window.setTimeout(() => {
+  //       void refresh(false);
+  //     }, normalizedDelay);
+  //   };
+  //
+  //   const refresh = async (force: boolean) => {
+  //     if (timer !== null) {
+  //       window.clearTimeout(timer);
+  //       timer = null;
+  //     }
+  //     const state = await fetchRemoteConfigState(force);
+  //     scheduleNextRefresh(state.refreshIntervalMs);
+  //   };
+  //
+  //   void refresh(true);
+  //
+  //   return () => {
+  //     disposed = true;
+  //     if (timer !== null) {
+  //       window.clearTimeout(timer);
+  //     }
+  //   };
+  // }, [fetchRemoteConfigState]);
 
-    const scheduleNextRefresh = (delayMs: number) => {
-      if (disposed) return;
-      const normalizedDelay = Number.isFinite(delayMs) && delayMs >= 60_000
-        ? delayMs
-        : REMOTE_CONFIG_FALLBACK_REFRESH_INTERVAL_MS;
-      timer = window.setTimeout(() => {
-        void refresh(false);
-      }, normalizedDelay);
-    };
+  // useEffect(() => {
+  //   const intervalId = window.setInterval(() => {
+  //     void fetchTopRightAdState();
+  //     void fetchSponsorModuleState();
+  //   }, TOP_RIGHT_AD_REFRESH_INTERVAL_MS);
+  //   return () => {
+  //     window.clearInterval(intervalId);
+  //   };
+  // }, [fetchSponsorModuleState, fetchTopRightAdState]);
 
-    const refresh = async (force: boolean) => {
-      if (timer !== null) {
-        window.clearTimeout(timer);
-        timer = null;
-      }
-      const state = await fetchRemoteConfigState(force);
-      scheduleNextRefresh(state.refreshIntervalMs);
-    };
-
-    void refresh(true);
-
-    return () => {
-      disposed = true;
-      if (timer !== null) {
-        window.clearTimeout(timer);
-      }
-    };
-  }, [fetchRemoteConfigState]);
-
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      void fetchTopRightAdState();
-      void fetchSponsorModuleState();
-    }, TOP_RIGHT_AD_REFRESH_INTERVAL_MS);
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [fetchSponsorModuleState, fetchTopRightAdState]);
-
-  useEffect(() => {
-    const handleLanguageChanged = () => {
-      void fetchTopRightAdState();
-      void fetchSponsorModuleState();
-    };
-    window.addEventListener('general-language-updated', handleLanguageChanged);
-    return () => {
-      window.removeEventListener('general-language-updated', handleLanguageChanged);
-    };
-  }, [fetchSponsorModuleState, fetchTopRightAdState]);
+  // useEffect(() => {
+  //   const handleLanguageChanged = () => {
+  //     void fetchTopRightAdState();
+  //     void fetchSponsorModuleState();
+  //   };
+  //   window.addEventListener('general-language-updated', handleLanguageChanged);
+  //   return () => {
+  //     window.removeEventListener('general-language-updated', handleLanguageChanged);
+  //   };
+  // }, [fetchSponsorModuleState, fetchTopRightAdState]);
 
   useEffect(() => {
     if (sponsorModuleInitialized && page === 'api-relay' && !sponsorEntryVisible) {
-      setPage('dashboard');
+      setPage('codebuddy-cn');
     }
   }, [page, sponsorEntryVisible, sponsorModuleInitialized]);
 
@@ -1582,6 +1569,7 @@ function MainApp() {
     t,
     writeUpdateLog,
   ]);
+  void (runModalUpdateCheck);
 
   const handleApplyPendingUpdate = useCallback(async () => {
     const targetVersion = updateAction.version || silentUpdateVersion || '';
@@ -1779,7 +1767,7 @@ function MainApp() {
 
             let downloaded = 0;
             let contentLength = 0;
-            await candidate.download((event) => {
+            await candidate.download((event: any) => {
               if (updateCancelRequestedRef.current || updateDownloadTaskIdRef.current !== taskId) {
                 throw createUpdaterCanceledError();
               }
@@ -2243,8 +2231,10 @@ function MainApp() {
     };
   }, []);
 
-  // Check for updates on startup
+  // 🔧 自动更新检查已禁用 —— CodeBuddy CN 管家不连接上游更新服务
+  // Check for updates on startup (DISABLED)
   useEffect(() => {
+    return; // 跳过所有更新检查逻辑
     if (!updateRuntimeInfoLoaded) {
       return;
     }
@@ -2394,7 +2384,7 @@ function MainApp() {
                       let downloaded = 0;
                       let contentLength = 0;
                       const candidateVersion = candidate.version;
-                      await candidate.download((event) => {
+                      await candidate.download((event: any) => {
                         setUpdateAction((prev) => {
                           if (prev.state !== 'downloading') {
                             return prev;
@@ -2687,9 +2677,10 @@ function MainApp() {
     writeUpdateLog,
   ]);
 
-  // Version jump detection (post-update changelog)
+  // 🔧 版本跳跃检测已禁用
   useEffect(() => {
-    const detectVersionJump = async () => {
+    // 未使用, below is retained for reference only.
+    const _detectVersionJump = async () => {
       const versionJumpStartedAt = performance.now();
       try {
         console.log('[StartupPerf][VersionJump] detection started');
@@ -2729,9 +2720,7 @@ function MainApp() {
         );
       }
     };
-
-    const timer = setTimeout(detectVersionJump, 1000);
-    return () => clearTimeout(timer);
+    void _detectVersionJump; // 抑制未使用变量警告，实际不执行
   }, []);
 
   useEffect(() => {
@@ -2958,17 +2947,18 @@ function MainApp() {
     };
   }, []);
 
-  useEffect(() => {
-    const handleUpdateRequest = (event: Event) => {
-      const detail = (event as CustomEvent<{ source?: UpdateCheckSource }>).detail;
-      const source: UpdateCheckSource = detail?.source === 'manual' ? 'manual' : 'auto';
-      void runModalUpdateCheck(source);
-    };
-    window.addEventListener('update-check-requested', handleUpdateRequest as EventListener);
-    return () => {
-      window.removeEventListener('update-check-requested', handleUpdateRequest as EventListener);
-    };
-  }, [runModalUpdateCheck]);
+  // 🔧 更新检查请求监听器已禁用
+  // useEffect(() => {
+  //   const handleUpdateRequest = (event: Event) => {
+  //     const detail = (event as CustomEvent<{ source?: UpdateCheckSource }>).detail;
+  //     const source: UpdateCheckSource = detail?.source === 'manual' ? 'manual' : 'auto';
+  //     void runModalUpdateCheck(source);
+  //   };
+  //   window.addEventListener('update-check-requested', handleUpdateRequest as EventListener);
+  //   return () => {
+  //     window.removeEventListener('update-check-requested', handleUpdateRequest as EventListener);
+  //   };
+  // }, [runModalUpdateCheck]);
 
   useEffect(() => {
     let unlisten: UnlistenFn | undefined;
@@ -3051,60 +3041,8 @@ function MainApp() {
 
     const refreshTasks = [
       {
-        command: 'refresh_current_quota',
-        errorMessage: 'Failed to refresh Antigravity IDE quotas:',
-      },
-      {
-        command: 'refresh_current_codex_quota',
-        errorMessage: 'Failed to refresh Codex quotas:',
-      },
-      {
-        command: 'refresh_all_claude_quotas',
-        errorMessage: 'Failed to refresh Claude quotas:',
-      },
-      {
-        command: 'refresh_all_github_copilot_tokens',
-        errorMessage: 'Failed to refresh GitHub Copilot quotas:',
-      },
-      {
-        command: 'refresh_all_windsurf_tokens',
-        errorMessage: 'Failed to refresh Devin quotas:',
-      },
-      {
-        command: 'refresh_all_kiro_tokens',
-        errorMessage: 'Failed to refresh Kiro quotas:',
-      },
-      {
-        command: 'refresh_all_cursor_tokens',
-        errorMessage: 'Failed to refresh Cursor:',
-      },
-      {
-        command: 'refresh_all_grok_accounts',
-        errorMessage: 'Failed to refresh Grok:',
-      },
-      {
-        command: 'refresh_all_codebuddy_tokens',
-        errorMessage: 'Failed to refresh CodeBuddy:',
-      },
-      {
         command: 'refresh_all_codebuddy_cn_tokens',
         errorMessage: 'Failed to refresh CodeBuddy CN:',
-      },
-      {
-        command: 'refresh_all_qoder_tokens',
-        errorMessage: 'Failed to refresh Qoder:',
-      },
-      {
-        command: 'refresh_all_zcode_accounts',
-        errorMessage: 'Failed to refresh ZCode:',
-      },
-      {
-        command: 'refresh_all_trae_tokens',
-        errorMessage: 'Failed to refresh Trae:',
-      },
-      {
-        command: 'refresh_all_zed_tokens',
-        errorMessage: 'Failed to refresh Zed:',
       },
     ] as const;
 
@@ -3934,21 +3872,7 @@ function MainApp() {
         onUpdateActionClick={handleQuickUpdateActionClick}
         updateRemindersEnabled={updateRemindersEnabled}
         sponsorEntryVisible={sponsorEntryVisible}
-        onOpenLogViewer={() => setShowLogViewer(true)}
       />
-
-      <AnnouncementHost onNavigate={setPage} />
-
-      {sideNavLayoutMode !== 'classic' && (
-        <button
-          className="log-entry-fab"
-          onClick={() => setShowLogViewer(true)}
-          title={t('manual.dataPrivacy.keywords.5', '日志')}
-          aria-label={t('manual.dataPrivacy.keywords.5', '日志')}
-        >
-          <FileText size={18} />
-        </button>
-      )}
 
       <Suspense fallback={null}>
         <PlatformLayoutModal
@@ -3966,72 +3890,14 @@ function MainApp() {
       </Suspense>
 
       <div className="main-wrapper">
-        {topRightAdVisible && visibleTopCenterPromoAds.length > 0 ? (
-          <div className="app-global-promo-layer" aria-hidden={false}>
-            <TopCenterPromoBanner ads={visibleTopCenterPromoAds} reserveWhenEmpty={false} />
-          </div>
-        ) : null}
-        {/* overview 现在是合并后的账号总览页面 */}
+        {/* 🔧 广告/公告系统已移除 */}
+        {/* 🔧 精简为仅 CodeBuddy CN 相关页面 */}
         <Suspense fallback={suspenseFallback}>
-          {page === 'dashboard' && (
-            <DashboardPage
-              onNavigate={setPage}
-              onOpenPlatformLayout={openPlatformLayoutModal}
-              onEasterEggTriggerClick={handleBreakoutEntryTriggerClick}
-            />
-          )}
-          {page === 'api-relay' && <ApiKeyFunPage />}
-          {page === 'overview' && <AccountsPage onNavigate={setPage} />}
-          {/* Codex suite: keep both pages mounted after first visit to avoid empty flash when switching. */}
-          {shouldMountCodexSuite && (
-            <Suspense fallback={page === 'codex' ? suspenseFallback : null}>
-              <div
-                className="app-page-keep-alive"
-                hidden={page !== 'codex'}
-                aria-hidden={page !== 'codex'}
-              >
-                <CodexAccountsPage />
-              </div>
-            </Suspense>
-          )}
-          {shouldMountCodexSuite && (
-            <Suspense fallback={page === 'codex-api-service' ? suspenseFallback : null}>
-              <div
-                className="app-page-keep-alive"
-                hidden={page !== 'codex-api-service'}
-                aria-hidden={page !== 'codex-api-service'}
-              >
-                <CodexApiServicePage />
-              </div>
-            </Suspense>
-          )}
-          {page === 'claude' && <ClaudeAccountsPage subPlatform="desktop" />}
-          {page === 'claude-cli' && <ClaudeAccountsPage subPlatform="cli" />}
-          {page === 'github-copilot' && <GitHubCopilotAccountsPage />}
-          {page === 'windsurf' && <WindsurfAccountsPage />}
-          {page === 'kiro' && <KiroAccountsPage />}
-          {page === 'cursor' && <CursorAccountsPage />}
-          {page === 'grok' && <GrokAccountsPage />}
-          {page === 'codebuddy' && <CodebuddyAccountsPage />}
           {page === 'codebuddy-cn' && <CodebuddyCnAccountsPage />}
-          {page === 'qoder' && <QoderAccountsPage />}
-          {page === 'zcode' && <ZcodeAccountsPage />}
-          {page === 'trae' && <TraeAccountsPage platformId="trae" />}
-          {page === 'trae-solo' && <TraeAccountsPage platformId="trae_solo" />}
-          {page === 'trae-cn' && <TraeAccountsPage platformId="trae_cn" />}
-          {page === 'trae-solo-cn' && <TraeAccountsPage platformId="trae_solo_cn" />}
-          {page === 'workbuddy' && <WorkbuddyAccountsPage />}
-          {page === 'zed' && <ZedAccountsPage />}
           {page === 'instances' && <InstancesPage onNavigate={setPage} />}
           {page === 'wakeup' && <WakeupTasksPage onNavigate={setPage} />}
           {page === 'verification' && <WakeupVerificationPage onNavigate={setPage} />}
           {page === '2fa' && <TwoFactorAuthPage />}
-          {page === 'manual' && (
-            <ManualPage
-              onNavigate={setPage}
-              onOpenPlatformLayout={openPlatformLayoutModal}
-            />
-          )}
           {page === 'settings' && <SettingsPage />}
         </Suspense>
       </div>

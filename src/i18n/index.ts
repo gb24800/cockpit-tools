@@ -1,6 +1,5 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import enResources from '../locales/en.json';
 import zhCnResources from '../locales/zh-CN.json';
 
 type LocaleModule = { default: Record<string, unknown> };
@@ -16,43 +15,10 @@ const languageAliases: Record<string, string> = {
   'id-id': 'id',
 };
 
-export const supportedLanguages = [
-  'en',
-  'zh-cn',
-  'zh-tw',
-  'ja',
-  'es',
-  'de',
-  'fr',
-  'pt-br',
-  'ru',
-  'ko',
-  'it',
-  'tr',
-  'pl',
-  'cs',
-  'vi',
-  'ar',
-  'id',
-];
+// 🔧 精简为仅保留简体中文
+export const supportedLanguages = ['zh-cn'];
 
-const localeLoaders: Record<string, () => Promise<LocaleModule>> = {
-  'zh-tw': () => import('../locales/zh-tw.json'),
-  ja: () => import('../locales/ja.json'),
-  es: () => import('../locales/es.json'),
-  de: () => import('../locales/de.json'),
-  fr: () => import('../locales/fr.json'),
-  'pt-br': () => import('../locales/pt-br.json'),
-  ru: () => import('../locales/ru.json'),
-  ko: () => import('../locales/ko.json'),
-  it: () => import('../locales/it.json'),
-  tr: () => import('../locales/tr.json'),
-  pl: () => import('../locales/pl.json'),
-  cs: () => import('../locales/cs.json'),
-  vi: () => import('../locales/vi.json'),
-  ar: () => import('../locales/ar.json'),
-  id: () => import('../locales/id.json'),
-};
+const localeLoaders: Record<string, () => Promise<LocaleModule>> = {};
 
 const loadedLanguages = new Set<string>();
 let initPromise: Promise<void> | null = null;
@@ -78,7 +44,7 @@ export function normalizeLanguage(lang: string): string {
 
 function resolveSupportedLanguage(lang: string): string {
   const normalized = normalizeLanguage(lang);
-  return supportedLanguages.includes(normalized) ? normalized : 'en';
+  return supportedLanguages.includes(normalized) ? normalized : 'zh-cn';
 }
 
 async function ensureLanguageResources(lang: string): Promise<string> {
@@ -100,17 +66,14 @@ async function ensureLanguageResources(lang: string): Promise<string> {
 
 function getSavedLanguage(): string {
   try {
-    return resolveSupportedLanguage(localStorage.getItem('app-language') || 'en');
+    return resolveSupportedLanguage(localStorage.getItem('app-language') || 'zh-cn');
   } catch {
-    return 'en';
+    return 'zh-cn';
   }
 }
 
-function getBootstrapLanguage(savedLanguage: string): string {
-  if (savedLanguage === 'zh-cn') {
-    return 'zh-cn';
-  }
-  return 'en';
+function getBootstrapLanguage(_savedLanguage: string): string {
+  return 'zh-cn';
 }
 
 function bootstrapI18n(savedLanguage: string): string {
@@ -123,11 +86,10 @@ function bootstrapI18n(savedLanguage: string): string {
     .use(initReactI18next)
     .init({
       resources: {
-        en: { translation: enResources },
         'zh-cn': { translation: zhCnResources },
       },
       lng: bootstrapLanguage,
-      fallbackLng: 'en',
+      fallbackLng: 'zh-cn',
       supportedLngs: supportedLanguages,
       lowerCaseLng: true,
       load: 'currentOnly',
@@ -137,7 +99,6 @@ function bootstrapI18n(savedLanguage: string): string {
       },
     });
 
-  loadedLanguages.add('en');
   loadedLanguages.add('zh-cn');
   i18nBootstrapped = true;
   return bootstrapLanguage;

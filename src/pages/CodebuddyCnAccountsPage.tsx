@@ -1,6 +1,3 @@
-import { useMemo, useState } from 'react';
-import { PlatformOverviewTabsHeader, PlatformOverviewTab } from '../components/platform/PlatformOverviewTabsHeader';
-import { CodebuddyCnInstancesContent } from './CodebuddyCnInstancesPage';
 import { useCodebuddyCnAccountStore } from '../stores/useCodebuddyCnAccountStore';
 import * as codebuddyCnService from '../services/codebuddyCnService';
 import {
@@ -13,8 +10,6 @@ import {
 } from '../types/codebuddy';
 import { useProviderAccountsPage } from '../hooks/useProviderAccountsPage';
 import { CodebuddySuiteAccountsSharedView, type CodebuddySuiteAccountsPlatformConfig } from '../components/codebuddy-suite/CodebuddySuiteAccountsSharedView';
-import { CodebuddySessionManager } from '../components/codebuddy/CodebuddySessionManager';
-import { compareCurrentAccountFirst } from '../utils/currentAccountSort';
 
 const CB_FLOW_NOTICE_COLLAPSED_KEY = 'agtools.codebuddycn.flow_notice_collapsed';
 const CB_CURRENT_ACCOUNT_ID_KEY = 'agtools.codebuddycn.current_account_id';
@@ -74,10 +69,10 @@ const codebuddyCnPlatformConfig: CodebuddySuiteAccountsPlatformConfig<CodebuddyA
   usagePrefix: 'codebuddy',
   quotaPrefix: 'codebuddy',
   tableUsageClassName: 'codebuddy-table-usage',
+  hideFlowNotice: true,
 };
 
 export function CodebuddyCnAccountsPage() {
-  const [activeTab, setActiveTab] = useState<PlatformOverviewTab>('overview');
   const store = useCodebuddyCnAccountStore();
 
   const page = useProviderAccountsPage<CodebuddyAccount>({
@@ -115,40 +110,15 @@ export function CodebuddyCnAccountsPage() {
     getDisplayEmail: (account) => getCodebuddyAccountDisplayEmail(account),
   });
 
-  const accountsForInstances = useMemo(
-    () =>
-      [...store.accounts].sort((a, b) => {
-        const currentFirstDiff = compareCurrentAccountFirst(a.id, b.id, store.currentAccountId);
-        if (currentFirstDiff !== 0) {
-          return currentFirstDiff;
-        }
-        const diff = b.created_at - a.created_at;
-        return page.sortDirection === 'desc' ? diff : -diff;
-      }),
-    [page.sortDirection, store.accounts, store.currentAccountId],
-  );
-
   return (
     <div className={`ghcp-accounts-page ${codebuddyCnPlatformConfig.pageClassName}`}>
-      <PlatformOverviewTabsHeader
-        platform="codebuddy_cn"
-        active={activeTab}
-        onTabChange={setActiveTab}
-        tabs={['overview', 'sessions', 'instances']}
+      <CodebuddySuiteAccountsSharedView
+        accounts={store.accounts}
+        loading={store.loading}
+        page={page}
+        platformConfig={codebuddyCnPlatformConfig}
+        onRefreshAccounts={() => { store.fetchAccounts(); }}
       />
-      {activeTab === 'instances' ? (
-        <CodebuddyCnInstancesContent accountsForSelect={accountsForInstances} />
-      ) : activeTab === 'sessions' ? (
-        <CodebuddySessionManager platform="cn" accounts={store.accounts as any} />
-      ) : (
-        <CodebuddySuiteAccountsSharedView
-          accounts={store.accounts}
-          loading={store.loading}
-          page={page}
-          platformConfig={codebuddyCnPlatformConfig}
-          onRefreshAccounts={() => { store.fetchAccounts(); }}
-        />
-      )}
     </div>
   );
 }

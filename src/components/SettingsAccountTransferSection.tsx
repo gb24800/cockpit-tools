@@ -60,7 +60,7 @@ interface TransferFeedback {
 
 const DEFAULT_TRANSFER_SELECTION: DataTransferSelection = {
   includeAccounts: true,
-  includeConfig: true,
+  includeConfig: false,
 };
 
 const BACKUP_FILE_NAME_REGEX =
@@ -162,7 +162,8 @@ export function SettingsAccountTransferSection() {
   const [backupFeedback, setBackupFeedback] = useState<TransferFeedback | null>(null);
   const [importProgress, setImportProgress] = useState<AccountTransferImportProgress | null>(null);
   const [exportSelection, setExportSelection] = useState<DataTransferSelection>({
-    ...DEFAULT_TRANSFER_SELECTION,
+    includeAccounts: true,
+    includeConfig: false,
   });
   const [importSelection, setImportSelection] = useState<DataTransferSelection>({
     ...DEFAULT_TRANSFER_SELECTION,
@@ -478,6 +479,7 @@ export function SettingsAccountTransferSection() {
       selection: DataTransferSelection,
       setSelection: Dispatch<SetStateAction<DataTransferSelection>>,
       disabled: boolean,
+      showConfigOption = true,
     ) => (
       <div className="settings-transfer-selection-group">
         <div className="settings-transfer-selection-title">{t('settings.transfer.selectionTitle')}</div>
@@ -486,7 +488,7 @@ export function SettingsAccountTransferSection() {
             type="checkbox"
             checked={selection.includeAccounts}
             onChange={() => toggleSelection(selection, setSelection, 'includeAccounts')}
-            disabled={disabled}
+            disabled={disabled || !showConfigOption}
           />
           <div className="settings-transfer-selection-copy">
             <div className="settings-transfer-selection-name">
@@ -497,7 +499,7 @@ export function SettingsAccountTransferSection() {
             </div>
           </div>
         </label>
-        <label className="settings-transfer-selection-item">
+        {showConfigOption && <label className="settings-transfer-selection-item">
           <input
             type="checkbox"
             checked={selection.includeConfig}
@@ -512,7 +514,7 @@ export function SettingsAccountTransferSection() {
               {t('settings.transfer.configOptionDesc')}
             </div>
           </div>
-        </label>
+        </label>}
       </div>
     ),
     [t, toggleSelection],
@@ -556,12 +558,6 @@ export function SettingsAccountTransferSection() {
     return () => {
       window.removeEventListener(AUTO_BACKUP_STATE_CHANGED_EVENT, handleStateChanged);
     };
-  }, [loadAutoBackupState]);
-
-  const openBackupManagerModal = useCallback(() => {
-    setBackupFeedback(null);
-    setShowBackupManagerModal(true);
-    void loadAutoBackupState();
   }, [loadAutoBackupState]);
 
   const persistAutoBackupSettings = useCallback(
@@ -969,39 +965,6 @@ export function SettingsAccountTransferSection() {
     <>
       <div className="group-title">{t('settings.general.accountManagement')}</div>
       <div className="settings-group">
-        <div className="settings-row settings-row--align-start">
-          <div className="row-label">
-            <div className="row-title">{t('settings.transfer.backup.title')}</div>
-            <div className="row-desc">{t('settings.transfer.backup.desc')}</div>
-            <div className="settings-backup-inline-meta">
-              {backupLoading && !backupSettings
-                ? t('common.loading')
-                : `${backupSettings?.enabled
-                    ? t('settings.transfer.backup.statusEnabled')
-                    : t('settings.transfer.backup.statusDisabled')} · ${t(
-                    'settings.transfer.backup.lastRunLabel',
-                    {
-                      time: formatBackupTime(backupSettings?.last_backup_at),
-                    },
-                  )}`}
-            </div>
-          </div>
-          <div className="row-control">
-            <button
-              className="btn btn-secondary"
-              onClick={openBackupManagerModal}
-              disabled={backupRunning || backupSaving || backupImportingFile !== null || backupDeletingFile !== null}
-            >
-              {backupLoading ? <RefreshCw size={16} className="loading-spinner" /> : <FolderOpen size={16} />}
-              {t('common.open')}
-            </button>
-          </div>
-        </div>
-
-        {!showBackupManagerModal && backupFeedbackNode && (
-          <div className="settings-transfer-feedback-wrap">{backupFeedbackNode}</div>
-        )}
-
         <div className="settings-row">
           <div className="row-label">
             <div className="row-title">{t('settings.transfer.exportTitle')}</div>
@@ -1065,7 +1028,7 @@ export function SettingsAccountTransferSection() {
                   {t('settings.transfer.exportModalDesc')}
                 </p>
 
-                {renderSelectionControls(exportSelection, setExportSelection, exportModal.preparing)}
+                {renderSelectionControls(exportSelection, setExportSelection, exportModal.preparing, false)}
 
                 <div className="settings-transfer-modal-actions">
                   <button
@@ -1112,7 +1075,7 @@ export function SettingsAccountTransferSection() {
                   {t('settings.transfer.importModalDesc')}
                 </p>
 
-                {renderSelectionControls(importSelection, setImportSelection, importing)}
+                {renderSelectionControls(importSelection, setImportSelection, importing, false)}
 
                 <div className="settings-transfer-import-block">
                   <div className="settings-transfer-import-title">

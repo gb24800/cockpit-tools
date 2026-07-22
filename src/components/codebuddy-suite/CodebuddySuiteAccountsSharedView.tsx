@@ -166,6 +166,7 @@ export interface CodebuddySuiteAccountsPlatformConfig<
   usagePrefix: string;
   quotaPrefix: string;
   tableUsageClassName: string;
+  hideFlowNotice?: boolean;
   oauthProviderControl?: ReactNode;
   showMfaQuickCode?: boolean;
   CheckinModal?: ComponentType<CheckinModalProps<TAccount>>;
@@ -836,7 +837,7 @@ export function CodebuddySuiteAccountsSharedView<
 
   return (
     <>
-      <div
+      {!platformConfig.hideFlowNotice && <div
         className={`ghcp-flow-notice ${isFlowNoticeCollapsed ? "collapsed" : ""}`}
         role="note"
       >
@@ -883,7 +884,7 @@ export function CodebuddySuiteAccountsSharedView<
             </ul>
           </div>
         )}
-      </div>
+      </div>}
 
       {message && (
         <div
@@ -1063,7 +1064,7 @@ export function CodebuddySuiteAccountsSharedView<
           </button>
           <button
             className="btn btn-secondary icon-only"
-            onClick={() => openAddModal("token")}
+            onClick={() => openAddModal("json")}
             disabled={importing}
             title={t("common.shared.import.label", "导入")}
           >

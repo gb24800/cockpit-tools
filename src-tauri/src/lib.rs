@@ -249,7 +249,7 @@ pub fn run() {
             }
         }))
         .setup(|app| {
-            info!("Cockpit Tools 启动...");
+            info!("CodeBuddy CN 管家 启动...");
             let current_exe = std::env::current_exe()
                 .map(|path| path.display().to_string())
                 .unwrap_or_else(|err| format!("unknown: {}", err));
@@ -292,17 +292,17 @@ pub fn run() {
                 }
             });
 
-            // 初始化 Updater 插件
+            // 🔧 Updater 插件已禁用（tauri.conf.json 中无 updater 配置）
             #[cfg(desktop)]
             {
-                app.handle()
-                    .plugin(tauri_plugin_updater::Builder::new().build())?;
+                // app.handle()
+                //     .plugin(tauri_plugin_updater::Builder::new().build())?;
                 app.handle().plugin(tauri_plugin_process::init())?;
                 app.handle().plugin(tauri_plugin_autostart::init(
                     tauri_plugin_autostart::MacosLauncher::LaunchAgent,
                     None::<Vec<&'static str>>,
                 ))?;
-                info!("[Updater] Tauri Updater + Process 插件已初始化");
+                info!("[Updater] Tauri Updater 已禁用，Process + AutoStart 插件已初始化");
             }
 
             // 启动时同步设置合并（移至后台线程，不阻塞窗口显示）
@@ -326,43 +326,45 @@ pub fn run() {
                 }
             });
 
-            // 启动 WebSocket 服务（使用 Tauri 的 async runtime）
-            tauri::async_runtime::spawn(async {
-                modules::websocket::start_server().await;
-            });
+            // 🔧 WebSocket 服务已禁用 —— 仅保留 CodeBuddy CN
+            // tauri::async_runtime::spawn(async {
+            //     modules::websocket::start_server().await;
+            // });
 
-            // 启动网页查询服务（网络服务配置中的独立模块）
-            tauri::async_runtime::spawn(async {
-                modules::web_report::start_server().await;
-            });
+            // 🔧 网页查询服务已禁用
+            // tauri::async_runtime::spawn(async {
+            //     modules::web_report::start_server().await;
+            // });
 
-            tauri::async_runtime::spawn(async {
-                modules::codex_local_access::restore_local_access_gateway().await;
-            });
+            // 🔧 Codex 本地访问网关已禁用
+            // tauri::async_runtime::spawn(async {
+            //     modules::codex_local_access::restore_local_access_gateway().await;
+            // });
 
-            {
-                let app_handle = app.handle().clone();
-                tauri::async_runtime::spawn(async move {
-                    modules::codex_oauth::restore_pending_oauth_listener(app_handle);
-                    modules::windsurf_oauth::restore_pending_oauth_listener();
-                    modules::kiro_oauth::restore_pending_oauth_listener();
-                    modules::trae_oauth::restore_pending_oauth_listener();
-                    modules::zed_oauth::restore_pending_oauth_listener();
-                });
-            }
+            // 🔧 非 CodeBuddy CN 平台 OAuth 监听器已禁用
+            // {
+            //     let app_handle = app.handle().clone();
+            //     tauri::async_runtime::spawn(async move {
+            //         modules::codex_oauth::restore_pending_oauth_listener(app_handle);
+            //         modules::windsurf_oauth::restore_pending_oauth_listener();
+            //         modules::kiro_oauth::restore_pending_oauth_listener();
+            //         modules::trae_oauth::restore_pending_oauth_listener();
+            //         modules::zed_oauth::restore_pending_oauth_listener();
+            //     });
+            // }
 
+            // 仅保留 CodeBuddy CN 的账号令牌续期；隐藏的全平台自动导入轮询不启动。
             modules::provider_token_keeper::ensure_started(app.handle().clone());
-            modules::auto_local_import::ensure_started(app.handle().clone());
 
-            // Wakeup restore/start and Deep Link registration/read can hit disk or OS
-            // APIs — never block setup (window + skeleton tray first).
+            // Wakeup restore/start — 保留通用唤醒调度，移除 Codex 特定调度
             {
                 let app_handle = app.handle().clone();
                 std::thread::spawn(move || {
                     modules::wakeup_scheduler::restore_state_from_disk();
                     modules::wakeup_scheduler::ensure_started(app_handle.clone());
-                    modules::codex_wakeup_scheduler::ensure_started(app_handle.clone());
-                    modules::codex_wakeup_scheduler::trigger_startup_tasks_if_needed(app_handle);
+                    // 🔧 Codex 唤醒调度已禁用
+                    // modules::codex_wakeup_scheduler::ensure_started(app_handle.clone());
+                    // modules::codex_wakeup_scheduler::trigger_startup_tasks_if_needed(app_handle);
                 });
             }
 

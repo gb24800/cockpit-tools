@@ -84,7 +84,6 @@ import {
 import { getZedAccountDisplayEmail } from '../types/zed';
 import { ALL_PLATFORM_IDS, PlatformId } from '../types/platform';
 import { SettingsAccountTransferSection } from '../components/SettingsAccountTransferSection';
-import { SettingsWebdavSyncSection } from '../components/SettingsWebdavSyncSection';
 import { CodexSshSyncSettingsControl } from '../components/codex/CodexSshSyncSettingsControl';
 import { useEscClose } from '../hooks/useEscClose';
 import './settings/Settings.css';
@@ -398,7 +397,7 @@ export function SettingsPage() {
   const isLinux = usePlatformRuntimeSupport('linux-only');
   const sideNavLayoutMode = useSideNavLayoutStore((state) => state.mode);
   const setSideNavLayoutMode = useSideNavLayoutStore((state) => state.setMode);
-  const [activeTab, setActiveTab] = useState<'general' | 'network' | 'data' | 'about'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'network' | 'data' | 'about'>('data');
   const [availableTerminals, setAvailableTerminals] = useState<string[]>(['system']);
 
   useEffect(() => {
@@ -3073,28 +3072,10 @@ export function SettingsPage() {
         <div className="page-tabs-label">{t('settings.title')}</div>
         <div className="page-tabs filter-tabs">
           <button 
-            className={`filter-tab ${activeTab === 'general' ? 'active' : ''}`}
-            onClick={() => setActiveTab('general')}
-          >
-            {t('settings.tabs.general')}
-          </button>
-          <button 
-            className={`filter-tab ${activeTab === 'network' ? 'active' : ''}`}
-            onClick={() => setActiveTab('network')}
-          >
-            {t('settings.tabs.network')}
-          </button>
-          <button 
             className={`filter-tab ${activeTab === 'data' ? 'active' : ''}`}
             onClick={() => setActiveTab('data')}
           >
             {t('settings.tabs.data', '数据管理')}
-          </button>
-          <button 
-            className={`filter-tab ${activeTab === 'about' ? 'active' : ''}`}
-            onClick={() => setActiveTab('about')}
-          >
-            {t('settings.tabs.about')}
           </button>
         </div>
       </div>
@@ -7197,7 +7178,6 @@ export function SettingsPage() {
         {activeTab === 'data' && (
           <>
             <SettingsAccountTransferSection />
-            <SettingsWebdavSyncSection />
           </>
         )}
 

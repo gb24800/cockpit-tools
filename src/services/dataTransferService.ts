@@ -1386,6 +1386,9 @@ export async function importDataTransferJson(
   if (!legacyPlatform) {
     throw new Error('unsupported_legacy_account_json');
   }
+  if (legacyPlatform !== 'codebuddy_cn') {
+    throw new Error('unsupported_legacy_account_json');
+  }
   if (!options.includeAccounts) {
     throw new Error('accounts_section_required');
   }

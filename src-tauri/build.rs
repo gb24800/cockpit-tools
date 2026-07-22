@@ -139,10 +139,14 @@ fn build_macos_universal_sidecar(sidecar_dir: &Path, output_dir: &Path) {
 }
 
 fn build_cockpit_cliproxy_sidecar() {
-    let manifest_dir =
-        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR is required"));
+    // 设置 COCKPIT_RUST_TARGET 供编译时使用（即使不编译 sidecar 也需要）
     let target = std::env::var("TARGET").expect("TARGET is required");
     println!("cargo:rustc-env=COCKPIT_RUST_TARGET={target}");
+
+    // 🔧 CodeBuddy CN 管家不需要 sidecar，跳过 Go 编译
+    return;
+    let manifest_dir =
+        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR is required"));
     let sidecar_dir = manifest_dir.join("../sidecars/cockpit-cliproxy");
     let output_dir = sidecar_dir.join("bin");
 

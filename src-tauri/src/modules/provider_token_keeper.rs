@@ -117,17 +117,9 @@ async fn run_refresh_cycle(app_handle: &AppHandle) {
 
     let mut refreshed_any = false;
 
-    refreshed_any |= refresh_platform_if_due("codex", refresh_due_codex_accounts).await;
-    refreshed_any |= refresh_platform_if_due("cursor", refresh_due_cursor_accounts).await;
-    refreshed_any |= refresh_platform_if_due("grok", refresh_due_grok_accounts).await;
-    refreshed_any |=
-        refresh_platform_if_due("github_copilot", refresh_due_github_copilot_accounts).await;
-    refreshed_any |= refresh_platform_if_due("kiro", refresh_due_kiro_accounts).await;
-    refreshed_any |= refresh_platform_if_due("codebuddy", refresh_due_codebuddy_accounts).await;
+    // 精简版只允许 CodeBuddy CN 在后台续期，避免触发任何其他平台的联网刷新。
     refreshed_any |=
         refresh_platform_if_due("codebuddy_cn", refresh_due_codebuddy_cn_accounts).await;
-    refreshed_any |= refresh_platform_if_due("workbuddy", refresh_due_workbuddy_accounts).await;
-    refreshed_any |= refresh_platform_if_due("trae", refresh_due_trae_accounts).await;
 
     if refreshed_any {
         let _ = crate::modules::tray::update_tray_menu(app_handle);

@@ -1,3 +1,4 @@
+// 🔧 精简为仅保留 CodeBuddy CN 所需页面
 export type Page =
   | 'dashboard'
   | 'manual'
@@ -32,29 +33,11 @@ export type Page =
 
 /** Pages that tray / floating-card restore may navigate to after main-window recreate. */
 export const MAIN_WINDOW_NAVIGABLE_PAGES: readonly Page[] = [
-  'dashboard',
-  'manual',
-  'api-relay',
-  'overview',
-  'codex',
-  'claude',
-  'claude-cli',
-  'codex-api-service',
-  'zed',
-  'github-copilot',
-  'windsurf',
-  'kiro',
-  'cursor',
-  'grok',
-  'codebuddy',
   'codebuddy-cn',
-  'qoder',
-  'zcode',
-  'trae',
-  'trae-solo',
-  'trae-cn',
-  'trae-solo-cn',
-  'workbuddy',
+  'instances',
+  'wakeup',
+  'verification',
+  '2fa',
   'settings',
 ] as const;
 

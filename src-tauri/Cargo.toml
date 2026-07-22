@@ -1,5 +1,5 @@
 [package]
-name = "cockpit-tools"
+name = "codebuddy-cn-manager"
 version = "1.3.13"
 description = "Cockpit Tools"
 authors = ["jlcodes"]
