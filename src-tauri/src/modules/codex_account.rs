@@ -334,10 +334,18 @@ fn build_api_key_account_id(api_key: &str) -> String {
     format!("codex_apikey_{:x}", md5::compute(api_key.as_bytes()))
 }
 
-fn build_agent_identity_account_id(account_id: &str) -> String {
+fn build_legacy_agent_identity_account_id(account_id: &str) -> String {
     format!(
         "codex_agent_identity_{:x}",
         md5::compute(account_id.trim().as_bytes())
+    )
+}
+
+fn build_agent_identity_account_id(account_id: &str, chatgpt_user_id: &str) -> String {
+    let identity_key = format!("{}\0{}", account_id.trim(), chatgpt_user_id.trim());
+    format!(
+        "codex_agent_identity_{:x}",
+        md5::compute(identity_key.as_bytes())
     )
 }
 
@@ -3395,7 +3403,8 @@ fn build_agent_identity_account_draft(
         .email
         .clone()
         .unwrap_or_else(|| identity.chatgpt_user_id.clone());
-    let account_storage_id = build_agent_identity_account_id(&identity.account_id);
+    let account_storage_id =
+        build_agent_identity_account_id(&identity.account_id, &identity.chatgpt_user_id);
     let mut account = CodexAccount::new(
         account_storage_id,
         email,
@@ -3420,7 +3429,16 @@ pub fn upsert_agent_identity_account(identity: CodexAgentIdentity) -> Result<Cod
         .ok_or("Agent Identity 凭据为空")?;
     let account_storage_id = draft.id.clone();
     let mut index = load_account_index();
-    let mut account = load_account(&account_storage_id).unwrap_or(draft);
+    let legacy_account_storage_id = build_legacy_agent_identity_account_id(&identity.account_id);
+    let legacy_account = load_account(&legacy_account_storage_id).filter(|account| {
+        account.agent_identity.as_ref().is_some_and(|stored| {
+            stored.account_id.trim() == identity.account_id
+                && stored.chatgpt_user_id.trim() == identity.chatgpt_user_id
+        })
+    });
+    let mut account = load_account(&account_storage_id)
+        .or(legacy_account)
+        .unwrap_or(draft);
     account.email = identity
         .email
         .clone()
@@ -8798,7 +8816,8 @@ fn extract_codex_tokens_from_value(
 #[cfg(test)]
 mod tests {
     use super::{
-        build_account_storage_id, build_auth_file_value, decode_jwt_payload_value,
+        build_account_storage_id, build_agent_identity_account_draft, build_auth_file_value,
+        build_legacy_agent_identity_account_id, decode_jwt_payload_value,
         detect_auth_file_plan_type_from_path, ensure_managed_account_fresh,
         extract_codex_import_candidate_from_value, extract_codex_tokens_from_value,
         extract_user_info, force_refresh_managed_account_after_observed,
@@ -8814,19 +8833,21 @@ mod tests {
         sync_api_key_provider_accounts, sync_managed_projection_from_auth_dir,
         try_parse_pending_oauth_delimited_line, upsert_account, upsert_account_for_reauth,
         upsert_account_from_access_token, upsert_account_from_access_token_with_hints,
-        upsert_account_from_auth_tokens, upsert_api_key_account, validate_api_key_credentials,
-        write_account_bundle_to_dir, write_api_key_provider_to_config_toml,
-        write_api_provider_to_config_toml, write_managed_projection_to_dir,
-        write_quick_config_to_config_toml, ApiProviderConfig, CodexAccessTokenImportHints,
-        CodexAccountGroupRecord, CodexAccountIndex, CodexAccountSummary, CodexAuthFile,
-        CodexAuthTokens, CodexGroupQuotaRefreshPolicy, CodexJsonImportCandidate,
-        LocalCodexOAuthSnapshot, CODEX_ACCOUNT_DETAIL_SCHEMA_VERSION,
+        upsert_account_from_auth_tokens, upsert_agent_identity_account, upsert_api_key_account,
+        validate_api_key_credentials, write_account_bundle_to_dir,
+        write_api_key_provider_to_config_toml, write_api_provider_to_config_toml,
+        write_managed_projection_to_dir, write_quick_config_to_config_toml, ApiProviderConfig,
+        CodexAccessTokenImportHints, CodexAccountGroupRecord, CodexAccountIndex,
+        CodexAccountSummary, CodexAuthFile, CodexAuthTokens, CodexGroupQuotaRefreshPolicy,
+        CodexJsonImportCandidate, LocalCodexOAuthSnapshot, CODEX_ACCOUNT_DETAIL_SCHEMA_VERSION,
         CODEX_AUTHORIZATION_STATUS_PENDING, CODEX_AUTO_COMPACT_DEFAULT_LIMIT,
         CODEX_CONTEXT_WINDOW_1M_VALUE, CODEX_DISABLE_HOSTED_IMAGE_GENERATION_HEADER,
         CODEX_DISABLE_HOSTED_IMAGE_GENERATION_HEADER_VALUE, CODEX_IMAGEGEN_ACTOR_HEADER,
         CODEX_IMAGEGEN_ACTOR_HEADER_VALUE, CODEX_IMAGE_MODEL_ID,
     };
-    use crate::models::codex::{CodexAccount, CodexApiProviderMode, CodexTokens};
+    use crate::models::codex::{
+        CodexAccount, CodexAgentIdentity, CodexApiProviderMode, CodexTokens,
+    };
     use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
     use std::fs;
     use std::path::Path;
@@ -9014,14 +9035,14 @@ mod tests {
     }
 
     #[test]
-    fn agent_identity_storage_id_is_stable_per_chatgpt_account() {
-        let build = |account_id: &str, email: &str| {
+    fn agent_identity_storage_id_is_stable_per_chatgpt_account_member() {
+        let build = |account_id: &str, user_id: &str, email: &str| {
             let identity = parse_agent_identity_from_value(&serde_json::json!({
                 "auth_mode": "agentIdentity",
                 "agent_runtime_id": format!("runtime-{email}"),
                 "agent_private_key": agent_identity_private_key(),
                 "account_id": account_id,
-                "chatgpt_user_id": "shared-user",
+                "chatgpt_user_id": user_id,
                 "email": email
             }))
             .expect("parse Agent Identity")
@@ -9030,12 +9051,116 @@ mod tests {
                 .expect("build Agent Identity account")
         };
 
-        let first = build("team-a", "first@example.com");
-        let updated = build("team-a", "updated@example.com");
-        let other_team = build("team-b", "first@example.com");
+        let first = build("team-a", "user-a", "first@example.com");
+        let updated = build("team-a", "user-a", "updated@example.com");
+        let other_member = build("team-a", "user-b", "second@example.com");
+        let other_team = build("team-b", "user-a", "first@example.com");
 
         assert_eq!(first.id, updated.id);
+        assert_ne!(first.id, other_member.id);
         assert_ne!(first.id, other_team.id);
+    }
+
+    #[test]
+    fn agent_identity_members_in_the_same_workspace_coexist() {
+        let _lock = crate::modules::test_support::env_lock()
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        let _env = TestEnvGuard::new("codex-agent-identity-members-test");
+        let build = |user_id: &str, email: &str, runtime_id: &str| CodexAgentIdentity {
+            agent_runtime_id: runtime_id.to_string(),
+            agent_private_key: agent_identity_private_key(),
+            task_id: Some(format!("task-{user_id}")),
+            account_id: "shared-k12-workspace".to_string(),
+            chatgpt_user_id: user_id.to_string(),
+            email: Some(email.to_string()),
+            plan_type: Some("k12".to_string()),
+            chatgpt_account_is_fedramp: false,
+        };
+
+        let mut first =
+            upsert_agent_identity_account(build("user-a", "first@example.com", "runtime-a"))
+                .expect("import first workspace member");
+        first.account_note = Some("keep this note".to_string());
+        save_account(&first).expect("save first member note");
+        let second =
+            upsert_agent_identity_account(build("user-b", "second@example.com", "runtime-b"))
+                .expect("import second workspace member");
+        let updated_first = upsert_agent_identity_account(build(
+            "user-a",
+            "updated@example.com",
+            "runtime-a-updated",
+        ))
+        .expect("reimport first workspace member");
+
+        assert_ne!(first.id, second.id);
+        assert_eq!(first.id, updated_first.id);
+        assert_eq!(
+            updated_first.account_note.as_deref(),
+            Some("keep this note")
+        );
+        assert_eq!(
+            updated_first
+                .agent_identity
+                .as_ref()
+                .map(|identity| identity.agent_runtime_id.as_str()),
+            Some("runtime-a-updated")
+        );
+        let index = load_account_index();
+        assert_eq!(index.accounts.len(), 2);
+        assert!(index.accounts.iter().any(|item| item.id == first.id));
+        assert!(index.accounts.iter().any(|item| item.id == second.id));
+    }
+
+    #[test]
+    fn agent_identity_legacy_storage_id_is_reused_only_for_matching_member() {
+        let _lock = crate::modules::test_support::env_lock()
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        let _env = TestEnvGuard::new("codex-agent-identity-legacy-test");
+        let identity = CodexAgentIdentity {
+            agent_runtime_id: "runtime-new".to_string(),
+            agent_private_key: agent_identity_private_key(),
+            task_id: Some("task-new".to_string()),
+            account_id: "legacy-k12-workspace".to_string(),
+            chatgpt_user_id: "legacy-user".to_string(),
+            email: Some("legacy@example.com".to_string()),
+            plan_type: Some("k12".to_string()),
+            chatgpt_account_is_fedramp: false,
+        };
+        let mut legacy = build_agent_identity_account_draft(identity.clone())
+            .expect("build legacy Agent Identity account");
+        legacy.id = build_legacy_agent_identity_account_id(&identity.account_id);
+        legacy.account_note = Some("legacy note".to_string());
+        save_account(&legacy).expect("save legacy account");
+        save_account_index(&build_test_account_index(&legacy)).expect("save legacy index");
+
+        let updated =
+            upsert_agent_identity_account(identity.clone()).expect("reimport legacy account");
+
+        assert_eq!(updated.id, legacy.id);
+        assert_eq!(updated.account_note.as_deref(), Some("legacy note"));
+        let mut other_member = identity;
+        other_member.chatgpt_user_id = "other-user".to_string();
+        other_member.email = Some("other@example.com".to_string());
+        other_member.agent_runtime_id = "runtime-other".to_string();
+        other_member.task_id = Some("task-other".to_string());
+        let imported_other =
+            upsert_agent_identity_account(other_member).expect("import other workspace member");
+
+        assert_ne!(imported_other.id, legacy.id);
+        assert_eq!(
+            load_account(&legacy.id)
+                .and_then(|account| account.agent_identity)
+                .map(|identity| identity.chatgpt_user_id),
+            Some("legacy-user".to_string())
+        );
+        let index = load_account_index();
+        assert_eq!(index.accounts.len(), 2);
+        assert_eq!(
+            index.current_account_id.as_deref(),
+            Some(legacy.id.as_str())
+        );
     }
 
     #[test]
